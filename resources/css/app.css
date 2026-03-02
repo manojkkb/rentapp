@@ -1,0 +1,39 @@
+@import 'tailwindcss';
+
+/* Import Font Awesome */
+@import '@fortawesome/fontawesome-free/css/all.css';
+
+/* Import Inter Font */
+@import '@fontsource/inter/300.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/inter/800.css';
+
+/* Import Poppins Font */
+@import '@fontsource/poppins/300.css';
+@import '@fontsource/poppins/400.css';
+@import '@fontsource/poppins/500.css';
+@import '@fontsource/poppins/600.css';
+@import '@fontsource/poppins/700.css';
+@import '@fontsource/poppins/800.css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    
+    /* Add Poppins as alternative font family */
+    --font-poppins: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+    
+    /* Custom Colors for RentApp */
+    --color-primary: #10b981;
+    --color-secondary: #34d399;
+}
+
+@variant dark (&:where(.dark, .dark *));

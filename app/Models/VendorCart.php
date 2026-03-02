@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class VendorCart extends Model
+{
+    use SoftDeletes;
+
+    protected $fillable = [
+        'customer_id',
+        'vendor_id',
+        'cart_name',
+        'sub_total',
+        'tax_total',
+        'discount_total',
+        'token_amount',
+        'paid_amount',
+        'grand_total',
+        'start_time',
+        'end_time',
+    ];
+
+    protected $casts = [
+        'sub_total' => 'decimal:2',
+        'tax_total' => 'decimal:2',
+        'discount_total' => 'decimal:2',
+        'token_amount' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
+        'grand_total' => 'decimal:2',
+        'start_time' => 'datetime',
+        'end_time' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
+
+    /**
+     * Get the vendor that owns the cart
+     */
+    public function vendor(): BelongsTo
+    {
+        return $this->belongsTo(Vendor::class);
+    }
+
+    /**
+     * Get the customer that owns the cart
+     */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(VendorCustomer::class, 'customer_id');
+    }
+
+    /**
+     * Get the cart items
+     */
+    public function items(): HasMany
+    {
+        return $this->hasMany(VendorCartItem::class);
+    }
+}
