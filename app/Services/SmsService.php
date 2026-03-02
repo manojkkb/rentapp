@@ -35,6 +35,8 @@ class SmsService
                 $params
             );
 
+           // dd($response->body());
+
             if ($response->successful()) {
                 Log::info('SMS Sent', [
                     'number' => $number,

@@ -36,9 +36,9 @@ class OtpService
             // Mail::to($identifier)->send(new OtpMail($otp));
             Log::info('OTP queued for email delivery', ['identifier' => $identifier, 'otp' => $otp]);
         } else {
-                $name="SMTJobs";
+                 $name="SMTJobs";
             // $text = "$otp is verification otp for SMT. OTPs are SECRET. DO NOT disclose it to anyone. SMT Labs Private Limited";
-             $text = "$otp is verification otp for " . $name . ". OTPs are SECRET. DO NOT disclose it to anyone."; 
+              $text = "$otp is verification otp for " . $name . ". OTPs are SECRET. DO NOT disclose it to anyone. SMT Labs Private Limited";
              SmsService::send($identifier, $text);
             Log::info('OTP queued for SMS delivery', ['identifier' => $identifier, 'otp' => $otp]);
         }
