@@ -21,10 +21,12 @@ class WelcomeCtrl extends Controller
         $categories = Category::withCount(['items' => function($query) {
             $query->where('is_active', true);
         }])
-        ->having('items_count', '>', 0)
-        ->orderBy('items_count', 'desc')
-        ->limit(12)
-        ->get();
+        ->get()
+        ->filter(function($category) {
+            return $category->items_count > 0;
+        })
+        ->sortByDesc('items_count')
+        ->take(12);
         
         // Get featured items (latest available items)
         $featuredItems = Items::with(['category', 'vendor'])
