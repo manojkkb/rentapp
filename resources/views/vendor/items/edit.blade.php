@@ -1,7 +1,7 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Edit Item - RentApp')
-@section('page-title', 'Edit Item')
+@section('title', __('vendor.edit_item'))
+@section('page-title', __('vendor.edit_item'))
 
 @section('content')
 <!-- Back Button -->
@@ -9,7 +9,7 @@
     <a href="{{ route('vendor.items.index') }}" 
        class="inline-flex items-center text-sm text-gray-600 hover:text-emerald-600 transition-colors">
         <i class="fas fa-arrow-left mr-2"></i>
-        Back to Items
+        {{ __('vendor.back_to_items') }}
     </a>
 </div>
 
@@ -18,8 +18,8 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <!-- Header -->
         <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-green-50">
-            <h2 class="text-xl font-bold text-gray-900">Edit Item</h2>
-            <p class="text-sm text-gray-600 mt-1">Update item details and settings</p>
+            <h2 class="text-xl font-bold text-gray-900">{{ __('vendor.edit_item') }}</h2>
+            <p class="text-sm text-gray-600 mt-1">{{ __('vendor.update_item_details') }}</p>
         </div>
 
         <!-- Form -->
@@ -31,22 +31,22 @@
             <div class="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p class="text-sm text-blue-800">
                     <i class="fas fa-link mr-2"></i>
-                    <strong>Current URL:</strong> <code class="bg-blue-100 px-2 py-1 rounded">{{ $item->slug }}</code>
+                    <strong>{{ __('vendor.current_url') }}:</strong> <code class="bg-blue-100 px-2 py-1 rounded">{{ $item->slug }}</code>
                 </p>
-                <p class="text-xs text-blue-600 mt-1">Slug will be auto-updated if you change the item name</p>
+                <p class="text-xs text-blue-600 mt-1">{{ __('vendor.slug_auto_update') }}</p>
             </div>
 
             <!-- Item Name -->
             <div class="mb-5">
                 <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">
-                    Item Name <span class="text-red-500">*</span>
+                    {{ __('vendor.item_name') }} <span class="text-red-500">*</span>
                 </label>
                 <input type="text" 
                        id="name" 
                        name="name" 
                        value="{{ old('name', $item->name) }}"
                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all @error('name') border-red-500 @enderror"
-                       placeholder="e.g., Camera, Laptop, Tent"
+                       placeholder="{{ __('vendor.item_name_placeholder') }}"
                        required>
                 @error('name')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -56,13 +56,13 @@
             <!-- Category -->
             <div class="mb-5">
                 <label for="category_id" class="block text-sm font-semibold text-gray-700 mb-2">
-                    Category <span class="text-red-500">*</span>
+                    {{ __('vendor.category') }} <span class="text-red-500">*</span>
                 </label>
                 <select id="category_id" 
                         name="category_id" 
                         class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all @error('category_id') border-red-500 @enderror"
                         required>
-                    <option value="">Select category</option>
+                    <option value="">{{ __('vendor.select_category') }}</option>
                     @foreach($categories as $category)
                         <option value="{{ $category->id }}" 
                                 {{ old('category_id', $item->category_id) == $category->id ? 'selected' : '' }}>
@@ -78,13 +78,13 @@
             <!-- Description -->
             <div class="mb-5">
                 <label for="description" class="block text-sm font-semibold text-gray-700 mb-2">
-                    Description <span class="text-gray-400">(Optional)</span>
+                    {{ __('vendor.description') }} <span class="text-gray-400">({{ __('vendor.optional') }})</span>
                 </label>
                 <textarea id="description" 
                           name="description" 
                           rows="4"
                           class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all @error('description') border-red-500 @enderror"
-                          placeholder="Describe the item features, condition, specifications...">{{ old('description', $item->description) }}</textarea>
+                          placeholder="{{ __('vendor.description_placeholder') }}">{{ old('description', $item->description) }}</textarea>
                 @error('description')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
@@ -92,13 +92,13 @@
 
             <!-- Pricing Section -->
             <div class="border-t border-gray-200 pt-5 mb-5">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Pricing</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ __('vendor.pricing') }}</h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <!-- Price -->
                     <div>
                         <label for="price" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Price (₹) <span class="text-red-500">*</span>
+                            {{ __('vendor.price') }} (₹) <span class="text-red-500">*</span>
                         </label>
                         <input type="number" 
                                id="price" 
@@ -117,7 +117,7 @@
                     <!-- Price Type -->
                     <div>
                         <label for="price_type" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Price Type <span class="text-red-500">*</span>
+                            {{ __('vendor.price_type') }} <span class="text-red-500">*</span>
                         </label>
                         <select id="price_type" 
                                 name="price_type" 
@@ -139,13 +139,13 @@
 
             <!-- Stock Management Section -->
             <div class="border-t border-gray-200 pt-5 mb-5">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Inventory</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ __('vendor.stock') }}</h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <!-- Stock -->
                     <div>
                         <label for="stock" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Stock Quantity <span class="text-red-500">*</span>
+                            {{ __('vendor.stock_quantity') }} <span class="text-red-500">*</span>
                         </label>
                         <input type="number" 
                                id="stock" 
@@ -175,7 +175,7 @@
 
             <!-- Status Section -->
             <div class="border-t border-gray-200 pt-5 mb-6">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Status</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ __('vendor.status') }}</h3>
                 
                 <div class="space-y-3">
                     <!-- Is Available -->
@@ -185,7 +185,7 @@
                                value="1"
                                {{ old('is_available', $item->is_available) ? 'checked' : '' }}
                                class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
-                        <span class="ml-2 text-sm font-medium text-gray-700">Available for rent</span>
+                        <span class="ml-2 text-sm font-medium text-gray-700">{{ __('vendor.available_for_rent') }}</span>
                     </label>
 
                     <!-- Is Active -->
@@ -195,7 +195,7 @@
                                value="1"
                                {{ old('is_active', $item->is_active) ? 'checked' : '' }}
                                class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
-                        <span class="ml-2 text-sm font-medium text-gray-700">Active (visible to customers)</span>
+                        <span class="ml-2 text-sm font-medium text-gray-700">{{ __('vendor.active') }}</span>
                     </label>
                 </div>
             </div>
@@ -204,21 +204,21 @@
             <div class="flex items-center justify-between pt-4 border-t border-gray-200">
                 <!-- Delete Button -->
                 <button type="button"
-                        onclick="if(confirm('Are you sure you want to delete this item?')) document.getElementById('delete-form').submit();"
+                        onclick="if(confirm('{{ __('vendor.confirm_delete') }}')) document.getElementById('delete-form').submit();"
                         class="px-5 py-2.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium">
                     <i class="fas fa-trash mr-2"></i>
-                    Delete Item
+                    {{ __('vendor.delete') }}
                 </button>
 
                 <div class="flex items-center space-x-3">
                     <a href="{{ route('vendor.items.index') }}" 
                        class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
-                        Cancel
+                        {{ __('vendor.cancel') }}
                     </a>
                     <button type="submit" 
                             class="px-5 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium">
                         <i class="fas fa-save mr-2"></i>
-                        Update Item
+                        {{ __('vendor.save_changes') }}
                     </button>
                 </div>
             </div>

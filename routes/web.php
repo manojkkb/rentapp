@@ -64,6 +64,9 @@ Route::prefix('vendor')->name('vendor.')->group(function ()
         Route::get('/profile',[VendorController::class, 'profile'])->name('profile');
         Route::put('/profile',[VendorController::class, 'updateProfile'])->name('profile.update');
 
+        // Language Switcher
+        Route::post('/language/switch',[VendorController::class, 'switchLanguage'])->name('language.switch');
+
         // Staff Management
         Route::resource('staff', StaffController::class)->except(['show']);
         Route::post('staff/{id}/toggle', [StaffController::class, 'toggleStatus'])->name('staff.toggle');

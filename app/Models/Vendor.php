@@ -19,6 +19,7 @@ class Vendor extends Model
     protected $fillable = [
         'user_id',
         'name',
+        'owner_name',
         'slug',
         'logo',
         'address_line1',
@@ -30,6 +31,7 @@ class Vendor extends Model
         'latitude',
         'longitude',
         'gst_number',
+        'language',
         'is_verified',
         'rating',
         'total_reviews',

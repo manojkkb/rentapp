@@ -1,7 +1,7 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Add Category - RentApp')
-@section('page-title', 'Add Category')
+@section('title', __('vendor.add_category'))
+@section('page-title', __('vendor.add_category'))
 
 @section('content')
 <!-- Back Button - Mobile Friendly -->
@@ -9,8 +9,8 @@
     <a href="{{ route('vendor.categories.index') }}" 
        class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:text-emerald-600 bg-white hover:bg-emerald-50 rounded-lg border border-gray-200 transition-all active:scale-95">
         <i class="fas fa-arrow-left mr-2"></i>
-        <span class="hidden sm:inline">Back to Categories</span>
-        <span class="sm:hidden">Back</span>
+        <span class="hidden sm:inline">{{ __('vendor.back_to_categories') }}</span>
+        <span class="sm:hidden">{{ __('vendor.back') }}</span>
     </a>
 </div>
 
@@ -18,8 +18,8 @@
     
     <!-- Header -->
     <div class="mb-6">
-        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Add New Category</h1>
-        <p class="text-sm md:text-base text-gray-600">Create a new category to organize your items</p>
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{{ __('vendor.add_new_category_title') }}</h1>
+        <p class="text-sm md:text-base text-gray-600">{{ __('vendor.create_new_rental_item') }}</p>
     </div>
 
     <!-- Form Card -->
@@ -56,14 +56,14 @@
             <!-- Category Name -->
             <div class="mb-5 md:mb-6">
                 <label for="name" class="block text-sm md:text-base font-semibold text-gray-700 mb-2">
-                    Category Name <span class="text-red-500">*</span>
+                    {{ __('vendor.category_name') }} <span class="text-red-500">*</span>
                 </label>
                 <input type="text" 
                        name="name" 
                        id="name" 
                        value="{{ old('name') }}"
                        class="w-full px-4 py-2.5 md:py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all @error('name') border-red-500 @enderror"
-                       placeholder="e.g., Electronics, Furniture, Tools"
+                       placeholder="{{ __('vendor.category_name_placeholder') }}"
                        required>
                 @error('name')
                     <p class="mt-2 text-sm text-red-600 flex items-center">
@@ -111,8 +111,8 @@
                                {{ old('is_active', true) ? 'checked' : '' }}
                                class="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 mt-0.5">
                         <div class="ml-3">
-                            <div class="text-sm md:text-base font-medium text-gray-900">Active Category</div>
-                            <div class="text-xs md:text-sm text-gray-600 mt-0.5">Category will be visible to customers</div>
+                            <div class="text-sm md:text-base font-medium text-gray-900">{{ __('vendor.active') }}</div>
+                            <div class="text-xs md:text-sm text-gray-600 mt-0.5">{{ __('vendor.category') }} {{ __('vendor.available') }}</div>
                         </div>
                     </label>
                 </div>
@@ -122,12 +122,12 @@
             <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end space-y-2 space-y-reverse sm:space-y-0 sm:space-x-3 pt-4 border-t border-gray-200">
                 <a href="{{ route('vendor.categories.index') }}" 
                    class="w-full sm:w-auto text-center px-5 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-lg font-semibold transition-all">
-                    Cancel
+                    {{ __('vendor.cancel') }}
                 </a>
                 <button type="submit" 
                         class="w-full sm:w-auto px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg font-semibold transition-all active:scale-95">
                     <i class="fas fa-save mr-2"></i>
-                    Create Category
+                    {{ __('vendor.add_category') }}
                 </button>
             </div>
         </form>

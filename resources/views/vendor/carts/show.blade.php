@@ -1,7 +1,7 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Cart Details - RentApp')
-@section('page-title', 'Cart Details')
+@section('title', __('vendor.cart_details'))
+@section('page-title', __('vendor.cart_details'))
 
 @section('content')
 <div x-data="{
@@ -58,8 +58,8 @@
         <a href="{{ route('vendor.carts.index') }}" 
            class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 bg-white hover:bg-blue-50 rounded-lg border border-gray-200 transition-all active:scale-95">
             <i class="fas fa-arrow-left mr-2"></i>
-            <span class="hidden sm:inline">Back to Carts</span>
-            <span class="sm:hidden">Back</span>
+            <span class="hidden sm:inline">{{ __('vendor.back') }}</span>
+            <span class="sm:hidden">{{ __('vendor.back') }}</span>
         </a>
     </div>
 
@@ -128,7 +128,7 @@
                                 <i class="fas fa-user text-emerald-600"></i>
                             </div>
                             <div>
-                                <p class="text-xs text-gray-500 font-medium">Customer</p>
+                                <p class="text-xs text-gray-500 font-medium">{{ __('vendor.customer') }}</p>
                                 <p class="text-sm font-semibold text-gray-900">{{ $cart->customer->name }}</p>
                                 <p class="text-xs text-gray-600">{{ $cart->customer->mobile }}</p>
                             </div>
@@ -159,13 +159,13 @@
                 <div class="px-4 py-4 md:px-6 md:py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                     <div class="flex items-start justify-between gap-3">
                         <div class="flex-1">
-                            <h3 class="text-lg font-bold text-gray-900">Cart Items</h3>
-                            <p class="text-sm text-gray-600">{{ $cart->items->count() }} item(s) in cart</p>
+                            <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.cart_items') }}</h3>
+                            <p class="text-sm text-gray-600">{{ $cart->items->count() }} {{ __('vendor.items') }}</p>
                         </div>
                         <button @click="showAddItem = true" 
                                 class="flex items-center flex-shrink-0 px-3 py-2 md:px-4 md:py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 shadow-sm">
                             <i class="fas fa-plus mr-1 md:mr-2"></i>
-                            <span class="text-xs md:text-sm">Add Items</span>
+                            <span class="text-xs md:text-sm">{{ __('vendor.add_item') }}</span>
                         </button>
                     </div>
                 </div>
@@ -184,14 +184,14 @@
                                             </div>
                                             <div class="flex-1">
                                                 <h4 class="text-sm font-semibold text-gray-900">{{ $cartItem->item->name }}</h4>
-                                                <p class="text-xs text-gray-600">{{ $cartItem->item->category->name ?? 'No Category' }}</p>
+                                                <p class="text-xs text-gray-600">{{ $cartItem->item->category->name ?? __('vendor.no_category') }}</p>
                                                 <div class="flex items-center space-x-4 mt-2">
                                                     <span class="text-sm font-bold text-blue-600">₹{{ number_format($cartItem->item->price, 2) }}</span>
                                                     <span class="text-xs text-gray-500">x</span>
                                                     
                                                     <!-- Quantity Display/Edit -->
                                                     <div x-show="editingItem !== {{ $cartItem->item_id }}" class="flex items-center space-x-2">
-                                                        <span class="text-sm font-medium text-gray-900">Qty: {{ $cartItem->quantity }}</span>
+                                                        <span class="text-sm font-medium text-gray-900">{{ __('vendor.quantity') }}: {{ $cartItem->quantity }}</span>
                                                         <button @click="editingItem = {{ $cartItem->item_id }}; editQuantity = {{ $cartItem->quantity }}" 
                                                                 class="text-xs text-blue-600 hover:text-blue-700">
                                                             <i class="fas fa-edit"></i>
@@ -229,7 +229,7 @@
                                     <!-- Remove Button -->
                                     <form action="{{ route('vendor.carts.items.remove', [$cart->id, $cartItem->item_id]) }}" 
                                           method="POST" 
-                                          onsubmit="return confirm('Are you sure you want to remove this item?')">
+                                          onsubmit="return confirm('{{ __('vendor.confirm_delete') }}')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" 
@@ -245,12 +245,12 @@
                             <div class="w-20 h-20 mx-auto mb-4 flex items-center justify-center bg-gray-100 rounded-full">
                                 <i class="fas fa-shopping-cart text-3xl text-gray-400"></i>
                             </div>
-                            <h3 class="text-lg font-semibold text-gray-900 mb-2">No Items Yet</h3>
-                            <p class="text-sm text-gray-600 mb-4">Start adding items to this cart</p>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('vendor.no_items_yet') }}</h3>
+                            <p class="text-sm text-gray-600 mb-4">{{ __('vendor.add_to_cart') }}</p>
                             <button @click="showAddItem = true" 
                                     class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95">
                                 <i class="fas fa-plus mr-2"></i>
-                                Add Your First Item
+                                {{ __('vendor.add_item') }}
                             </button>
                         </div>
                     @endif
@@ -263,25 +263,25 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden sticky top-6">
                 <!-- Header -->
                 <div class="px-4 py-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-green-50">
-                    <h3 class="text-lg font-bold text-gray-900">Cart Summary</h3>
+                    <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.summary') }}</h3>
                 </div>
 
                 <!-- Summary Details -->
                 <div class="p-4 space-y-3">
                     <div class="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span class="text-sm text-gray-600">Sub Total</span>
+                        <span class="text-sm text-gray-600">{{ __('vendor.sub_total') }}</span>
                         <span class="text-sm font-semibold text-gray-900">₹{{ number_format($cart->sub_total, 2) }}</span>
                     </div>
                     <div class="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span class="text-sm text-gray-600">Tax (10%)</span>
+                        <span class="text-sm text-gray-600">{{ __('vendor.tax') }} (10%)</span>
                         <span class="text-sm font-semibold text-gray-900">₹{{ number_format($cart->tax_total, 2) }}</span>
                     </div>
                     <div class="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span class="text-sm text-gray-600">Discount</span>
+                        <span class="text-sm text-gray-600">{{ __('vendor.discount') }}</span>
                         <span class="text-sm font-semibold text-red-600">-₹{{ number_format($cart->discount_total, 2) }}</span>
                     </div>
                     <div class="flex items-center justify-between py-3 border-t-2 border-gray-200 mt-2">
-                        <span class="text-base font-bold text-gray-900">Grand Total</span>
+                        <span class="text-base font-bold text-gray-900">{{ __('vendor.grand_total') }}</span>
                         <span class="text-lg font-bold text-emerald-600">₹{{ number_format($cart->grand_total, 2) }}</span>
                     </div>
                 </div>
@@ -289,15 +289,15 @@
                 <!-- Payment Status -->
                 <div class="p-4 border-t border-gray-200 space-y-3">
                     <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600">Token Amount</span>
+                        <span class="text-sm text-gray-600">{{ __('vendor.token_amount') }}</span>
                         <span class="text-sm font-semibold text-gray-900">₹{{ number_format($cart->token_amount, 2) }}</span>
                     </div>
                     <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600">Paid Amount</span>
+                        <span class="text-sm text-gray-600">{{ __('vendor.paid_amount') }}</span>
                         <span class="text-sm font-semibold text-emerald-600">₹{{ number_format($cart->paid_amount, 2) }}</span>
                     </div>
                     <div class="flex items-center justify-between py-2 border-t border-gray-200">
-                        <span class="text-sm font-bold text-gray-900">Balance Due</span>
+                        <span class="text-sm font-bold text-gray-900">{{ __('vendor.balance_due') }}</span>
                         <span class="text-sm font-bold text-red-600">₹{{ number_format($cart->grand_total - $cart->paid_amount, 2) }}</span>
                     </div>
                 </div>
@@ -307,24 +307,24 @@
                     @if($cart->items->count() > 0)
                         <form action="{{ route('vendor.carts.place-order', $cart->id) }}" 
                               method="POST" 
-                              onsubmit="return confirm('Are you sure you want to place this order? This will convert the cart into an order.')">
+                              onsubmit="return confirm('{{ __('vendor.confirm_place_order') }}')">
                             @csrf
                             <button type="submit" 
                                     class="w-full px-4 py-3 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all active:scale-95 shadow-sm">
                                 <i class="fas fa-check-circle mr-2"></i>
-                                Place Order
+                                {{ __('vendor.place_order') }}
                             </button>
                         </form>
                     @else
                         <button disabled 
                                 class="w-full px-4 py-3 text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed">
                             <i class="fas fa-check-circle mr-2"></i>
-                            Place Order (Add items first)
+                            {{ __('vendor.place_order') }}
                         </button>
                     @endif
                     <button class="w-full px-4 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
                         <i class="fas fa-print mr-2"></i>
-                        Print Quote
+                        {{ __('vendor.print') }}
                     </button>
                 </div>
             </div>
@@ -385,7 +385,7 @@
                             </div>
                             <input type="text" 
                                    x-model="searchQuery"
-                                   placeholder="Search by name or category..."
+                                   placeholder="{{ __('vendor.search_placeholder') }}"
                                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                             <button type="button" 
                                     x-show="searchQuery"
@@ -402,7 +402,7 @@
                             </div>
                             <select x-model="selectedCategory"
                                     class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white">
-                                <option value="">All Categories</option>
+                                <option value="">{{ __('vendor.all_categories') }}</option>
                                 @foreach($categories as $category)
                                     <option value="{{ $category->id }}">{{ $category->name }}</option>
                                 @endforeach
@@ -416,9 +416,9 @@
                     <!-- Filter Results Info -->
                     <div class="flex items-center justify-between text-sm">
                         <p class="text-gray-600">
-                            <span x-text="filteredItems.length"></span> item(s) found
+                            <span x-text="filteredItems.length"></span> {{ __('vendor.items') }}
                             <span x-show="hasSelectedItems" class="ml-3 text-blue-600 font-medium">
-                                • <span x-text="selectedCount"></span> selected
+                                • <span x-text="selectedCount"></span> {{ __('vendor.selected') }}
                             </span>
                         </p>
                         <div class="flex items-center space-x-2">
@@ -426,14 +426,14 @@
                                     @click="selectAllFiltered()"
                                     x-show="filteredItems.length > 0"
                                     class="text-xs text-blue-600 hover:text-blue-700 font-medium">
-                                Select All
+                                {{ __('vendor.select_all') }}
                             </button>
                             <span x-show="hasSelectedItems" class="text-gray-300">|</span>
                             <button type="button"
                                     @click="deselectAll()"
                                     x-show="hasSelectedItems"
                                     class="text-xs text-red-600 hover:text-red-700 font-medium">
-                                Deselect All
+                                {{ __('vendor.deselect_all') }}
                             </button>
                         </div>
                     </div>
@@ -462,13 +462,13 @@
                             <div class="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
                                 <i class="fas fa-search text-3xl text-gray-400"></i>
                             </div>
-                            <h3 class="text-lg font-semibold text-gray-900 mb-2">No items found</h3>
-                            <p class="text-sm text-gray-600 mb-3">Try adjusting your search or filter</p>
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('vendor.no_items_found') }}</h3>
+                            <p class="text-sm text-gray-600 mb-3">{{ __('vendor.adjust_search') }}</p>
                             <button type="button" 
                                     @click="searchQuery = ''; selectedCategory = ''"
                                     class="text-sm text-blue-600 hover:text-blue-700 font-semibold">
                                 <i class="fas fa-redo mr-1"></i>
-                                Clear Filters
+                                {{ __('vendor.clear_filters') }}
                             </button>
                         </div>
                     </div>
@@ -482,9 +482,9 @@
                                            @click="$event.target.checked ? selectAllFiltered() : deselectAll()"
                                            class="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
                                 </th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Item</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">Price</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase w-32">Quantity</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">{{ __('vendor.item') }}</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">{{ __('vendor.price') }}</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase w-32">{{ __('vendor.quantity') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
@@ -506,9 +506,9 @@
                                             </div>
                                             <div class="flex-1 min-w-0">
                                                 <p class="text-sm font-semibold text-gray-900 truncate" x-text="item.name"></p>
-                                                <p class="text-xs text-gray-500 truncate" x-text="item.category ? item.category.name : 'No Category'"></p>
+                                                <p class="text-xs text-gray-500 truncate" x-text="item.category ? item.category.name : '{{ __('vendor.no_category') }}'"></p>
                                                 <p class="text-xs text-gray-500" x-show="item.manage_stock">
-                                                    Stock: <span x-text="item.stock"></span>
+                                                    {{ __('vendor.stock') }}: <span x-text="item.stock"></span>
                                                 </p>
                                             </div>
                                         </div>
@@ -527,7 +527,7 @@
                                                min="1" 
                                                :disabled="selectedItems[item.id] === undefined"
                                                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                               placeholder="Qty">
+                                               placeholder="{{ __('vendor.quantity') }}">
                                     </td>
                                 </tr>
                             </template>
@@ -555,23 +555,23 @@
                                             </div>
                                             <div class="ml-3 flex-1 min-w-0">
                                                 <h4 class="text-sm font-semibold text-gray-900 mb-1" x-text="item.name"></h4>
-                                                <p class="text-xs text-gray-500 mb-1" x-text="item.category ? item.category.name : 'No Category'"></p>
+                                                <p class="text-xs text-gray-500 mb-1" x-text="item.category ? item.category.name : '{{ __('vendor.no_category') }}'"></p>
                                                 <p class="text-sm font-bold text-blue-600">₹<span x-text="parseFloat(item.price).toFixed(2)"></span></p>
                                                 <p class="text-xs text-gray-500 mt-1" x-show="item.manage_stock">
-                                                    Stock: <span x-text="item.stock"></span>
+                                                    {{ __('vendor.stock') }}: <span x-text="item.stock"></span>
                                                 </p>
                                             </div>
                                         </div>
 
                                         <!-- Quantity Input (only show when selected) -->
                                         <div class="mt-3" x-show="selectedItems[item.id] !== undefined">
-                                            <label class="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                                            <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('vendor.quantity') }}</label>
                                             <input type="number" 
                                                    x-model="selectedItems[item.id]"
                                                    @input="updateQuantity(item.id, $event.target.value)"
                                                    min="1"
                                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                   placeholder="Enter quantity">
+                                                   placeholder="{{ __('vendor.enter_quantity') }}">
                                         </div>
                                     </div>
                                 </div>
@@ -605,18 +605,18 @@
                             :disabled="isSubmitting"
                             class="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="fas fa-times mr-2"></i>
-                        Cancel
+                        {{ __('vendor.cancel') }}
                     </button>
                     <button type="submit" 
                             :disabled="!hasSelectedItems || isSubmitting"
                             class="w-full sm:flex-1 px-6 py-3 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600">
                         <span x-show="!isSubmitting">
                             <i class="fas fa-plus mr-2"></i>
-                            <span x-text="hasSelectedItems ? 'Add ' + selectedCount + ' Item' + (selectedCount > 1 ? 's' : '') : 'Add Items'"></span>
+                            <span x-text="hasSelectedItems ? '{{ __('vendor.add') }} ' + selectedCount + ' {{ __('vendor.item') }}' + (selectedCount > 1 ? 's' : '') : '{{ __('vendor.add_item') }}'"></span>
                         </span>
                         <span x-show="isSubmitting">
                             <i class="fas fa-spinner fa-spin mr-2"></i>
-                            Adding...
+                            {{ __('vendor.adding') }}...
                         </span>
                     </button>
                 </div>

@@ -21,7 +21,7 @@ class VendorSeeder extends Seeder
             'name' => 'Test Vendor',
             'email' => 'vendor@test.com',
             'mobile' => '9876543210',
-            'user_type' => 'vendor',
+            'language' => 'en',
             'password' => Hash::make('password123'),
             'email_verified_at' => now(),
         ]);
@@ -29,6 +29,8 @@ class VendorSeeder extends Seeder
         // Create the vendor profile
         Vendor::create([
             'user_id' => $user->id,
+            'owner_name' => $user->name,
+            'language' => $user->language,
             'name' => 'Test Store',
             'slug' => Str::slug('Test Store'),
             'address_line1' => '123 Main Street',

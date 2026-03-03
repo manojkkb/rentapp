@@ -112,19 +112,6 @@
                 </label>
             </div>
 
-            <!-- Info Box -->
-            <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div class="flex items-start">
-                    <i class="fas fa-info-circle text-blue-600 mt-0.5 mr-3"></i>
-                    <div class="text-sm text-blue-800">
-                        <p class="font-semibold mb-1">Adding Staff Members</p>
-                        <p class="mb-2">📱 <strong>Existing Users:</strong> If a user with this mobile number already exists, they will be added to your vendor (users can work for multiple vendors).</p>
-                        <p class="mb-2">🆕 <strong>New Users:</strong> A new account will be created with default password: <code class="bg-blue-100 px-1 rounded">password123</code></p>
-                        <p class="text-xs mt-2">Staff members should change their password after first login.</p>
-                    </div>
-                </div>
-            </div>
-
             <!-- Actions -->
             <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
                 <a href="{{ route('vendor.staff.index') }}" 

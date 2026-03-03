@@ -1,7 +1,7 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Edit Cart - RentApp')
-@section('page-title', 'Edit Cart')
+@section('title', __('vendor.edit') . ' ' . __('vendor.cart'))
+@section('page-title', __('vendor.edit') . ' ' . __('vendor.cart'))
 
 @section('content')
 <!-- Back Button -->
@@ -9,8 +9,8 @@
     <a href="{{ route('vendor.carts.show', $cart->id) }}" 
        class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 bg-white hover:bg-blue-50 rounded-lg border border-gray-200 transition-all active:scale-95">
         <i class="fas fa-arrow-left mr-2"></i>
-        <span class="hidden sm:inline">Back to Cart</span>
-        <span class="sm:hidden">Back</span>
+        <span class="hidden sm:inline">{{ __('vendor.back') }}</span>
+        <span class="sm:hidden">{{ __('vendor.back') }}</span>
     </a>
 </div>
 
@@ -18,8 +18,8 @@
     
     <!-- Header -->
     <div class="mb-6">
-        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Edit Cart</h1>
-        <p class="text-sm md:text-base text-gray-600">Update cart information</p>
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{{ __('vendor.edit') }} {{ __('vendor.cart') }}</h1>
+        <p class="text-sm md:text-base text-gray-600">{{ __('vendor.update_cart_info') }}</p>
     </div>
 
     <!-- Form Card -->
@@ -31,8 +31,8 @@
                     <i class="fas fa-shopping-cart text-white text-lg"></i>
                 </div>
                 <div>
-                    <h2 class="text-lg md:text-xl font-bold text-gray-900">Cart Details</h2>
-                    <p class="text-xs md:text-sm text-gray-600">Update the information below</p>
+                    <h2 class="text-lg md:text-xl font-bold text-gray-900">{{ __('vendor.cart') }} {{ __('vendor.details') }}</h2>
+                    <p class="text-xs md:text-sm text-gray-600">{{ __('vendor.update_information') }}</p>
                 </div>
             </div>
         </div>
@@ -44,7 +44,7 @@
             <!-- Customer (Read-only) -->
             <div class="mb-5 md:mb-6">
                 <label class="block text-sm md:text-base font-semibold text-gray-700 mb-2">
-                    Customer
+                    {{ __('vendor.customer') }}
                 </label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -58,14 +58,14 @@
                 </div>
                 <p class="mt-2 text-xs text-gray-500">
                     <i class="fas fa-info-circle mr-1"></i>
-                    Customer cannot be changed after cart creation
+                    {{ __('vendor.customer_cannot_change') }}
                 </p>
             </div>
 
             <!-- Cart Name -->
             <div class="mb-5 md:mb-6">
                 <label for="cart_name" class="block text-sm md:text-base font-semibold text-gray-700 mb-2">
-                    Cart Name <span class="text-red-500">*</span>
+                    {{ __('vendor.name') }} <span class="text-red-500">*</span>
                 </label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -76,7 +76,7 @@
                            id="cart_name" 
                            value="{{ old('cart_name', $cart->cart_name) }}"
                            class="w-full pl-11 pr-4 py-2.5 md:py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all @error('cart_name') border-red-500 @enderror"
-                           placeholder="e.g., Wedding Event, Birthday Party, Corporate Meeting"
+                           placeholder="{{ __('vendor.cart_name_placeholder') }}"
                            required>
                 </div>
                 @error('cart_name')
@@ -91,14 +91,14 @@
             <div class="mb-6 md:mb-8">
                 <label class="block text-sm md:text-base font-semibold text-gray-700 mb-3">
                     <i class="fas fa-calendar text-blue-600 mr-1"></i>
-                    Booking Dates <span class="text-gray-500 text-xs">(Optional)</span>
+                    {{ __('vendor.booking_dates') }} <span class="text-gray-500 text-xs">({{ __('vendor.optional') }})</span>
                 </label>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Start Time -->
                     <div>
                         <label for="start_time" class="block text-xs font-medium text-gray-600 mb-2">
-                            Start Date & Time
+                            {{ __('vendor.start_date_time') }}
                         </label>
                         <input type="datetime-local" 
                                name="start_time" 
@@ -116,7 +116,7 @@
                     <!-- End Time -->
                     <div>
                         <label for="end_time" class="block text-xs font-medium text-gray-600 mb-2">
-                            End Date & Time
+                            {{ __('vendor.end_date_time') }}
                         </label>
                         <input type="datetime-local" 
                                name="end_time" 
@@ -138,11 +138,11 @@
                 <div class="flex items-start space-x-3">
                     <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
                     <div class="flex-1">
-                        <p class="text-sm text-blue-900 font-semibold mb-1">Cart Information</p>
+                        <p class="text-sm text-blue-900 font-semibold mb-1">{{ __('vendor.cart') }} {{ __('vendor.information') }}</p>
                         <div class="grid grid-cols-2 gap-2 text-sm text-blue-800">
                             <div>
                                 <i class="fas fa-box text-xs mr-1"></i>
-                                <span>{{ $cart->items->count() }} item(s)</span>
+                                <span>{{ $cart->items->count() }} {{ __('vendor.items') }}</span>
                             </div>
                             <div>
                                 <i class="fas fa-rupee-sign text-xs mr-1"></i>
@@ -157,12 +157,12 @@
             <div class="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t border-gray-200">
                 <a href="{{ route('vendor.carts.show', $cart->id) }}" 
                    class="flex-1 sm:flex-none px-6 py-2.5 md:py-3 text-center text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                    Cancel
+                    {{ __('vendor.cancel') }}
                 </a>
                 <button type="submit" 
                         class="flex-1 sm:flex-none px-6 py-2.5 md:py-3 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-lg transition-all shadow-sm hover:shadow active:scale-95">
                     <i class="fas fa-save mr-2"></i>
-                    Update Cart
+                    {{ __('vendor.update') }} {{ __('vendor.cart') }}
                 </button>
             </div>
         </form>

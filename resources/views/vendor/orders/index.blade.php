@@ -1,7 +1,7 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Orders - RentApp')
-@section('page-title', 'Orders Management')
+@section('title', __('vendor.orders_management'))
+@section('page-title', __('vendor.orders_management'))
 
 @section('content')
 <div>
@@ -13,7 +13,7 @@
                 <input type="text" 
                        name="search" 
                        value="{{ request('search') }}"
-                       placeholder="Search by order number or customer..." 
+                       placeholder="{{ __('vendor.search_by_order') }}" 
                        class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
                 <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                 @if(request('search'))
@@ -30,42 +30,42 @@
         <div class="flex flex-wrap gap-2">
             <a href="{{ route('vendor.orders.index') }}" 
                class="px-4 py-2 rounded-lg text-sm font-semibold transition-colors {{ !request('status') ? 'bg-emerald-500 text-white' : 'text-gray-600 hover:bg-gray-100' }}">
-                All Orders
+                {{ __('vendor.all_orders') }}
                 <span class="ml-1 text-xs px-2 py-0.5 rounded-full {{ !request('status') ? 'bg-white text-emerald-600' : 'bg-gray-200' }}">
                     {{ $statusCounts['all'] }}
                 </span>
             </a>
             <a href="{{ route('vendor.orders.index', ['status' => 'pending']) }}" 
                class="px-4 py-2 rounded-lg text-sm font-semibold transition-colors {{ request('status') === 'pending' ? 'bg-yellow-500 text-white' : 'text-gray-600 hover:bg-gray-100' }}">
-                Pending
+                {{ __('vendor.pending') }}
                 <span class="ml-1 text-xs px-2 py-0.5 rounded-full {{ request('status') === 'pending' ? 'bg-white text-yellow-600' : 'bg-gray-200' }}">
                     {{ $statusCounts['pending'] }}
                 </span>
             </a>
             <a href="{{ route('vendor.orders.index', ['status' => 'confirmed']) }}" 
                class="px-4 py-2 rounded-lg text-sm font-semibold transition-colors {{ request('status') === 'confirmed' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-100' }}">
-                Confirmed
+                {{ __('vendor.confirmed') }}
                 <span class="ml-1 text-xs px-2 py-0.5 rounded-full {{ request('status') === 'confirmed' ? 'bg-white text-blue-600' : 'bg-gray-200' }}">
                     {{ $statusCounts['confirmed'] }}
                 </span>
             </a>
             <a href="{{ route('vendor.orders.index', ['status' => 'ongoing']) }}" 
                class="px-4 py-2 rounded-lg text-sm font-semibold transition-colors {{ request('status') === 'ongoing' ? 'bg-purple-500 text-white' : 'text-gray-600 hover:bg-gray-100' }}">
-                Ongoing
+                {{ __('vendor.ongoing') }}
                 <span class="ml-1 text-xs px-2 py-0.5 rounded-full {{ request('status') === 'ongoing' ? 'bg-white text-purple-600' : 'bg-gray-200' }}">
                     {{ $statusCounts['ongoing'] }}
                 </span>
             </a>
             <a href="{{ route('vendor.orders.index', ['status' => 'completed']) }}" 
                class="px-4 py-2 rounded-lg text-sm font-semibold transition-colors {{ request('status') === 'completed' ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-gray-100' }}">
-                Completed
+                {{ __('vendor.completed') }}
                 <span class="ml-1 text-xs px-2 py-0.5 rounded-full {{ request('status') === 'completed' ? 'bg-white text-green-600' : 'bg-gray-200' }}">
                     {{ $statusCounts['completed'] }}
                 </span>
             </a>
             <a href="{{ route('vendor.orders.index', ['status' => 'cancelled']) }}" 
                class="px-4 py-2 rounded-lg text-sm font-semibold transition-colors {{ request('status') === 'cancelled' ? 'bg-red-500 text-white' : 'text-gray-600 hover:bg-gray-100' }}">
-                Cancelled
+                {{ __('vendor.cancelled') }}
                 <span class="ml-1 text-xs px-2 py-0.5 rounded-full {{ request('status') === 'cancelled' ? 'bg-white text-red-600' : 'bg-gray-200' }}">
                     {{ $statusCounts['cancelled'] }}
                 </span>
@@ -94,13 +94,13 @@
                 <table class="w-full">
                     <thead class="bg-gradient-to-r from-emerald-50 to-green-50">
                         <tr>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Order Details</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Items</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('vendor.order_details') }}</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('vendor.customer') }}</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('vendor.date') }}</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('vendor.items_ordered') }}</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('vendor.total') }}</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('vendor.status') }}</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('vendor.actions') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">

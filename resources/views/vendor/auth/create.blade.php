@@ -196,6 +196,24 @@
                         @enderror
                     </div>
                     
+                    <!-- Owner Name -->
+                    <div>
+                        <label for="owner_name" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-user mr-2 text-green-600"></i>Owner/Contact Name
+                        </label>
+                        <input 
+                            type="text" 
+                            id="owner_name"
+                            name="owner_name" 
+                            value="{{ old('owner_name') }}"
+                            placeholder="Enter owner or contact person name"
+                            class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none transition-all"
+                        >
+                        @error('owner_name')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    
                     <!-- City and State -->
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -253,6 +271,35 @@
                         <p class="text-xs text-gray-500 mt-2">
                             <i class="fas fa-info-circle mr-1"></i>GST number is optional but recommended for verified status
                         </p>
+                    </div>
+                    
+                    <!-- Language Preference -->
+                    <div>
+                        <label for="language" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-globe mr-2 text-green-600"></i>Preferred Language <span class="text-red-500">*</span>
+                        </label>
+                        <select 
+                            id="language"
+                            name="language" 
+                            class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none transition-all"
+                            required
+                        >
+                            <option value="en" {{ old('language') == 'en' ? 'selected' : '' }}>🇬🇧 English</option>
+                            <option value="hi" {{ old('language') == 'hi' ? 'selected' : '' }}>🇮🇳 हिन्दी (Hindi)</option>
+                            <option value="bn" {{ old('language') == 'bn' ? 'selected' : '' }}>🇮🇳 বাংলা (Bengali)</option>
+                            <option value="mr" {{ old('language') == 'mr' ? 'selected' : '' }}>🇮🇳 मराठी (Marathi)</option>
+                            <option value="te" {{ old('language') == 'te' ? 'selected' : '' }}>🇮🇳 తెలుగు (Telugu)</option>
+                            <option value="ta" {{ old('language') == 'ta' ? 'selected' : '' }}>🇮🇳 தமிழ் (Tamil)</option>
+                            <option value="gu" {{ old('language') == 'gu' ? 'selected' : '' }}>🇮🇳 ગુજરાતી (Gujarati)</option>
+                            <option value="ur" {{ old('language') == 'ur' ? 'selected' : '' }}>🇮🇳 اردو (Urdu)</option>
+                            <option value="kn" {{ old('language') == 'kn' ? 'selected' : '' }}>🇮🇳 ಕನ್ನಡ (Kannada)</option>
+                            <option value="or" {{ old('language') == 'or' ? 'selected' : '' }}>🇮🇳 ଓଡ଼ିଆ (Odia)</option>
+                            <option value="ml" {{ old('language') == 'ml' ? 'selected' : '' }}>🇮🇳 മലയാളം (Malayalam)</option>
+                            <option value="pa" {{ old('language') == 'pa' ? 'selected' : '' }}>🇮🇳 ਪੰਜਾਬੀ (Punjabi)</option>
+                        </select>
+                        @error('language')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
                     
                     <!-- Important Note -->

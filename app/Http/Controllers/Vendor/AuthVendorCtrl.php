@@ -102,6 +102,9 @@ class AuthVendorCtrl extends Controller
             // Store current vendor in session
             Session::put('current_vendor_id', $vendor->id);
             
+            // Set language in session
+            Session::put('language', $vendor->language ?? $user->language ?? 'en');
+            
             // Redirect to vendor home/dashboard
             return redirect()
                 ->route('vendor.home')
@@ -302,6 +305,9 @@ class AuthVendorCtrl extends Controller
         // Store only vendor ID in session
         Session::put('current_vendor_id', $vendor->id);
         
+        // Set language in session
+        Session::put('language', $vendor->language ?? $user->language ?? 'en');
+        
         // Clear old session data
         Session::forget(['vendor_id', 'vendor_user_id', 'vendor_name', 'vendor_email', 'vendor_mobile', 'vendor_auth_user_id', 'vendor_auth_mobile']);
         
@@ -341,9 +347,11 @@ class AuthVendorCtrl extends Controller
         // Validate request
         $request->validate([
             'name' => 'required|string|max:255',
+            'owner_name' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:255',
             'state' => 'nullable|string|max:255',
             'gst_number' => 'nullable|string|max:15',
+            'language' => 'required|string|in:en,hi,bn,mr,te,ta,gu,ur,kn,or,ml,pa',
         ]);
         
         // Create slug from name
@@ -361,14 +369,22 @@ class AuthVendorCtrl extends Controller
         $vendor = Vendor::create([
             'user_id' => $user->id,
             'name' => $request->name,
+            'owner_name' => $request->owner_name,
             'slug' => $slug,
             'city' => $request->city,
             'state' => $request->state,
             'gst_number' => $request->gst_number,
+            'language' => $request->language,
             'is_verified' => false,
             'is_active' => true,
             'rating' => 0,
             'total_reviews' => 0,
+        ]);
+        
+        // Update user's name and language
+        $user->update([
+            'name' => $request->owner_name ?: $request->name,
+            'language' => $request->language,
         ]);
         
         // Add user to vendor_users pivot table as owner
@@ -381,6 +397,9 @@ class AuthVendorCtrl extends Controller
         
         // Store only vendor ID in session
         Session::put('current_vendor_id', $vendor->id);
+        
+        // Set language in session
+        Session::put('language', $vendor->language ?? 'en');
         
         // Clear old session data
         Session::forget(['vendor_id', 'vendor_user_id', 'vendor_name', 'vendor_email', 'vendor_mobile', 'vendor_auth_user_id', 'vendor_auth_mobile']);

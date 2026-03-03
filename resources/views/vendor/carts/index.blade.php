@@ -1,7 +1,7 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Carts - RentApp')
-@section('page-title', 'Carts')
+@section('title', __('vendor.cart'))
+@section('page-title', __('vendor.cart'))
 
 @section('content')
 <!-- Header with Add Button -->
@@ -12,10 +12,10 @@
                 <i class="fas fa-shopping-cart text-blue-600 text-xl"></i>
             </div>
             <div>
-                <h2 class="text-2xl font-bold text-gray-900">Carts</h2>
+                <h2 class="text-2xl font-bold text-gray-900">{{ __('vendor.cart') }}</h2>
                 <p class="text-sm text-gray-600">
                     <i class="fas fa-layer-group text-blue-600 mr-1"></i>
-                    <span class="font-medium">{{ $carts->total() }}</span> carts
+                    <span class="font-medium">{{ $carts->total() }}</span> {{ __('vendor.cart_items') }}
                 </p>
             </div>
         </div>
@@ -23,7 +23,7 @@
     <a href="{{ route('vendor.carts.create') }}" 
        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-lg transition-all shadow-sm hover:shadow active:scale-95 whitespace-nowrap">
         <i class="fas fa-plus mr-2"></i>
-        Add<span class="hidden sm:inline ml-1">Cart</span>
+        {{ __('vendor.add_to_cart') }}
     </a>
 </div>
 
@@ -59,22 +59,22 @@
                 <thead class="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-200">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Cart Name
+                            {{ __('vendor.name') }}
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Customer
+                            {{ __('vendor.customer') }}
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Items
+                            {{ __('vendor.items') }}
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Grand Total
+                            {{ __('vendor.grand_total') }}
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Created
+                            {{ __('vendor.date') }}
                         </th>
                         <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Actions
+                            {{ __('vendor.actions') }}
                         </th>
                     </tr>
                 </thead>
@@ -111,7 +111,7 @@
                         <td class="px-6 py-4">
                             <span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
                                 <i class="fas fa-box text-xs mr-1"></i>
-                                {{ $cart->items->count() }} items
+                                {{ $cart->items->count() }} {{ __('vendor.items') }}
                             </span>
                         </td>
 
@@ -137,7 +137,7 @@
                         <td class="px-6 py-4 text-right">
                             <a href="{{ route('vendor.carts.show', $cart->id) }}" 
                                class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 shadow-sm">
-                                <span>Continue</span>
+                                <span>{{ __('vendor.view') }}</span>
                                 <i class="fas fa-arrow-right ml-2"></i>
                             </a>
                         </td>
@@ -174,11 +174,11 @@
                     <!-- Details -->
                     <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
                         <div>
-                            <p class="text-xs text-gray-500 mb-1">Grand Total</p>
+                            <p class="text-xs text-gray-500 mb-1">{{ __('vendor.grand_total') }}</p>
                             <p class="text-lg font-bold text-gray-900">₹{{ number_format($cart->grand_total, 2) }}</p>
                         </div>
                         <div class="text-right">
-                            <p class="text-xs text-gray-500 mb-1">Items</p>
+                            <p class="text-xs text-gray-500 mb-1">{{ __('vendor.items') }}</p>
                             <span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
                                 <i class="fas fa-box text-xs mr-1"></i>
                                 {{ $cart->items->count() }}
@@ -204,7 +204,7 @@
                     <div>
                         <a href="{{ route('vendor.carts.show', $cart->id) }}" 
                            class="block w-full text-center px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 shadow-sm">
-                            <span>Continue</span>
+                            <span>{{ __('vendor.view') }}</span>
                             <i class="fas fa-arrow-right ml-2"></i>
                         </a>
                     </div>
@@ -223,12 +223,12 @@
         <!-- Empty State -->
         <div class="text-center py-12">
             <i class="fas fa-shopping-cart text-gray-300 text-5xl mb-4"></i>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">No Carts Yet</h3>
-            <p class="text-sm text-gray-500 mb-6">Start creating carts for your customers</p>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('vendor.empty_cart') }}</h3>
+            <p class="text-sm text-gray-500 mb-6">{{ __('vendor.add_to_cart') }}</p>
             <a href="{{ route('vendor.carts.create') }}" 
                class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
                 <i class="fas fa-plus mr-2"></i>
-                Create Your First Cart
+                {{ __('vendor.add_to_cart') }}
             </a>
         </div>
     @endif

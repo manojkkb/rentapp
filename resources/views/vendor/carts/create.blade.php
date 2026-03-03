@@ -1,7 +1,7 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Add Cart - RentApp')
-@section('page-title', 'Add Cart')
+@section('title', __('vendor.add') . ' ' . __('vendor.cart'))
+@section('page-title', __('vendor.add') . ' ' . __('vendor.cart'))
 
 @section('content')
 <!-- Back Button -->
@@ -9,8 +9,8 @@
     <a href="{{ route('vendor.carts.index') }}" 
        class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 bg-white hover:bg-blue-50 rounded-lg border border-gray-200 transition-all active:scale-95">
         <i class="fas fa-arrow-left mr-2"></i>
-        <span class="hidden sm:inline">Back to Carts</span>
-        <span class="sm:hidden">Back</span>
+        <span class="hidden sm:inline">{{ __('vendor.back') }}</span>
+        <span class="sm:hidden">{{ __('vendor.back') }}</span>
     </a>
 </div>
 
@@ -18,8 +18,8 @@
     
     <!-- Header -->
     <div class="mb-6">
-        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Create New Cart</h1>
-        <p class="text-sm md:text-base text-gray-600">Start a new cart for a customer</p>
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">{{ __('vendor.create') }} {{ __('vendor.cart') }}</h1>
+        <p class="text-sm md:text-base text-gray-600">{{ __('vendor.start_new_cart') }}</p>
     </div>
 
     <!-- Form Card -->
@@ -31,8 +31,8 @@
                     <i class="fas fa-shopping-cart text-white text-lg"></i>
                 </div>
                 <div>
-                    <h2 class="text-lg md:text-xl font-bold text-gray-900">Cart Details</h2>
-                    <p class="text-xs md:text-sm text-gray-600">Fill in the information below</p>
+                    <h2 class="text-lg md:text-xl font-bold text-gray-900">{{ __('vendor.cart') }} {{ __('vendor.details') }}</h2>
+                    <p class="text-xs md:text-sm text-gray-600">{{ __('vendor.fill_information') }}</p>
                 </div>
             </div>
         </div>
@@ -43,7 +43,7 @@
             <!-- Customer Selection -->
             <div class="mb-5 md:mb-6">
                 <label for="customer_id" class="block text-sm md:text-base font-semibold text-gray-700 mb-2">
-                    Select Customer <span class="text-red-500">*</span>
+                    {{ __('vendor.select') }} {{ __('vendor.customer') }} <span class="text-red-500">*</span>
                 </label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -53,7 +53,7 @@
                             id="customer_id"
                             class="w-full pl-11 pr-4 py-2.5 md:py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all @error('customer_id') border-red-500 @enderror"
                             required>
-                        <option value="">Choose a customer...</option>
+                        <option value="">{{ __('vendor.choose_customer') }}</option>
                         @foreach($customers as $customer)
                             <option value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
                                 {{ $customer->name }} - {{ $customer->mobile }}
@@ -71,7 +71,7 @@
                     <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                         <p class="text-sm text-yellow-800">
                             <i class="fas fa-info-circle mr-1"></i>
-                            No customers found. <a href="{{ route('vendor.customers.create') }}" class="font-semibold underline hover:text-yellow-900">Create a customer first</a>
+                            {{ __('vendor.no_customers') }}. <a href="{{ route('vendor.customers.create') }}" class="font-semibold underline hover:text-yellow-900">{{ __('vendor.create_customer_first') }}</a>
                         </p>
                     </div>
                 @endif
@@ -80,7 +80,7 @@
             <!-- Cart Name -->
             <div class="mb-5 md:mb-6">
                 <label for="cart_name" class="block text-sm md:text-base font-semibold text-gray-700 mb-2">
-                    Cart Name <span class="text-red-500">*</span>
+                    {{ __('vendor.name') }} <span class="text-red-500">*</span>
                 </label>
                 <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -91,7 +91,7 @@
                            id="cart_name" 
                            value="{{ old('cart_name') }}"
                            class="w-full pl-11 pr-4 py-2.5 md:py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all @error('cart_name') border-red-500 @enderror"
-                           placeholder="e.g., Wedding Event, Birthday Party, Corporate Meeting"
+                           placeholder="{{ __('vendor.cart_name_placeholder') }}"
                            required>
                 </div>
                 @error('cart_name')
@@ -106,14 +106,14 @@
             <div class="mb-6 md:mb-8">
                 <label class="block text-sm md:text-base font-semibold text-gray-700 mb-3">
                     <i class="fas fa-calendar text-blue-600 mr-1"></i>
-                    Booking Dates <span class="text-gray-500 text-xs">(Optional)</span>
+                    {{ __('vendor.booking_dates') }} <span class="text-gray-500 text-xs">({{ __('vendor.optional') }})</span>
                 </label>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Start Time -->
                     <div>
                         <label for="start_time" class="block text-xs font-medium text-gray-600 mb-2">
-                            Start Date & Time
+                            {{ __('vendor.start_date_time') }}
                         </label>
                         <input type="datetime-local" 
                                name="start_time" 
@@ -131,7 +131,7 @@
                     <!-- End Time -->
                     <div>
                         <label for="end_time" class="block text-xs font-medium text-gray-600 mb-2">
-                            End Date & Time
+                            {{ __('vendor.end_date_time') }}
                         </label>
                         <input type="datetime-local" 
                                name="end_time" 
@@ -153,9 +153,9 @@
                 <div class="flex items-start space-x-3">
                     <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
                     <div class="flex-1">
-                        <p class="text-sm text-blue-900 font-semibold mb-1">After creating the cart</p>
+                        <p class="text-sm text-blue-900 font-semibold mb-1">{{ __('vendor.after_creating_cart') }}</p>
                         <p class="text-sm text-blue-800">
-                            You can add items, apply discounts, and manage the booking details.
+                            {{ __('vendor.cart_management_info') }}
                         </p>
                     </div>
                 </div>
@@ -165,12 +165,12 @@
             <div class="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t border-gray-200">
                 <a href="{{ route('vendor.carts.index') }}" 
                    class="flex-1 sm:flex-none px-6 py-2.5 md:py-3 text-center text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                    Cancel
+                    {{ __('vendor.cancel') }}
                 </a>
                 <button type="submit" 
                         class="flex-1 sm:flex-none px-6 py-2.5 md:py-3 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 rounded-lg transition-all shadow-sm hover:shadow active:scale-95">
                     <i class="fas fa-save mr-2"></i>
-                    Create Cart
+                    {{ __('vendor.create') }} {{ __('vendor.cart') }}
                 </button>
             </div>
         </form>

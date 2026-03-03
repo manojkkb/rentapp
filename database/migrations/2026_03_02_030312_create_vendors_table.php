@@ -49,6 +49,7 @@ return new class extends Migration
             $table->index(['is_active', 'is_verified']);
 
         });
+        
     }
 
     /**

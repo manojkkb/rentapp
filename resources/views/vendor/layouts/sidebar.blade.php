@@ -27,10 +27,10 @@
                 </div>
             @endif
             <div class="flex-1 min-w-0">
-                <h2 class="text-sm font-bold text-gray-900 truncate">{{ Auth::user()->currentVendor()->name ?? 'Vendor' }}</h2>
+                <h2 class="text-sm font-bold text-gray-900 truncate">{{ Auth::user()->currentVendor()->name ?? __('vendor.vendor') }}</h2>
                 <p class="text-xs text-gray-600 truncate flex items-center">
                     <i class="fas fa-phone text-[10px] mr-1.5 text-emerald-600"></i>
-                    {{ Auth::user()->mobile ?? 'No phone' }}
+                    {{ Auth::user()->mobile ?? __('vendor.no_phone') }}
                 </p>
             </div>
         </div>
@@ -45,58 +45,63 @@
             <!-- Home -->
             <li>
                 <a href="{{ route('vendor.home') }}" 
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
                           {{ request()->routeIs('vendor.home') 
                               ? 'bg-emerald-500 text-white' 
                               : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-600' }}">
                     <i class="fas fa-home w-5"></i>
-                    <span class="ml-3">Home</span>
+                    <span class="ml-3">{{ __('vendor.home') }}</span>
                 </a>
             </li>
 
             <!-- Items -->
             <li>
                 <a href="{{ route('vendor.items.index') }}" 
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
                    {{ request()->routeIs('vendor.items.*') ? 'bg-emerald-500 text-white' : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-600' }}">
                     <i class="fas fa-box w-5"></i>
-                    <span class="ml-3">Items</span>
+                    <span class="ml-3">{{ __('vendor.items') }}</span>
                 </a>
             </li>
 
             <!-- Categories -->
             <li>
                 <a href="{{ route('vendor.categories.index') }}" 
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
                           {{ request()->routeIs('vendor.categories.*') 
                               ? 'bg-emerald-500 text-white' 
                               : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-600' }}">
                     <i class="fas fa-tags w-5"></i>
-                    <span class="ml-3">Categories</span>
+                    <span class="ml-3">{{ __('vendor.categories') }}</span>
                 </a>
             </li>
 
             <!-- Orders -->
             <li>
                 <a href="{{ route('vendor.orders.index') }}" 
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
                           {{ request()->routeIs('vendor.orders.*') 
                               ? 'bg-emerald-500 text-white' 
                               : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-600' }}">
                     <i class="fas fa-receipt w-5"></i>
-                    <span class="ml-3">Orders</span>
+                    <span class="ml-3">{{ __('vendor.orders') }}</span>
                 </a>
             </li>
 
             <!-- Cart -->
             <li>
                 <a href="{{ route('vendor.carts.index') }}" 
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
                           {{ request()->routeIs('vendor.carts.*') 
                               ? 'bg-emerald-500 text-white' 
                               : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-600' }}">
                     <i class="fas fa-shopping-cart w-5"></i>
-                    <span class="ml-3">Cart</span>
+                    <span class="ml-3">{{ __('vendor.cart') }}</span>
                 </a>
             </li>
 
@@ -105,65 +110,70 @@
                 <a href="#" 
                    class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
                     <i class="fas fa-star w-5"></i>
-                    <span class="ml-3">Reviews</span>
+                    <span class="ml-3">{{ __('vendor.reviews') }}</span>
                 </a>
             </li>
 
             <!-- Customers -->
             <li>
                 <a href="{{ route('vendor.customers.index') }}" 
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
                           {{ request()->routeIs('vendor.customers.*') 
                               ? 'bg-emerald-500 text-white' 
                               : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-600' }}">
                     <i class="fas fa-user-friends w-5"></i>
-                    <span class="ml-3">Customers</span>
+                    <span class="ml-3">{{ __('vendor.customers') }}</span>
                 </a>
             </li>
 
             <!-- Staff -->
             <li>
                 <a href="{{ route('vendor.staff.index') }}" 
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
                           {{ request()->routeIs('vendor.staff.*') 
                               ? 'bg-emerald-500 text-white' 
                               : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-600' }}">
                     <i class="fas fa-users w-5"></i>
-                    <span class="ml-3">Staff</span>
+                    <span class="ml-3">{{ __('vendor.staff') }}</span>
                 </a>
             </li>
 
             <li class="pt-4 mt-4 border-t border-gray-200">
-                <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Settings</p>
+                <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ __('vendor.settings') }}</p>
             </li>
 
             <!-- Profile -->
             <li>
                 <a href="{{ route('vendor.profile') }}" 
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
                           {{ request()->routeIs('vendor.profile') 
                               ? 'bg-emerald-500 text-white' 
                               : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-600' }}">
                     <i class="fas fa-user w-5"></i>
-                    <span class="ml-3">Profile</span>
+                    <span class="ml-3">{{ __('vendor.profile') }}</span>
                 </a>
             </li>
 
             <!-- Switch Vendor -->
             <li>
                 <a href="{{ route('vendor.select') }}" 
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-600 transition-colors">
                     <i class="fas fa-exchange-alt w-5"></i>
-                    <span class="ml-3">Switch Vendor</span>
+                    <span class="ml-3">{{ __('vendor.switch_vendor') }}</span>
                 </a>
             </li>
 
             <!-- Create New Vendor -->
             <li>
                 <a href="{{ route('vendor.create') }}" 
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
                     <i class="fas fa-plus-circle w-5"></i>
-                    <span class="ml-3">Create New Vendor</span>
+                    <span class="ml-3">{{ __('vendor.create_new_vendor') }}</span>
                 </a>
             </li>
 
@@ -172,7 +182,7 @@
                 <a href="#" 
                    class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
                     <i class="fas fa-cog w-5"></i>
-                    <span class="ml-3">Settings</span>
+                    <span class="ml-3">{{ __('vendor.settings_menu') }}</span>
                 </a>
             </li>
         </ul>
@@ -185,7 +195,7 @@
             <button type="submit" 
                     class="w-full flex items-center justify-center px-4 py-3 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors">
                 <i class="fas fa-sign-out-alt mr-2"></i>
-                Logout
+                {{ __('vendor.logout') }}
             </button>
         </form>
     </div>

@@ -1,7 +1,7 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Items - RentApp')
-@section('page-title', 'Items')
+@section('title', __('vendor.items_management'))
+@section('page-title', __('vendor.items'))
 
 @section('content')
 <!-- Header with Add Button -->
@@ -12,10 +12,10 @@
                 <i class="fas fa-box text-blue-600 text-xl"></i>
             </div>
             <div>
-                <h2 class="text-2xl font-bold text-gray-900">Items</h2>
+                <h2 class="text-2xl font-bold text-gray-900">{{ __('vendor.items') }}</h2>
                 <p class="text-sm text-gray-600">
                     <i class="fas fa-layer-group text-blue-600 mr-1"></i>
-                    <span class="font-medium">{{ $items->total() }}</span> items
+                    <span class="font-medium">{{ $items->total() }}</span> {{ __('vendor.total_items_count', ['count' => $items->total()]) }}
                 </p>
             </div>
         </div>
@@ -23,7 +23,7 @@
     <a href="{{ route('vendor.items.create') }}" 
        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-lg transition-all shadow-sm hover:shadow active:scale-95 whitespace-nowrap">
         <i class="fas fa-plus mr-2"></i>
-        Add<span class="hidden sm:inline ml-1">Item</span>
+        {{ __('vendor.add_item') }}
     </a>
 </div>
 
@@ -59,19 +59,19 @@
                 <thead class="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-200">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Item
+                            {{ __('vendor.item') }}
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Price
+                            {{ __('vendor.price') }}
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Stock
+                            {{ __('vendor.stock') }}
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Status
+                            {{ __('vendor.status') }}
                         </th>
                         <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Actions
+                            {{ __('vendor.actions') }}
                         </th>
                     </tr>
                 </thead>
@@ -93,9 +93,9 @@
                         <td class="px-6 py-4">
                             <p class="text-sm font-semibold text-gray-900">₹{{ number_format($item->price, 2) }}</p>
                             <p class="text-xs text-gray-500">
-                                @if($item->price_type == 'per_day') Per Day
-                                @elseif($item->price_type == 'per_hour') Per Hour
-                                @else Fixed
+                                @if($item->price_type == 'per_day') {{ __('vendor.per_day') }}
+                                @elseif($item->price_type == 'per_hour') {{ __('vendor.per_hour') }}
+                                @else {{ __('vendor.fixed') }}
                                 @endif
                             </p>
                         </td>
@@ -105,16 +105,16 @@
                             <div>
                                 @if($item->manage_stock)
                                     <span class="text-sm {{ $item->stock > 0 ? 'text-gray-900' : 'text-red-600 font-semibold' }}">
-                                        {{ $item->stock }} units
+                                        {{ $item->stock }} {{ __('vendor.available_units') }}
                                     </span>
                                 @else
-                                    <span class="text-xs text-gray-500">Not tracked</span>
+                                    <span class="text-xs text-gray-500">{{ __('vendor.not_available') }}</span>
                                 @endif
                                 <div class="mt-1">
                                     @if($item->is_available)
-                                        <span class="text-xs text-green-600">● Available for rent</span>
+                                        <span class="text-xs text-green-600">● {{ __('vendor.available_for_rent') }}</span>
                                     @else
-                                        <span class="text-xs text-orange-600">● Not Available</span>
+                                        <span class="text-xs text-orange-600">● {{ __('vendor.not_available') }}</span>
                                     @endif
                                 </div>
                             </div>
@@ -134,42 +134,52 @@
                                     </button>
                                 </form>
                                 <div class="mt-1">
-                                    <span class="text-xs font-medium" :class="isActive ? 'text-emerald-700' : 'text-gray-500'" x-text="isActive ? 'Active' : 'Inactive'"></span>
+                                    <span class="text-xs font-medium" :class="isActive ? 'text-emerald-700' : 'text-gray-500'" x-text="isActive ? '{{ __('vendor.active') }}' : '{{ __('vendor.inactive') }}'"></span>
                                 </div>
                             </div>
                         </td>
 
                         <!-- Actions -->
                         <td class="px-6 py-4 text-right">
-                            <div class="relative" x-data="{ open: false }" @click.away="open = false">
-                                <button @click.stop="open = !open" 
+                            <div class="relative inline-block" x-data="{ dropdownOpen: false }">
+                                <button @click="dropdownOpen = !dropdownOpen" 
                                         class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                        type="button">
+                                        type="button"
+                                        x-ref="dropdownButton">
                                     <i class="fas fa-ellipsis-vertical text-gray-600"></i>
                                 </button>
                                 
-                                <div x-show="open" 
+                                <div x-show="dropdownOpen" 
+                                     @click.away="dropdownOpen = false"
                                      x-transition:enter="transition ease-out duration-100"
-                                     x-transition:enter-start="transform opacity-0 scale-95"
-                                     x-transition:enter-end="transform opacity-100 scale-100"
+                                     x-transition:enter-start="opacity-0 scale-95"
+                                     x-transition:enter-end="opacity-100 scale-100"
                                      x-transition:leave="transition ease-in duration-75"
-                                     x-transition:leave-start="transform opacity-100 scale-100"
-                                     x-transition:leave-end="transform opacity-0 scale-95"
-                                     class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                     x-transition:leave-start="opacity-100 scale-100"
+                                     x-transition:leave-end="opacity-0 scale-95"
+                                     class="fixed w-48 bg-white rounded-lg shadow-2xl border border-gray-200 py-1"
+                                     style="display: none; z-index: 9999;"
+                                     x-init="$watch('dropdownOpen', value => {
+                                         if(value) {
+                                             let rect = $refs.dropdownButton.getBoundingClientRect();
+                                             $el.style.top = rect.bottom + 5 + 'px';
+                                             $el.style.left = (rect.right - 192) + 'px';
+                                         }
+                                     })">
                                     <a href="{{ route('vendor.items.edit', $item->id) }}" 
-                                       class="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                        <i class="fas fa-edit w-5 text-blue-500"></i>
-                                        <span class="ml-3">Edit</span>
+                                       class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                        <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
+                                        {{ __('vendor.edit') }}
                                     </a>
                                     <form action="{{ route('vendor.items.destroy', $item->id) }}" 
                                           method="POST" 
-                                          onsubmit="return confirm('Are you sure you want to delete this item?');">
+                                          onsubmit="return confirm('{{ __('vendor.confirm_delete') }}');">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" 
-                                                class="w-full flex items-center px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                                            <i class="fas fa-trash w-5"></i>
-                                            <span class="ml-3">Delete</span>
+                                                class="w-full text-left block px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                            <i class="fas fa-trash w-5 mr-3"></i>
+                                            {{ __('vendor.delete') }}
                                         </button>
                                     </form>
                                 </div>
@@ -201,7 +211,7 @@
                                     <p class="text-xs text-gray-500 mt-0.5 flex items-center">
                                         <i class="fas fa-box-open text-xs mr-1"></i>
                                         <span class="{{ $item->stock > 0 ? '' : 'text-red-600 font-semibold' }}">
-                                            {{ $item->stock }} in stock
+                                            {{ $item->stock }} {{ __('vendor.stock') }}
                                         </span>
                                     </p>
                                 @endif
@@ -209,35 +219,37 @@
                         </div>
                         
                         <!-- 3-Dot Menu -->
-                        <div class="relative ml-2 flex-shrink-0" x-data="{ menuOpen: false }" @click.away="menuOpen = false">
-                            <button @click.stop="menuOpen = !menuOpen" 
+                        <div class="relative ml-2 flex-shrink-0" x-data="{ mobileDropdownOpen: false }">
+                            <button @click="mobileDropdownOpen = !mobileDropdownOpen" 
                                     class="p-2 hover:bg-gray-100 rounded-lg transition-colors active:bg-gray-200"
                                     type="button">
                                 <i class="fas fa-ellipsis-vertical text-gray-600 text-lg"></i>
                             </button>
                             
-                            <div x-show="menuOpen" 
+                            <div x-show="mobileDropdownOpen" 
+                                 @click.away="mobileDropdownOpen = false"
                                  x-transition:enter="transition ease-out duration-200"
-                                 x-transition:enter-start="transform opacity-0 scale-95"
-                                 x-transition:enter-end="transform opacity-100 scale-100"
+                                 x-transition:enter-start="opacity-0 scale-95"
+                                 x-transition:enter-end="opacity-100 scale-100"
                                  x-transition:leave="transition ease-in duration-100"
-                                 x-transition:leave-start="transform opacity-100 scale-100"
-                                 x-transition:leave-end="transform opacity-0 scale-95"
-                                 class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
+                                 x-transition:leave-start="opacity-100 scale-100"
+                                 x-transition:leave-end="opacity-0 scale-95"
+                                 class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
+                                 style="display: none;">
                                 <a href="{{ route('vendor.items.edit', $item->id) }}" 
-                                   class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
-                                    <i class="fas fa-edit w-5 text-blue-500"></i>
-                                    <span class="ml-3 font-medium">Edit Item</span>
+                                   class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
+                                    <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
+                                    {{ __('vendor.edit_item') }}
                                 </a>
                                 <form action="{{ route('vendor.items.destroy', $item->id) }}" 
                                       method="POST" 
-                                      onsubmit="return confirm('Are you sure you want to delete this item?');">
+                                      onsubmit="return confirm('{{ __('vendor.confirm_delete') }}');">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" 
-                                            class="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors">
-                                        <i class="fas fa-trash w-5"></i>
-                                        <span class="ml-3 font-medium">Delete Item</span>
+                                            class="w-full text-left block px-4 py-3 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors">
+                                        <i class="fas fa-trash w-5 mr-3"></i>
+                                        {{ __('vendor.delete') }}
                                     </button>
                                 </form>
                             </div>
@@ -249,40 +261,40 @@
                         <div>
                             <p class="text-lg font-bold text-gray-900">₹{{ number_format($item->price, 2) }}</p>
                             <p class="text-xs text-gray-500">
-                                @if($item->price_type == 'per_day') Per Day
-                                @elseif($item->price_type == 'per_hour') Per Hour
-                                @else Fixed Price
+                                @if($item->price_type == 'per_day') {{ __('vendor.per_day') }}
+                                @elseif($item->price_type == 'per_hour') {{ __('vendor.per_hour') }}
+                                @else {{ __('vendor.fixed') }}
                                 @endif
                             </p>
                         </div>
                         @if($item->is_available)
                             <span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full">
                                 <i class="fas fa-check-circle text-xs mr-1"></i>
-                                Available for rent
+                                {{ __('vendor.available_for_rent') }}
                             </span>
                         @else
                             <span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full">
                                 <i class="fas fa-times-circle text-xs mr-1"></i>
-                                Not Available
+                                {{ __('vendor.not_available') }}
                             </span>
                         @endif
                     </div>
 
                     <!-- Status Toggle -->
                     <div class="flex items-center justify-between">
-                        <span class="text-sm font-medium text-gray-700">Status</span>
+                        <span class="text-sm font-medium text-gray-700">{{ __('vendor.status') }}</span>
                         <div class="inline-block" x-data="{ isActive: {{ $item->is_active ? 'true' : 'false' }} }">
                             <form action="{{ route('vendor.items.toggle', $item->id) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
                                 @csrf
                                 <button type="submit"
                                         class="relative inline-flex items-center h-7 rounded-full w-12 transition-colors focus:outline-none active:ring-2 active:ring-offset-2 active:ring-emerald-500" 
                                         :class="isActive ? 'bg-emerald-500' : 'bg-gray-300'"
-                                        :title="isActive ? 'Tap to deactivate' : 'Tap to activate'">
+                                        :title="isActive ? '{{ __('vendor.inactive') }}' : '{{ __('vendor.active') }}'">
                                     <span class="inline-block w-5 h-5 transform bg-white rounded-full transition-transform shadow-md" 
                                           :class="isActive ? 'translate-x-6' : 'translate-x-1'"></span>
                                 </button>
                             </form>
-                            <span class="ml-2 text-xs font-semibold" :class="isActive ? 'text-emerald-700' : 'text-gray-600'" x-text="isActive ? 'Active' : 'Inactive'"></span>
+                            <span class="ml-2 text-xs font-semibold" :class="isActive ? 'text-emerald-700' : 'text-gray-600'" x-text="isActive ? '{{ __('vendor.active') }}' : '{{ __('vendor.inactive') }}'"></span>
                         </div>
                     </div>
                 </div>
@@ -300,12 +312,12 @@
         <!-- Empty State -->
         <div class="text-center py-12">
             <i class="fas fa-box text-gray-300 text-5xl mb-4"></i>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">No Items Yet</h3>
-            <p class="text-sm text-gray-500 mb-6">Start adding items to your rental inventory</p>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('vendor.no_items_yet') }}</h3>
+            <p class="text-sm text-gray-500 mb-6">{{ __('vendor.add_items_see_popular') }}</p>
             <a href="{{ route('vendor.items.create') }}" 
                class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
                 <i class="fas fa-plus mr-2"></i>
-                Create Your First Item
+                {{ __('vendor.add_first_item') }}
             </a>
         </div>
     @endif

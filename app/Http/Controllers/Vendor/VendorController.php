@@ -83,4 +83,31 @@ class VendorController extends Controller
 
         return back()->with('success', 'Profile updated successfully!');
     }
+
+    /**
+     * Switch language
+     */
+    public function switchLanguage(Request $request)
+    {
+        $request->validate([
+            'language' => 'required|string|in:en,hi,bn,mr,te,ta,gu,ur,kn,or,ml,pa',
+        ]);
+
+        // Store language in session
+        session(['language' => $request->language]);
+
+        // Update user's language preference
+        $user = Auth::user();
+        if ($user) {
+            $user->update(['language' => $request->language]);
+        }
+
+        // Update vendor's language if exists
+        $vendor = $user->currentVendor();
+        if ($vendor) {
+            $vendor->update(['language' => $request->language]);
+        }
+
+        return back()->with('success', 'Language changed successfully!');
+    }
 }

@@ -1,7 +1,7 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Categories - RentApp')
-@section('page-title', 'Categories')
+@section('title', __('vendor.categories_management'))
+@section('page-title', __('vendor.categories'))
 
 @section('content')
 <div class="space-y-6">
@@ -9,16 +9,16 @@
     <!-- Header -->
     <div class="flex items-start justify-between gap-3">
         <div class="flex-1">
-            <h1 class="text-2xl font-bold text-gray-900">Categories</h1>
+            <h1 class="text-2xl font-bold text-gray-900">{{ __('vendor.categories') }}</h1>
             <p class="text-sm text-gray-600 mt-1">
                 <i class="fas fa-folder-tree text-emerald-600 mr-1"></i>
-                <span class="font-medium">{{ $categories->total() }}</span> total categories
+                <span class="font-medium">{{ $categories->total() }}</span> {{ __('vendor.total_categories_count', ['count' => $categories->total()]) }}
             </p>
         </div>
         <a href="{{ route('vendor.categories.create') }}" 
            class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold rounded-lg transition-all shadow-sm hover:shadow active:scale-95 whitespace-nowrap">
             <i class="fas fa-plus mr-2"></i>
-            Add<span class="hidden sm:inline ml-1">Category</span>
+            {{ __('vendor.add_category') }}
         </a>
     </div>
 
@@ -49,28 +49,28 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200">
         @if($categories->count() > 0)
             <!-- Desktop View - Table -->
-            <div class="hidden md:block overflow-x-auto">
+            <div class="hidden md:block overflow-x-auto overflow-y-visible">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                Category
+                                {{ __('vendor.category') }}
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                Items
+                                {{ __('vendor.items') }}
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                Status
+                                {{ __('vendor.status') }}
                             </th>
                           
                             <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                Actions
+                                {{ __('vendor.actions') }}
                             </th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         @foreach($categories as $category)
-                            <tr class="hover:bg-gray-50 transition-colors">
+                            <tr class="hover:bg-gray-50 transition-colors relative">
                                 <td class="px-6 py-4">
                                     <div class="flex items-center">
                                         <div class="w-10 h-10 flex items-center justify-center bg-emerald-100 rounded-lg mr-3">
@@ -85,14 +85,14 @@
                                                     <a href="{{ route('vendor.categories.subcategories', $category) }}" 
                                                     class="inline-flex items-center px-2.5 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-semibold rounded-full transition-colors">
                                                         <i class="fas fa-folder-tree text-xs mr-1.5"></i>
-                                                        <span>{{ $category->subcategories->count() }} subcategories</span>
+                                                        <span>{{ $category->subcategories->count() }} {{ __('vendor.subcategories') }}</span>
                                                         <i class="fas fa-arrow-right text-[10px] ml-1.5"></i>
                                                     </a>
                                                 @else
                                                     <a href="{{ route('vendor.categories.create', ['parent_id' => $category->id]) }}" 
                                                     class="inline-flex items-center px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold rounded-full transition-colors">
                                                         <i class="fas fa-plus text-xs mr-1.5"></i>
-                                                        <span>Add Subcategory</span>
+                                                        <span>{{ __('vendor.add_subcategory') }}</span>
                                                     </a>
                                                 @endif
                                             </div>
@@ -117,45 +117,55 @@
                                             <span class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform" 
                                                   :class="isActive ? 'translate-x-6' : 'translate-x-1'"></span>
                                         </button>
-                                        <span class="ml-2 text-xs font-medium" :class="isActive ? 'text-emerald-700' : 'text-gray-500'" x-text="isActive ? 'Active' : 'Inactive'"></span>
+                                        <span class="ml-2 text-xs font-medium" :class="isActive ? 'text-emerald-700' : 'text-gray-500'" x-text="isActive ? '{{ __('vendor.active') }}' : '{{ __('vendor.inactive') }}'"></span>
                                     </div>
                                 </td>
                                
                                 <td class="px-6 py-4 text-right">
-                                    <div class="relative" x-data="{ open: false }" @click.away="open = false">
-                                        <button @click.stop="open = !open" 
+                                    <div class="relative inline-block" x-data="{ dropdownOpen: false }">
+                                        <button @click="dropdownOpen = !dropdownOpen" 
                                                 class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                                type="button">
+                                                type="button"
+                                                x-ref="dropdownButton">
                                             <i class="fas fa-ellipsis-vertical text-gray-600"></i>
                                         </button>
                                         
-                                        <div x-show="open" 
+                                        <div x-show="dropdownOpen" 
+                                             @click.away="dropdownOpen = false"
                                              x-transition:enter="transition ease-out duration-100"
-                                             x-transition:enter-start="transform opacity-0 scale-95"
-                                             x-transition:enter-end="transform opacity-100 scale-100"
+                                             x-transition:enter-start="opacity-0 scale-95"
+                                             x-transition:enter-end="opacity-100 scale-100"
                                              x-transition:leave="transition ease-in duration-75"
-                                             x-transition:leave-start="transform opacity-100 scale-100"
-                                             x-transition:leave-end="transform opacity-0 scale-95"
-                                             class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                             x-transition:leave-start="opacity-100 scale-100"
+                                             x-transition:leave-end="opacity-0 scale-95"
+                                             class="fixed w-48 bg-white rounded-lg shadow-2xl border border-gray-200 py-1"
+                                             style="display: none; z-index: 9999;"
+                                             x-init="$watch('dropdownOpen', value => {
+                                                 if(value) {
+                                                     let rect = $refs.dropdownButton.getBoundingClientRect();
+                                                     $el.style.top = rect.bottom + 5 + 'px';
+                                                     $el.style.left = (rect.right - 192) + 'px';
+                                                 }
+                                             })">
                                             <a href="{{ route('vendor.categories.edit', $category) }}" 
-                                               class="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                                <i class="fas fa-eye w-5 text-gray-400"></i>
-                                                <span class="ml-3">View Details</span>
+                                               class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                                <i class="fas fa-eye w-5 text-gray-400 mr-3"></i>
+                                                {{ __('vendor.view') }}
                                             </a>
                                             <a href="{{ route('vendor.categories.edit', $category) }}" 
-                                               class="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                                <i class="fas fa-edit w-5 text-blue-500"></i>
-                                                <span class="ml-3">Edit</span>
+                                               class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                                <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
+                                                {{ __('vendor.edit') }}
                                             </a>
                                             <form action="{{ route('vendor.categories.destroy', $category) }}" 
                                                   method="POST" 
-                                                  onsubmit="return confirm('Are you sure you want to delete this category? This will also delete all {{ $category->subcategories->count() }} subcategories.');">
+                                                  onsubmit="return confirm('{{ __('vendor.confirm_delete') }}');">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" 
-                                                        class="w-full flex items-center px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                                                    <i class="fas fa-trash w-5"></i>
-                                                    <span class="ml-3">Delete</span>
+                                                        class="w-full text-left block px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                                    <i class="fas fa-trash w-5 mr-3"></i>
+                                                    {{ __('vendor.delete') }}
                                                 </button>
                                             </form>
                                         </div>
@@ -208,30 +218,32 @@
                                 </div>
                                 
                                 <!-- 3-Dot Menu -->
-                                <div class="relative ml-2 flex-shrink-0" x-data="{ menuOpen: false }" @click.away="menuOpen = false">
-                                    <button @click.stop="menuOpen = !menuOpen" 
+                                <div class="relative ml-2 flex-shrink-0" x-data="{ mobileDropdownOpen: false }">
+                                    <button @click="mobileDropdownOpen = !mobileDropdownOpen" 
                                             class="p-2 hover:bg-gray-100 rounded-lg transition-colors active:bg-gray-200"
                                             type="button">
                                         <i class="fas fa-ellipsis-vertical text-gray-600 text-lg"></i>
                                     </button>
                                     
-                                    <div x-show="menuOpen" 
+                                    <div x-show="mobileDropdownOpen" 
+                                         @click.away="mobileDropdownOpen = false"
                                          x-transition:enter="transition ease-out duration-200"
-                                         x-transition:enter-start="transform opacity-0 scale-95"
-                                         x-transition:enter-end="transform opacity-100 scale-100"
+                                         x-transition:enter-start="opacity-0 scale-95"
+                                         x-transition:enter-end="opacity-100 scale-100"
                                          x-transition:leave="transition ease-in duration-100"
-                                         x-transition:leave-start="transform opacity-100 scale-100"
-                                         x-transition:leave-end="transform opacity-0 scale-95"
-                                         class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
+                                         x-transition:leave-start="opacity-100 scale-100"
+                                         x-transition:leave-end="opacity-0 scale-95"
+                                         class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
+                                         style="display: none;">
                                         <a href="{{ route('vendor.categories.edit', $category) }}" 
-                                           class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
-                                            <i class="fas fa-eye w-5 text-gray-400"></i>
-                                            <span class="ml-3 font-medium">View Details</span>
+                                           class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
+                                            <i class="fas fa-eye w-5 text-gray-400 mr-3"></i>
+                                            View Details
                                         </a>
                                         <a href="{{ route('vendor.categories.edit', $category) }}" 
-                                           class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
-                                            <i class="fas fa-edit w-5 text-blue-500"></i>
-                                            <span class="ml-3 font-medium">Edit Category</span>
+                                           class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
+                                            <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
+                                            Edit Category
                                         </a>
                                         <form action="{{ route('vendor.categories.destroy', $category) }}" 
                                               method="POST" 
@@ -239,9 +251,9 @@
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" 
-                                                    class="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors">
-                                                <i class="fas fa-trash w-5"></i>
-                                                <span class="ml-3 font-medium">Delete Category</span>
+                                                    class="w-full text-left block px-4 py-3 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors">
+                                                <i class="fas fa-trash w-5 mr-3"></i>
+                                                Delete Category
                                             </button>
                                         </form>
                                     </div>

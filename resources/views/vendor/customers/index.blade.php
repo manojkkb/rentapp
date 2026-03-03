@@ -1,7 +1,7 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Customers - RentApp')
-@section('page-title', 'Customers')
+@section('title', __('vendor.customers_management'))
+@section('page-title', __('vendor.customers'))
 
 @section('content')
 <!-- Header with Add Button -->
@@ -12,10 +12,10 @@
                 <i class="fas fa-user-friends text-emerald-600 text-xl"></i>
             </div>
             <div>
-                <h2 class="text-2xl font-bold text-gray-900">Customers</h2>
+                <h2 class="text-2xl font-bold text-gray-900">{{ __('vendor.customers') }}</h2>
                 <p class="text-sm text-gray-600">
                     <i class="fas fa-users text-emerald-600 mr-1"></i>
-                    <span class="font-medium">{{ $customers->total() }}</span> customers
+                    <span class="font-medium">{{ $customers->total() }}</span> {{ __('vendor.total_customers_count', ['count' => $customers->total()]) }}
                 </p>
             </div>
         </div>
@@ -23,7 +23,7 @@
     <a href="{{ route('vendor.customers.create') }}" 
        class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold rounded-lg transition-all shadow-sm hover:shadow active:scale-95 whitespace-nowrap">
         <i class="fas fa-plus mr-2"></i>
-        Add<span class="hidden sm:inline ml-1">Customer</span>
+        {{ __('vendor.add_customer') }}
     </a>
 </div>
 
@@ -59,19 +59,19 @@
                 <thead class="bg-gradient-to-r from-emerald-50 to-emerald-100 border-b border-gray-200">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Name
+                            {{ __('vendor.name') }}
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Mobile
+                            {{ __('vendor.mobile') }}
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Address
+                            {{ __('vendor.address') }}
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Registered
+                            {{ __('vendor.registered') }}
                         </th>
                         <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Actions
+                            {{ __('vendor.actions') }}
                         </th>
                     </tr>
                 </thead>
@@ -125,25 +125,35 @@
 
                         <!-- Actions -->
                         <td class="px-6 py-4 text-right">
-                            <div class="relative" x-data="{ open: false }" @click.away="open = false">
-                                <button @click.stop="open = !open" 
+                            <div class="relative inline-block" x-data="{ dropdownOpen: false }">
+                                <button @click="dropdownOpen = !dropdownOpen" 
                                         class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                        type="button">
+                                        type="button"
+                                        x-ref="dropdownButton">
                                     <i class="fas fa-ellipsis-vertical text-gray-600"></i>
                                 </button>
                                 
-                                <div x-show="open" 
+                                <div x-show="dropdownOpen" 
+                                     @click.away="dropdownOpen = false"
                                      x-transition:enter="transition ease-out duration-100"
-                                     x-transition:enter-start="transform opacity-0 scale-95"
-                                     x-transition:enter-end="transform opacity-100 scale-100"
+                                     x-transition:enter-start="opacity-0 scale-95"
+                                     x-transition:enter-end="opacity-100 scale-100"
                                      x-transition:leave="transition ease-in duration-75"
-                                     x-transition:leave-start="transform opacity-100 scale-100"
-                                     x-transition:leave-end="transform opacity-0 scale-95"
-                                     class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                                     x-transition:leave-start="opacity-100 scale-100"
+                                     x-transition:leave-end="opacity-0 scale-95"
+                                     class="fixed w-48 bg-white rounded-lg shadow-2xl border border-gray-200 py-1"
+                                     style="display: none; z-index: 9999;"
+                                     x-init="$watch('dropdownOpen', value => {
+                                         if(value) {
+                                             let rect = $refs.dropdownButton.getBoundingClientRect();
+                                             $el.style.top = rect.bottom + 5 + 'px';
+                                             $el.style.left = (rect.right - 192) + 'px';
+                                         }
+                                     })">
                                     <a href="{{ route('vendor.customers.edit', $customer->id) }}" 
-                                       class="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                        <i class="fas fa-edit w-5 text-emerald-500"></i>
-                                        <span class="ml-3">Edit</span>
+                                       class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                        <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
+                                        Edit
                                     </a>
                                     <form action="{{ route('vendor.customers.destroy', $customer->id) }}" 
                                           method="POST" 
@@ -151,9 +161,9 @@
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" 
-                                                class="w-full flex items-center px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                                            <i class="fas fa-trash w-5"></i>
-                                            <span class="ml-3">Delete</span>
+                                                class="w-full text-left block px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                            <i class="fas fa-trash w-5 mr-3"></i>
+                                            Delete
                                         </button>
                                     </form>
                                 </div>
@@ -191,25 +201,27 @@
                         </div>
                         
                         <!-- 3-Dot Menu -->
-                        <div class="relative ml-2 flex-shrink-0" x-data="{ menuOpen: false }" @click.away="menuOpen = false">
-                            <button @click.stop="menuOpen = !menuOpen" 
+                        <div class="relative ml-2 flex-shrink-0" x-data="{ mobileDropdownOpen: false }">
+                            <button @click="mobileDropdownOpen = !mobileDropdownOpen" 
                                     class="p-2 hover:bg-gray-100 rounded-lg transition-colors active:bg-gray-200"
                                     type="button">
                                 <i class="fas fa-ellipsis-vertical text-gray-600 text-lg"></i>
                             </button>
                             
-                            <div x-show="menuOpen" 
+                            <div x-show="mobileDropdownOpen" 
+                                 @click.away="mobileDropdownOpen = false"
                                  x-transition:enter="transition ease-out duration-200"
-                                 x-transition:enter-start="transform opacity-0 scale-95"
-                                 x-transition:enter-end="transform opacity-100 scale-100"
+                                 x-transition:enter-start="opacity-0 scale-95"
+                                 x-transition:enter-end="opacity-100 scale-100"
                                  x-transition:leave="transition ease-in duration-100"
-                                 x-transition:leave-start="transform opacity-100 scale-100"
-                                 x-transition:leave-end="transform opacity-0 scale-95"
-                                 class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
+                                 x-transition:leave-start="opacity-100 scale-100"
+                                 x-transition:leave-end="opacity-0 scale-95"
+                                 class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
+                                 style="display: none;">
                                 <a href="{{ route('vendor.customers.edit', $customer->id) }}" 
-                                   class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
-                                    <i class="fas fa-edit w-5 text-emerald-500"></i>
-                                    <span class="ml-3 font-medium">Edit Customer</span>
+                                   class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
+                                    <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
+                                    Edit Customer
                                 </a>
                                 <form action="{{ route('vendor.customers.destroy', $customer->id) }}" 
                                       method="POST" 
@@ -217,9 +229,9 @@
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" 
-                                            class="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors">
-                                        <i class="fas fa-trash w-5"></i>
-                                        <span class="ml-3 font-medium">Delete Customer</span>
+                                            class="w-full text-left block px-4 py-3 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors">
+                                        <i class="fas fa-trash w-5 mr-3"></i>
+                                        Delete Customer
                                     </button>
                                 </form>
                             </div>

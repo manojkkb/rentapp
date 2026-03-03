@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Container\Attributes\DB;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -33,9 +34,12 @@ return new class extends Migration
             // ✅ Correct unique constraint
             $table->unique(['vendor_id', 'slug', 'parent_id']);
 
-            // Performance indexes
-            $table->index(['vendor_id', 'parent_id']);
+     
         });
+        
+             
+
+
     }
 
     /**

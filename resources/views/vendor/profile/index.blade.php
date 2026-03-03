@@ -1,7 +1,7 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Vendor Profile - RentApp')
-@section('page-title', 'Vendor Profile')
+@section('title', __('vendor.vendor_profile'))
+@section('page-title', __('vendor.vendor_profile'))
 
 @section('content')
 <div>
@@ -24,7 +24,7 @@
             <div class="flex items-start space-x-3">
                 <i class="fas fa-exclamation-circle text-red-600 mt-0.5"></i>
                 <div class="flex-1">
-                    <p class="text-sm font-medium text-red-900 mb-2">Please fix the following errors:</p>
+                    <p class="text-sm font-medium text-red-900 mb-2">{{ __('vendor.fix_errors') }}</p>
                     <ul class="list-disc list-inside text-sm text-red-800 space-y-1">
                         @foreach($errors->all() as $error)
                             <li>{{ $error }}</li>
@@ -42,7 +42,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <!-- Header -->
                 <div class="px-6 py-5 bg-gradient-to-r from-emerald-50 to-green-50 border-b border-gray-200">
-                    <h3 class="text-lg font-bold text-gray-900">Profile Overview</h3>
+                    <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.profile_overview') }}</h3>
                 </div>
 
                 <!-- Logo and Basic Info -->
@@ -67,21 +67,21 @@
                     <div class="flex items-center justify-center gap-2 mb-4">
                         @if($vendor->is_verified)
                             <span class="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
-                                <i class="fas fa-check-circle mr-1"></i>Verified
+                                <i class="fas fa-check-circle mr-1"></i>{{ __('vendor.verified') }}
                             </span>
                         @else
                             <span class="px-3 py-1 text-xs font-semibold bg-yellow-100 text-yellow-700 rounded-full">
-                                <i class="fas fa-clock mr-1"></i>Pending Verification
+                                <i class="fas fa-clock mr-1"></i>{{ __('vendor.pending_verification') }}
                             </span>
                         @endif
 
                         @if($vendor->is_active)
                             <span class="px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">
-                                <i class="fas fa-check mr-1"></i>Active
+                                <i class="fas fa-check mr-1"></i>{{ __('vendor.active') }}
                             </span>
                         @else
                             <span class="px-3 py-1 text-xs font-semibold bg-red-100 text-red-700 rounded-full">
-                                <i class="fas fa-times mr-1"></i>Inactive
+                                <i class="fas fa-times mr-1"></i>{{ __('vendor.inactive') }}
                             </span>
                         @endif
                     </div>
@@ -100,14 +100,14 @@
                                     @endif
                                 @endfor
                             </div>
-                            <span class="ml-2 text-sm text-gray-600">({{ number_format($vendor->rating, 1) }} / {{ $vendor->total_reviews }} reviews)</span>
+                            <span class="ml-2 text-sm text-gray-600">({{ number_format($vendor->rating, 1) }} / {{ $vendor->total_reviews }} {{ __('vendor.reviews') }})</span>
                         </div>
                     @endif
 
                     <!-- GST Number -->
                     @if($vendor->gst_number)
                         <div class="mt-4 p-3 bg-gray-50 rounded-lg">
-                            <p class="text-xs text-gray-500 mb-1">GST Number</p>
+                            <p class="text-xs text-gray-500 mb-1">{{ __('vendor.gst_number') }}</p>
                             <p class="text-sm font-semibold text-gray-900">{{ $vendor->gst_number }}</p>
                         </div>
                     @endif
@@ -120,7 +120,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <!-- Header -->
                 <div class="px-6 py-5 bg-gradient-to-r from-emerald-50 to-green-50 border-b border-gray-200">
-                    <h3 class="text-lg font-bold text-gray-900">Edit Profile</h3>
+                    <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.edit_profile') }}</h3>
                 </div>
 
                 <!-- Form -->
@@ -131,7 +131,7 @@
                     <!-- Business Name -->
                     <div class="mb-6">
                         <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Business Name <span class="text-red-500">*</span>
+                            {{ __('vendor.business_name') }} <span class="text-red-500">*</span>
                         </label>
                         <input type="text" 
                                id="name" 
@@ -144,13 +144,13 @@
                     <!-- Logo Upload -->
                     <div class="mb-6">
                         <label for="logo" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Business Logo
+                            {{ __('vendor.business_logo') }}
                         </label>
                         <div class="flex items-center space-x-4">
                             <div class="flex-shrink-0">
                                 @if($vendor->logo)
                                     <img src="{{ asset('storage/' . $vendor->logo) }}" 
-                                         alt="Current logo" 
+                                         alt="{{ __('vendor.current_logo') }}" 
                                          class="w-16 h-16 rounded-lg object-cover border-2 border-gray-200">
                                 @else
                                     <div class="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
@@ -164,7 +164,7 @@
                                        name="logo" 
                                        accept="image/*"
                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                                <p class="text-xs text-gray-500 mt-1">Max size: 2MB. Formats: JPG, PNG, GIF</p>
+                                <p class="text-xs text-gray-500 mt-1">{{ __('vendor.max_file_info') }}</p>
                             </div>
                         </div>
                     </div>
@@ -172,13 +172,13 @@
                     <!-- Address Section -->
                     <div class="mb-6">
                         <h4 class="text-base font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                            <i class="fas fa-map-marker-alt mr-2 text-emerald-600"></i>Business Address
+                            <i class="fas fa-map-marker-alt mr-2 text-emerald-600"></i>{{ __('vendor.business_address') }}
                         </h4>
 
                         <!-- Address Line 1 -->
                         <div class="mb-4">
                             <label for="address_line1" class="block text-sm font-semibold text-gray-700 mb-2">
-                                Address Line 1
+                                {{ __('vendor.address_line1') }}
                             </label>
                             <input type="text" 
                                    id="address_line1" 
@@ -190,7 +190,7 @@
                         <!-- Address Line 2 -->
                         <div class="mb-4">
                             <label for="address_line2" class="block text-sm font-semibold text-gray-700 mb-2">
-                                Address Line 2
+                                {{ __('vendor.address_line2') }}
                             </label>
                             <input type="text" 
                                    id="address_line2" 
@@ -203,7 +203,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <div>
                                 <label for="city" class="block text-sm font-semibold text-gray-700 mb-2">
-                                    City
+                                    {{ __('vendor.city') }}
                                 </label>
                                 <input type="text" 
                                        id="city" 
@@ -214,7 +214,7 @@
 
                             <div>
                                 <label for="state" class="block text-sm font-semibold text-gray-700 mb-2">
-                                    State
+                                    {{ __('vendor.state') }}
                                 </label>
                                 <input type="text" 
                                        id="state" 
@@ -225,7 +225,7 @@
 
                             <div>
                                 <label for="postal_code" class="block text-sm font-semibold text-gray-700 mb-2">
-                                    Postal Code
+                                    {{ __('vendor.postal_code') }}
                                 </label>
                                 <input type="text" 
                                        id="postal_code" 
@@ -238,7 +238,7 @@
                         <!-- Country -->
                         <div class="mb-4">
                             <label for="country" class="block text-sm font-semibold text-gray-700 mb-2">
-                                Country
+                                {{ __('vendor.country') }}
                             </label>
                             <input type="text" 
                                    id="country" 
@@ -251,21 +251,21 @@
                     <!-- Business Details -->
                     <div class="mb-6">
                         <h4 class="text-base font-bold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-                            <i class="fas fa-building mr-2 text-emerald-600"></i>Business Details
+                            <i class="fas fa-building mr-2 text-emerald-600"></i>{{ __('vendor.business_details') }}
                         </h4>
 
                         <!-- GST Number -->
                         <div class="mb-4">
                             <label for="gst_number" class="block text-sm font-semibold text-gray-700 mb-2">
-                                GST Number
+                                {{ __('vendor.gst_number') }}
                             </label>
                             <input type="text" 
                                    id="gst_number" 
                                    name="gst_number" 
                                    value="{{ old('gst_number', $vendor->gst_number) }}"
-                                   placeholder="e.g., 22AAAAA0000A1Z5"
+                                   placeholder="{{ __('vendor.gst_placeholder') }}"
                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                            <p class="text-xs text-gray-500 mt-1">Enter your GST registration number if applicable</p>
+                            <p class="text-xs text-gray-500 mt-1">{{ __('vendor.gst_help_text') }}</p>
                         </div>
                     </div>
 
@@ -273,11 +273,11 @@
                     <div class="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
                         <a href="{{ route('vendor.home') }}" 
                            class="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                            <i class="fas fa-times mr-2"></i>Cancel
+                            <i class="fas fa-times mr-2"></i>{{ __('vendor.cancel') }}
                         </a>
                         <button type="submit" 
                                 class="px-6 py-3 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all active:scale-95 shadow-sm">
-                            <i class="fas fa-save mr-2"></i>Save Changes
+                            <i class="fas fa-save mr-2"></i>{{ __('vendor.save_changes') }}
                         </button>
                     </div>
                 </form>

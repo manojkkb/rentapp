@@ -49,6 +49,10 @@ class VendorAuthMiddleware
             ]);
         }
         
+        // Set app locale based on session language
+        $language = session('language', 'en');
+        app()->setLocale($language);
+        
         return $next($request);
     }
 }
