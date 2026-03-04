@@ -16,6 +16,12 @@ class VendorSeeder extends Seeder
      */
     public function run(): void
     {
+        // Check if test vendor already exists
+        if (User::where('email', 'vendor@test.com')->exists()) {
+            $this->command->info('✅ Test vendor already exists!');
+            return;
+        }
+        
         // Create a test vendor user
         $user = User::create([
             'name' => 'Test Vendor',

@@ -168,7 +168,7 @@
 
                         <!-- Menu Items -->
                         <div class="py-2">
-                            <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                            <a href="{{ route('vendor.profile') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
                                 <i class="fas fa-user w-5"></i>
                                 <span class="ml-3">{{ __('vendor.my_profile') }}</span>
                             </a>
@@ -179,10 +179,6 @@
                             <a href="{{ route('vendor.create') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
                                 <i class="fas fa-plus-circle w-5"></i>
                                 <span class="ml-3">{{ __('vendor.create_new_vendor') }}</span>
-                            </a>
-                            <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                                <i class="fas fa-cog w-5"></i>
-                                <span class="ml-3">{{ __('vendor.settings') }}</span>
                             </a>
                             <a href="#" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
                                 <i class="fas fa-question-circle w-5"></i>

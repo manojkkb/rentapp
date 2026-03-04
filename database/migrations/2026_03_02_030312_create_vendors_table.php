@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('name'); // Business Name
             $table->string('slug')->unique();
             $table->string('logo')->nullable(); // Store logo path
+            $table->unsignedBigInteger('business_category_id')->nullable();
 
             // Address Info
             $table->string('address_line1')->nullable();

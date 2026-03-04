@@ -22,6 +22,7 @@ class Vendor extends Model
         'owner_name',
         'slug',
         'logo',
+        'business_category_id',
         'address_line1',
         'address_line2',
         'city',
@@ -60,6 +61,14 @@ class Vendor extends Model
     }
     
     /**
+     * Get the business category for the vendor.
+     */
+    public function businessCategory(): BelongsTo
+    {
+        return $this->belongsTo(BusinessCategory::class, 'business_category_id');
+    }
+    
+    /**
      * Get all users who have access to this vendor (many-to-many)
      */
     public function users()
@@ -83,6 +92,52 @@ class Vendor extends Model
     public function items(): HasMany
     {
         return $this->hasMany(Items::class);
+    }
+    
+    /**
+     * Get all categories for the vendor.
+     */
+    public function categories(): HasMany
+    {
+        return $this->hasMany(Category::class);
+    }
+    
+    /**
+     * Get all reviews for the vendor.
+     */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(CustomerReview::class);
+    }
+    
+    /**
+     * Get approved reviews for the vendor.
+     */
+    public function approvedReviews(): HasMany
+    {
+        return $this->hasMany(CustomerReview::class)->where('is_approved', true);
+    }
+    
+    /**
+     * Update vendor rating based on approved reviews.
+     */
+    public function updateRating(): void
+    {
+        $approvedReviews = $this->reviews()->where('is_approved', true)->get();
+        $totalReviews = $approvedReviews->count();
+        
+        if ($totalReviews > 0) {
+            $averageRating = $approvedReviews->avg('rating');
+            $this->update([
+                'rating' => round($averageRating, 2),
+                'total_reviews' => $totalReviews,
+            ]);
+        } else {
+            $this->update([
+                'rating' => 0,
+                'total_reviews' => 0,
+            ]);
+        }
     }
     
     /**

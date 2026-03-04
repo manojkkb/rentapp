@@ -107,8 +107,12 @@
 
             <!-- Reviews -->
             <li>
-                <a href="#" 
-                   class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                <a href="{{ route('vendor.reviews.index') }}" 
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
+                   class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                          {{ request()->routeIs('vendor.reviews.*') 
+                              ? 'bg-emerald-500 text-white' 
+                              : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-600' }}">
                     <i class="fas fa-star w-5"></i>
                     <span class="ml-3">{{ __('vendor.reviews') }}</span>
                 </a>
@@ -139,52 +143,6 @@
                     <span class="ml-3">{{ __('vendor.staff') }}</span>
                 </a>
             </li>
-
-            <li class="pt-4 mt-4 border-t border-gray-200">
-                <p class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ __('vendor.settings') }}</p>
-            </li>
-
-            <!-- Profile -->
-            <li>
-                <a href="{{ route('vendor.profile') }}" 
-                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
-                   class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
-                          {{ request()->routeIs('vendor.profile') 
-                              ? 'bg-emerald-500 text-white' 
-                              : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-600' }}">
-                    <i class="fas fa-user w-5"></i>
-                    <span class="ml-3">{{ __('vendor.profile') }}</span>
-                </a>
-            </li>
-
-            <!-- Switch Vendor -->
-            <li>
-                <a href="{{ route('vendor.select') }}" 
-                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
-                   class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-purple-50 hover:text-purple-600 transition-colors">
-                    <i class="fas fa-exchange-alt w-5"></i>
-                    <span class="ml-3">{{ __('vendor.switch_vendor') }}</span>
-                </a>
-            </li>
-
-            <!-- Create New Vendor -->
-            <li>
-                <a href="{{ route('vendor.create') }}" 
-                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
-                   class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors">
-                    <i class="fas fa-plus-circle w-5"></i>
-                    <span class="ml-3">{{ __('vendor.create_new_vendor') }}</span>
-                </a>
-            </li>
-
-            <!-- Settings -->
-            <li>
-                <a href="#" 
-                   class="flex items-center px-4 py-3 text-sm font-medium text-gray-700 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
-                    <i class="fas fa-cog w-5"></i>
-                    <span class="ml-3">{{ __('vendor.settings_menu') }}</span>
-                </a>
-            </li>
         </ul>
     </nav>
 
@@ -210,5 +168,5 @@
      x-transition:leave="transition-opacity ease-in duration-300"
      x-transition:leave-start="opacity-100"
      x-transition:leave-end="opacity-0"
-     class="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden">
+     class="fixed inset-0 bg-black/50 z-20 md:hidden">
 </div>

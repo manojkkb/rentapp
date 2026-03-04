@@ -343,7 +343,7 @@
              x-transition:leave="ease-in duration-200"
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
-             class="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity"></div>
+             class="fixed inset-0 bg-gray-900/50 transition-opacity"></div>
 
         <!-- Modal Content - Full Screen -->
         <div x-transition:enter="ease-out duration-300"

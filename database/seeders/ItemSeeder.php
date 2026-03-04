@@ -163,6 +163,12 @@ class ItemSeeder extends Seeder
         ];
 
         foreach ($vendors as $vendor) {
+            // Check if vendor already has items
+            if ($vendor->items()->count() > 0) {
+                $this->command->info("ℹ️  Vendor {$vendor->name} already has items. Skipping...");
+                continue;
+            }
+            
             $this->command->info("🏪 Creating items for vendor: {$vendor->name}");
             $itemCount = 0;
 

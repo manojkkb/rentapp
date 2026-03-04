@@ -13,7 +13,7 @@ class CategoryController extends Controller
     /**
      * Display a listing of categories
      */
-    public function index()
+    public function index(Request $request)
     {
         $vendor = Auth::user()->currentVendor();
         
@@ -21,11 +21,22 @@ class CategoryController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
         
-        $categories = Category::where('vendor_id', $vendor->id)
+        $query = Category::where('vendor_id', $vendor->id)
             ->whereNull('parent_id')
-            ->with('subcategories')
-            ->orderBy('name')
-            ->paginate(15);
+            ->with('subcategories');
+        
+        // Search functionality
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where('name', 'ILIKE', '%' . $search . '%');
+        }
+        
+        $categories = $query->orderBy('name')->paginate(15);
+        
+        // Handle AJAX requests
+        if ($request->ajax()) {
+            return view('vendor.categories.partials.categories-list', compact('categories'))->render();
+        }
         
         return view('vendor.categories.index', compact('categories'));
     }
@@ -59,6 +70,12 @@ class CategoryController extends Controller
         $vendor = Auth::user()->currentVendor();
         
         if (!$vendor) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please select a vendor'
+                ], 403);
+            }
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
         
@@ -110,10 +127,26 @@ class CategoryController extends Controller
                 'is_active' => $request->has('is_active') ? true : false,
             ]);
             
+            // Handle AJAX requests
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Category created successfully!',
+                    'category' => $category->load('subcategories', 'items')
+                ]);
+            }
+            
             return redirect()->route('vendor.categories.index')
                 ->with('success', 'Category created successfully!');
                 
         } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create category: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return back()->withInput()
                 ->withErrors(['error' => 'Failed to create category: ' . $e->getMessage()]);
         }

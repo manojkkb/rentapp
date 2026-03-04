@@ -61,4 +61,20 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+    
+    /**
+     * Get the review for this order
+     */
+    public function review()
+    {
+        return $this->hasOne(CustomerReview::class);
+    }
+    
+    /**
+     * Check if this order has been reviewed
+     */
+    public function hasReview(): bool
+    {
+        return $this->review()->exists();
+    }
 }

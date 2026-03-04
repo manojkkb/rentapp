@@ -238,7 +238,7 @@
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100"
          @click="mobileMenuOpen = false"
-         class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"></div>
+         class="fixed inset-0 bg-black/50 z-40 lg:hidden"></div>
     
     <div x-show="mobileMenuOpen"
          x-transition:enter="transition ease-out duration-300"

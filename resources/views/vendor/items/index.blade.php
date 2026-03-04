@@ -8,20 +8,20 @@
 <div class="mb-6 flex items-start justify-between gap-3">
     <div class="flex-1">
         <div class="flex items-center space-x-3 mb-2">
-            <div class="w-12 h-12 flex items-center justify-center bg-blue-100 rounded-xl">
-                <i class="fas fa-box text-blue-600 text-xl"></i>
+            <div class="w-12 h-12 flex items-center justify-center bg-emerald-100 rounded-xl">
+                <i class="fas fa-box text-emerald-600 text-xl"></i>
             </div>
             <div>
                 <h2 class="text-2xl font-bold text-gray-900">{{ __('vendor.items') }}</h2>
                 <p class="text-sm text-gray-600">
-                    <i class="fas fa-layer-group text-blue-600 mr-1"></i>
+                    <i class="fas fa-layer-group text-emerald-600 mr-1"></i>
                     <span class="font-medium">{{ $items->total() }}</span> {{ __('vendor.total_items_count', ['count' => $items->total()]) }}
                 </p>
             </div>
         </div>
     </div>
     <a href="{{ route('vendor.items.create') }}" 
-       class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-lg transition-all shadow-sm hover:shadow active:scale-95 whitespace-nowrap">
+       class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold rounded-lg transition-all shadow-sm hover:shadow active:scale-95 whitespace-nowrap">
         <i class="fas fa-plus mr-2"></i>
         {{ __('vendor.add_item') }}
     </a>
@@ -56,7 +56,7 @@
         <!-- Desktop Table -->
         <div class="hidden md:block overflow-x-auto">
             <table class="w-full">
-                <thead class="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-200">
+                <thead class="bg-gradient-to-r from-emerald-50 to-emerald-100 border-b border-gray-200">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                             {{ __('vendor.item') }}
@@ -126,7 +126,7 @@
                                 <form action="{{ route('vendor.items.toggle', $item->id) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
                                     @csrf
                                     <button type="submit"
-                                            class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" 
+                                            class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" 
                                             :class="isActive ? 'bg-emerald-500' : 'bg-gray-300'"
                                             :title="isActive ? 'Click to deactivate' : 'Click to activate'">
                                         <span class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform" 
@@ -168,7 +168,7 @@
                                      })">
                                     <a href="{{ route('vendor.items.edit', $item->id) }}" 
                                        class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                        <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
+                                        <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
                                         {{ __('vendor.edit') }}
                                     </a>
                                     <form action="{{ route('vendor.items.destroy', $item->id) }}" 
@@ -200,8 +200,8 @@
                     <!-- Header -->
                     <div class="flex items-start justify-between">
                         <div class="flex items-center space-x-3 flex-1 min-w-0">
-                            <div class="w-12 h-12 flex items-center justify-center bg-blue-100 rounded-xl flex-shrink-0">
-                                <i class="fas fa-box text-blue-600 text-lg"></i>
+                            <div class="w-12 h-12 flex items-center justify-center bg-emerald-100 rounded-xl flex-shrink-0">
+                                <i class="fas fa-box text-emerald-600 text-lg"></i>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <h3 class="text-base font-semibold text-gray-900 truncate">
@@ -238,7 +238,7 @@
                                  style="display: none;">
                                 <a href="{{ route('vendor.items.edit', $item->id) }}" 
                                    class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
-                                    <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
+                                    <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
                                     {{ __('vendor.edit_item') }}
                                 </a>
                                 <form action="{{ route('vendor.items.destroy', $item->id) }}" 
@@ -315,7 +315,7 @@
             <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('vendor.no_items_yet') }}</h3>
             <p class="text-sm text-gray-500 mb-6">{{ __('vendor.add_items_see_popular') }}</p>
             <a href="{{ route('vendor.items.create') }}" 
-               class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+               class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors">
                 <i class="fas fa-plus mr-2"></i>
                 {{ __('vendor.add_first_item') }}
             </a>

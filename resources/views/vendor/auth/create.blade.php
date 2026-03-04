@@ -196,6 +196,32 @@
                         @enderror
                     </div>
                     
+                    <!-- Business Category -->
+                    <div>
+                        <label for="business_category_id" class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-briefcase mr-2 text-green-600"></i>Business Category <span class="text-red-500">*</span>
+                        </label>
+                        <select 
+                            id="business_category_id" 
+                            name="business_category_id" 
+                            class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none transition-all"
+                            required
+                        >
+                            <option value="">Select your business category</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}" {{ old('business_category_id') == $category->id ? 'selected' : '' }}>
+                                    {{ $category->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('business_category_id')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                        <p class="text-xs text-gray-500 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>Select the primary category that best describes your business
+                        </p>
+                    </div>
+                    
                     <!-- Owner Name -->
                     <div>
                         <label for="owner_name" class="block text-sm font-medium text-gray-700 mb-2">

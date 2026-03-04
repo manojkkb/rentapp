@@ -15,11 +15,12 @@
                 <span class="font-medium">{{ $categories->total() }}</span> {{ __('vendor.total_categories_count', ['count' => $categories->total()]) }}
             </p>
         </div>
-        <a href="{{ route('vendor.categories.create') }}" 
-           class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold rounded-lg transition-all shadow-sm hover:shadow active:scale-95 whitespace-nowrap">
+        <button type="button"
+                @click="$dispatch('open-create-modal')" 
+                class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold rounded-lg transition-all shadow-sm hover:shadow active:scale-95 whitespace-nowrap">
             <i class="fas fa-plus mr-2"></i>
             {{ __('vendor.add_category') }}
-        </a>
+        </button>
     </div>
 
     <!-- Messages -->
@@ -45,261 +46,179 @@
         </div>
     @endif
 
+    <!-- Search Bar -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+        <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i class="fas fa-search text-gray-400"></i>
+            </div>
+            <input type="text" 
+                   id="categorySearch" 
+                   class="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" 
+                   placeholder="{{ __('vendor.search') }} {{ __('vendor.categories') }}...">
+            <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                <div id="searchSpinner" class="hidden">
+                    <i class="fas fa-spinner fa-spin text-gray-400"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Categories List -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-        @if($categories->count() > 0)
-            <!-- Desktop View - Table -->
-            <div class="hidden md:block overflow-x-auto overflow-y-visible">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gradient-to-r from-gray-50 to-gray-100">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                {{ __('vendor.category') }}
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                {{ __('vendor.items') }}
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                {{ __('vendor.status') }}
-                            </th>
-                          
-                            <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                {{ __('vendor.actions') }}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        @foreach($categories as $category)
-                            <tr class="hover:bg-gray-50 transition-colors relative">
-                                <td class="px-6 py-4">
-                                    <div class="flex items-center">
-                                        <div class="w-10 h-10 flex items-center justify-center bg-emerald-100 rounded-lg mr-3">
-                                            <i class="fas fa-tag text-emerald-600"></i>
-                                        </div>
-                                        <div>
-                                            <div class="text-sm font-semibold text-gray-900">
-                                                {{ $category->name }}
-                                            </div>
-                                            <div class="text-xs text-gray-500 mt-0.5">
-                                                @if($category->subcategories->count() > 0)
-                                                    <a href="{{ route('vendor.categories.subcategories', $category) }}" 
-                                                    class="inline-flex items-center px-2.5 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-semibold rounded-full transition-colors">
-                                                        <i class="fas fa-folder-tree text-xs mr-1.5"></i>
-                                                        <span>{{ $category->subcategories->count() }} {{ __('vendor.subcategories') }}</span>
-                                                        <i class="fas fa-arrow-right text-[10px] ml-1.5"></i>
-                                                    </a>
-                                                @else
-                                                    <a href="{{ route('vendor.categories.create', ['parent_id' => $category->id]) }}" 
-                                                    class="inline-flex items-center px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold rounded-full transition-colors">
-                                                        <i class="fas fa-plus text-xs mr-1.5"></i>
-                                                        <span>{{ __('vendor.add_subcategory') }}</span>
-                                                    </a>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div class="flex items-center">
-                                        <div class="w-8 h-8 flex items-center justify-center bg-blue-50 rounded-lg mr-2">
-                                            <i class="fas fa-box text-blue-600 text-sm"></i>
-                                        </div>
-                                        <span class="text-sm font-semibold text-gray-900">{{ $category->items->count() }}</span>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <div class="inline-block" x-data="{ isActive: {{ $category->is_active ? 'true' : 'false' }} }">
-                                        <button @click="toggleStatus('{{ route('vendor.categories.toggle', $category) }}', $el, $data)" 
-                                                type="button"
-                                                class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" 
-                                                :class="isActive ? 'bg-emerald-500' : 'bg-gray-300'"
-                                                :title="isActive ? 'Click to deactivate' : 'Click to activate'">
-                                            <span class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform" 
-                                                  :class="isActive ? 'translate-x-6' : 'translate-x-1'"></span>
-                                        </button>
-                                        <span class="ml-2 text-xs font-medium" :class="isActive ? 'text-emerald-700' : 'text-gray-500'" x-text="isActive ? '{{ __('vendor.active') }}' : '{{ __('vendor.inactive') }}'"></span>
-                                    </div>
-                                </td>
-                               
-                                <td class="px-6 py-4 text-right">
-                                    <div class="relative inline-block" x-data="{ dropdownOpen: false }">
-                                        <button @click="dropdownOpen = !dropdownOpen" 
-                                                class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                                type="button"
-                                                x-ref="dropdownButton">
-                                            <i class="fas fa-ellipsis-vertical text-gray-600"></i>
-                                        </button>
-                                        
-                                        <div x-show="dropdownOpen" 
-                                             @click.away="dropdownOpen = false"
-                                             x-transition:enter="transition ease-out duration-100"
-                                             x-transition:enter-start="opacity-0 scale-95"
-                                             x-transition:enter-end="opacity-100 scale-100"
-                                             x-transition:leave="transition ease-in duration-75"
-                                             x-transition:leave-start="opacity-100 scale-100"
-                                             x-transition:leave-end="opacity-0 scale-95"
-                                             class="fixed w-48 bg-white rounded-lg shadow-2xl border border-gray-200 py-1"
-                                             style="display: none; z-index: 9999;"
-                                             x-init="$watch('dropdownOpen', value => {
-                                                 if(value) {
-                                                     let rect = $refs.dropdownButton.getBoundingClientRect();
-                                                     $el.style.top = rect.bottom + 5 + 'px';
-                                                     $el.style.left = (rect.right - 192) + 'px';
-                                                 }
-                                             })">
-                                            <a href="{{ route('vendor.categories.edit', $category) }}" 
-                                               class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                                <i class="fas fa-eye w-5 text-gray-400 mr-3"></i>
-                                                {{ __('vendor.view') }}
-                                            </a>
-                                            <a href="{{ route('vendor.categories.edit', $category) }}" 
-                                               class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                                <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
-                                                {{ __('vendor.edit') }}
-                                            </a>
-                                            <form action="{{ route('vendor.categories.destroy', $category) }}" 
-                                                  method="POST" 
-                                                  onsubmit="return confirm('{{ __('vendor.confirm_delete') }}');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" 
-                                                        class="w-full text-left block px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                                                    <i class="fas fa-trash w-5 mr-3"></i>
-                                                    {{ __('vendor.delete') }}
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Mobile View - Cards -->
-            <div class="md:hidden divide-y divide-gray-200">
-                @foreach($categories as $category)
-                    <div class="p-4">
-                        <!-- Main Category Card -->
-                        <div class="space-y-3">
-                            <!-- Header -->
-                            <div class="flex items-start justify-between">
-                                <div class="flex items-center space-x-3 flex-1 min-w-0">
-                                    <div class="w-12 h-12 flex items-center justify-center bg-emerald-100 rounded-xl flex-shrink-0">
-                                        <i class="fas fa-tag text-emerald-600 text-lg"></i>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <h3 class="text-base font-semibold text-gray-900 truncate">
-                                            {{ $category->name }}
-                                        </h3>
-                                        <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-                                            <p class="text-xs text-gray-500">
-                                                <i class="fas fa-box text-xs mr-1"></i>
-                                                {{ $category->items->count() }} items
-                                            </p>
-                                            <!-- Manage Subcategories Button (Mobile) -->
-                                            @if($category->subcategories->count() > 0)
-                                                <a href="{{ route('vendor.categories.subcategories', $category) }}" 
-                                                   class="inline-flex items-center px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-semibold rounded-full active:bg-purple-200 transition-all">
-                                                    <i class="fas fa-folder-tree text-[8px] mr-1"></i>
-                                                    <span>{{ $category->subcategories->count() }} Subcategories</span>
-                                                    <i class="fas fa-arrow-right text-[8px] ml-1"></i>
-                                                </a>
-                                            @else
-                                                <a href="{{ route('vendor.categories.create', ['parent_id' => $category->id]) }}" 
-                                                   class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded-full active:bg-gray-200 transition-all">
-                                                    <i class="fas fa-plus text-[8px] mr-1"></i>
-                                                    <span>Add Subcategory</span>
-                                                </a>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- 3-Dot Menu -->
-                                <div class="relative ml-2 flex-shrink-0" x-data="{ mobileDropdownOpen: false }">
-                                    <button @click="mobileDropdownOpen = !mobileDropdownOpen" 
-                                            class="p-2 hover:bg-gray-100 rounded-lg transition-colors active:bg-gray-200"
-                                            type="button">
-                                        <i class="fas fa-ellipsis-vertical text-gray-600 text-lg"></i>
-                                    </button>
-                                    
-                                    <div x-show="mobileDropdownOpen" 
-                                         @click.away="mobileDropdownOpen = false"
-                                         x-transition:enter="transition ease-out duration-200"
-                                         x-transition:enter-start="opacity-0 scale-95"
-                                         x-transition:enter-end="opacity-100 scale-100"
-                                         x-transition:leave="transition ease-in duration-100"
-                                         x-transition:leave-start="opacity-100 scale-100"
-                                         x-transition:leave-end="opacity-0 scale-95"
-                                         class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
-                                         style="display: none;">
-                                        <a href="{{ route('vendor.categories.edit', $category) }}" 
-                                           class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
-                                            <i class="fas fa-eye w-5 text-gray-400 mr-3"></i>
-                                            View Details
-                                        </a>
-                                        <a href="{{ route('vendor.categories.edit', $category) }}" 
-                                           class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
-                                            <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
-                                            Edit Category
-                                        </a>
-                                        <form action="{{ route('vendor.categories.destroy', $category) }}" 
-                                              method="POST" 
-                                              onsubmit="return confirm('Are you sure you want to delete this category? This will also delete all {{ $category->subcategories->count() }} subcategories.');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" 
-                                                    class="w-full text-left block px-4 py-3 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors">
-                                                <i class="fas fa-trash w-5 mr-3"></i>
-                                                Delete Category
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Info Tags -->
-                            <div class="flex items-center space-x-2 flex-wrap gap-2">
-                                <!-- Status Toggle -->
-                                <div class="inline-block" x-data="{ isActive: {{ $category->is_active ? 'true' : 'false' }} }">
-                                    <button @click="toggleStatus('{{ route('vendor.categories.toggle', $category) }}', $el, $data)" 
-                                            type="button"
-                                            class="relative inline-flex items-center h-7 rounded-full w-12 transition-colors focus:outline-none active:ring-2 active:ring-offset-2 active:ring-emerald-500" 
-                                            :class="isActive ? 'bg-emerald-500' : 'bg-gray-300'"
-                                            :title="isActive ? 'Tap to deactivate' : 'Tap to activate'">
-                                        <span class="inline-block w-5 h-5 transform bg-white rounded-full transition-transform shadow-md" 
-                                              :class="isActive ? 'translate-x-6' : 'translate-x-1'"></span>
-                                    </button>
-                                    <span class="ml-2 text-xs font-semibold" :class="isActive ? 'text-emerald-700' : 'text-gray-600'" x-text="isActive ? 'Active' : 'Inactive'"></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-
-            <!-- Pagination -->
-            <div class="px-6 py-4 border-t border-gray-200">
-                {{ $categories->links() }}
-            </div>
-        @else
-            <!-- Empty State -->
-            <div class="text-center py-12">
-                <i class="fas fa-tags text-gray-300 text-5xl mb-4"></i>
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">No Categories Yet</h3>
-                <p class="text-sm text-gray-500 mb-6">Start organizing your items by creating categories</p>
-                <a href="{{ route('vendor.categories.create') }}" 
-                   class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors">
-                    <i class="fas fa-plus mr-2"></i>
-                    Create Your First Category
-                </a>
-            </div>
-        @endif
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200" id="categoriesContainer">
+        @include('vendor.categories.partials.categories-list', ['categories' => $categories])
     </div>
 </div>
+
+<!-- Create Category Modal -->
+<div x-data="{ open: false }" 
+     @open-create-modal.window="open = true"
+     @close-create-modal.window="open = false"
+     @keydown.escape.window="open = false"
+     x-show="open"
+     x-cloak
+     id="createCategoryModal"
+     class="fixed inset-0 z-50 overflow-y-auto"
+     style="display: none;">
+    
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-black/50 transition-opacity" 
+         @click="open = false"
+         x-show="open"
+         x-transition:enter="ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"></div>
+    
+    <!-- Modal Container -->
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0 relative z-10">
+        
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+        
+        <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full"
+             x-show="open"
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             @click.stop>
+            
+            <!-- Modal Header -->
+            <div class="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-green-50">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 flex items-center justify-center bg-emerald-600 rounded-lg">
+                            <i class="fas fa-plus text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-900">{{ __('vendor.add_new_category_title') }}</h3>
+                            <p class="text-sm text-gray-600">{{ __('vendor.fill_information') }}</p>
+                        </div>
+                    </div>
+                    <button @click="open = false" 
+                            class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Body -->
+            <form id="createCategoryForm" class="p-6">
+                @csrf
+
+                <!-- Category Name -->
+                <div class="mb-5">
+                    <label for="modal_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                        {{ __('vendor.category_name') }} <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" 
+                           name="name" 
+                           id="modal_name" 
+                           class="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                           placeholder="{{ __('vendor.category_name_placeholder') }}"
+                           required>
+                    <p class="mt-1 text-sm text-red-600 hidden" id="name_error"></p>
+                </div>
+
+                <!-- Icon -->
+                <div class="mb-5">
+                    <label for="modal_icon" class="block text-sm font-semibold text-gray-700 mb-2">
+                        {{ __('vendor.optional') }} Icon <span class="text-gray-500 text-xs">(FontAwesome class)</span>
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                            <i class="fas fa-icons text-gray-400"></i>
+                        </div>
+                        <input type="text" 
+                               name="icon" 
+                               id="modal_icon" 
+                               value="fa-folder"
+                               class="w-full pl-12 pr-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                               placeholder="fa-folder, fa-box, fa-tag">
+                    </div>
+                    <p class="mt-2 text-xs text-gray-500">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Use FontAwesome class names. Examples: fa-folder, fa-box, fa-tag
+                    </p>
+                </div>
+
+                <!-- Status -->
+                <div class="mb-6">
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <label class="flex items-start cursor-pointer">
+                            <input type="checkbox" 
+                                   name="is_active" 
+                                   id="modal_is_active" 
+                                   checked
+                                   class="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 mt-0.5">
+                            <div class="ml-3">
+                                <div class="text-sm font-medium text-gray-900">{{ __('vendor.active') }}</div>
+                                <div class="text-xs text-gray-600 mt-0.5">{{ __('vendor.category') }} {{ __('vendor.available') }}</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Form Errors -->
+                <div id="formErrors" class="hidden mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="flex items-start">
+                        <i class="fas fa-exclamation-circle text-red-500 mt-0.5 mr-2"></i>
+                        <div class="text-sm text-red-700" id="formErrorsContent"></div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end space-y-2 space-y-reverse sm:space-y-0 sm:space-x-3 pt-4 border-t border-gray-200">
+                    <button type="button" 
+                            @click="open = false"
+                            class="w-full sm:w-auto text-center px-5 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-lg font-semibold transition-all">
+                        {{ __('vendor.cancel') }}
+                    </button>
+                    <button type="submit" 
+                            id="submitBtn"
+                            class="w-full sm:w-auto px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-save mr-2"></i>
+                        <span id="submitBtnText">{{ __('vendor.add_category') }}</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @endsection
+
+@push('styles')
+<style>
+[x-cloak] {
+    display: none !important;
+}
+</style>
+@endpush
 
 @section('scripts')
 <script>
@@ -328,56 +247,200 @@ function toggleStatus(url, element, alpineData) {
             
             // Optional: Show success message
             if (data.message) {
-                // Create temporary toast notification
-                const toast = document.createElement('div');
-                toast.className = 'fixed top-4 right-4 bg-emerald-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 translate-y-0';
-                toast.innerHTML = `
-                    <div class="flex items-center space-x-2">
-                        <i class="fas fa-check-circle"></i>
-                        <span>${data.message}</span>
-                    </div>
-                `;
-                document.body.appendChild(toast);
-                
-                // Remove after 3 seconds
-                setTimeout(() => {
-                    toast.style.transform = 'translateY(-100%)';
-                    toast.style.opacity = '0';
-                    setTimeout(() => toast.remove(), 300);
-                }, 3000);
+                showToast(data.message, 'success');
             }
         } else {
-            // Show error message
-            const toast = document.createElement('div');
-            toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-            toast.innerHTML = `
-                <div class="flex items-center space-x-2">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span>${data.message || 'Failed to update status'}</span>
-                </div>
-            `;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+            showToast(data.message || 'Failed to update status', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        const toast = document.createElement('div');
-        toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-        toast.innerHTML = `
-            <div class="flex items-center space-x-2">
-                <i class="fas fa-exclamation-circle"></i>
-                <span>An error occurred while updating the status</span>
-            </div>
-        `;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+        showToast('An error occurred while updating the status', 'error');
     })
     .finally(() => {
         // Re-enable button
         element.disabled = false;
         element.style.opacity = '1';
     });
+}
+
+// AJAX search and pagination functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('categorySearch');
+    const categoriesContainer = document.getElementById('categoriesContainer');
+    const searchSpinner = document.getElementById('searchSpinner');
+    const createCategoryForm = document.getElementById('createCategoryForm');
+    let searchTimeout;
+
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            loadCategories(1, searchInput.value);
+        }, 500);
+    });
+
+    // Pagination click handler
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('a[href*="page="]')) {
+            e.preventDefault();
+            const url = new URL(e.target.closest('a[href*="page="]').href);
+            const page = url.searchParams.get('page');
+            loadCategories(page, searchInput.value);
+        }
+    });
+
+    // Load categories via AJAX
+    function loadCategories(page, search) {
+        // Show spinner
+        searchSpinner.classList.remove('hidden');
+        
+        const url = new URL('{{ route('vendor.categories.index') }}');
+        url.searchParams.append('page', page || 1);
+        if (search) {
+            url.searchParams.append('search', search);
+        }
+
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            categoriesContainer.innerHTML = html;
+            
+            // Update URL without page reload
+            const newUrl = `{{ route('vendor.categories.index') }}?page=${page || 1}${search ? '&search=' + encodeURIComponent(search) : ''}`;
+            window.history.pushState({}, '', newUrl);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to load categories', 'error');
+        })
+        .finally(() => {
+            // Hide spinner
+            searchSpinner.classList.add('hidden');
+        });
+    }
+
+    // Handle create category form submission
+    if (createCategoryForm) {
+        createCategoryForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const submitBtnText = document.getElementById('submitBtnText');
+            const formErrors = document.getElementById('formErrors');
+            const formErrorsContent = document.getElementById('formErrorsContent');
+            const nameError = document.getElementById('name_error');
+            
+            // Reset errors
+            formErrors.classList.add('hidden');
+            nameError.classList.add('hidden');
+            nameError.textContent = '';
+            
+            // Disable submit button
+            submitBtn.disabled = true;
+            submitBtnText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating...';
+            
+            const formData = new FormData(createCategoryForm);
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            fetch('{{ route('vendor.categories.store') }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': token,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(async response => {
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Show success message
+                    showToast(data.message, 'success');
+                    
+                    // Reset form
+                    createCategoryForm.reset();
+                    document.getElementById('modal_is_active').checked = true;
+                    
+                    // Close modal - Try multiple methods for reliability
+                    const modal = document.getElementById('createCategoryModal');
+                    if (modal && modal.__x) {
+                        // Alpine.js 3.x method
+                        modal.__x.$data.open = false;
+                    } else if (modal && modal._x_dataStack) {
+                        // Alpine.js 2.x method
+                        modal._x_dataStack[0].open = false;
+                    } else {
+                        // Fallback: dispatch event
+                        window.dispatchEvent(new CustomEvent('close-create-modal'));
+                    }
+                    
+                    // Reload categories list with small delay for smooth closing animation
+                    setTimeout(() => {
+                        loadCategories(1, searchInput.value);
+                    }, 300);
+                } else if (response.status === 422) {
+                    // Validation errors
+                    if (data.errors) {
+                        let errorMessage = '';
+                        Object.keys(data.errors).forEach(key => {
+                            errorMessage += data.errors[key].join('<br>') + '<br>';
+                            
+                            // Show error next to name field
+                            if (key === 'name') {
+                                nameError.textContent = data.errors[key][0];
+                                nameError.classList.remove('hidden');
+                            }
+                        });
+                        formErrorsContent.innerHTML = errorMessage;
+                        formErrors.classList.remove('hidden');
+                    }
+                } else {
+                    // Other errors
+                    formErrorsContent.textContent = data.message || 'Failed to create category';
+                    formErrors.classList.remove('hidden');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Failed to create category. Please try again.', 'error');
+            })
+            .finally(() => {
+                // Re-enable submit button
+                submitBtn.disabled = false;
+                submitBtnText.innerHTML = '<i class="fas fa-save mr-2"></i>{{ __('vendor.add_category') }}';
+            });
+        });
+    }
+});
+
+// Toast notification helper
+function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    const bgColor = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
+    const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+    
+    toast.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform transition-all duration-300 translate-y-0`;
+    toast.innerHTML = `
+        <div class="flex items-center space-x-2">
+            <i class="fas ${icon}"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    document.body.appendChild(toast);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        toast.style.transform = 'translateY(-100%)';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 </script>
 @endsection

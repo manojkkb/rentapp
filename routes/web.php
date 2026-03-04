@@ -7,6 +7,7 @@ use App\Http\Controllers\Customer\HomeController;
 use App\Http\Controllers\Vendor\AuthVendorCtrl;
 use App\Http\Controllers\Vendor\CategoryController;
 use App\Http\Controllers\Vendor\ItemController;
+use App\Http\Controllers\Vendor\ReviewController;
 use App\Http\Controllers\Vendor\StaffController;
 use App\Http\Controllers\Vendor\VendorCartController;
 use App\Http\Controllers\Vendor\VendorController;
@@ -63,6 +64,8 @@ Route::prefix('vendor')->name('vendor.')->group(function ()
         // Profile
         Route::get('/profile',[VendorController::class, 'profile'])->name('profile');
         Route::put('/profile',[VendorController::class, 'updateProfile'])->name('profile.update');
+        Route::put('/profile/personal',[VendorController::class, 'updatePersonalProfile'])->name('profile.update.personal');
+        Route::put('/profile/business',[VendorController::class, 'updateBusinessProfile'])->name('profile.update.business');
 
         // Language Switcher
         Route::post('/language/switch',[VendorController::class, 'switchLanguage'])->name('language.switch');
@@ -99,6 +102,11 @@ Route::prefix('vendor')->name('vendor.')->group(function ()
         Route::get('orders', [VendorOrderController::class, 'index'])->name('orders.index');
         Route::get('orders/{order}', [VendorOrderController::class, 'show'])->name('orders.show');
         Route::put('orders/{order}/status', [VendorOrderController::class, 'updateStatus'])->name('orders.update-status');
+        
+        // Reviews
+        Route::get('reviews', [ReviewController::class, 'index'])->name('reviews.index');
+        Route::post('reviews/{review}/reply', [ReviewController::class, 'reply'])->name('reviews.reply');
+        Route::post('reviews/{review}/toggle', [ReviewController::class, 'toggleApproval'])->name('reviews.toggle');
         
     });
 });

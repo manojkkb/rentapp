@@ -30,7 +30,13 @@ class VendorController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
-        return view('vendor.profile.index', compact('vendor'));
+        // Get all business categories
+        $categories = \App\Models\BusinessCategory::active()
+            ->whereNull('parent_id')
+            ->orderBy('name')
+            ->get();
+
+        return view('vendor.profile.index', compact('vendor', 'categories'));
     }
 
     /**
@@ -46,6 +52,7 @@ class VendorController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
+            'business_category_id' => 'nullable|exists:business_categories,id',
             'address_line1' => 'nullable|string|max:255',
             'address_line2' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:100',
@@ -57,7 +64,7 @@ class VendorController extends Controller
         ]);
 
         $data = $request->only([
-            'name', 'address_line1', 'address_line2', 
+            'name', 'business_category_id', 'address_line1', 'address_line2', 
             'city', 'state', 'postal_code', 'country', 'gst_number'
         ]);
 
@@ -82,6 +89,85 @@ class VendorController extends Controller
         $vendor->update($data);
 
         return back()->with('success', 'Profile updated successfully!');
+    }
+
+    /**
+     * Update the personal profile
+     */
+    public function updatePersonalProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255|unique:users,email,' . $user->id,
+        ]);
+
+        $user->update([
+            'name' => $request->name,
+            'email' => $request->email,
+        ]);
+
+        return back()->with('success', 'Personal profile updated successfully!');
+    }
+
+    /**
+     * Update the business profile
+     */
+    public function updateBusinessProfile(Request $request)
+    {
+        $user = Auth::user();
+        $vendor = $user->currentVendor();
+        
+        if (!$vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+        }
+
+        // Check if user is owner
+        $vendorUser = $user->vendors()->where('vendors.id', $vendor->id)->first();
+        if (!$vendorUser || !$vendorUser->pivot->is_owner) {
+            return back()->withErrors(['error' => 'Only the business owner can update the business profile.']);
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'business_category_id' => 'required|exists:business_categories,id',
+            'address_line1' => 'nullable|string|max:255',
+            'address_line2' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'postal_code' => 'nullable|string|max:20',
+            'country' => 'nullable|string|max:100',
+            'gst_number' => 'nullable|string|max:50',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+
+        $data = $request->only([
+            'name', 'business_category_id', 'address_line1', 'address_line2', 
+            'city', 'state', 'postal_code', 'country', 'gst_number'
+        ]);
+
+        // Handle logo upload
+        if ($request->hasFile('logo')) {
+            // Delete old logo if exists
+            if ($vendor->logo && Storage::disk('public')->exists($vendor->logo)) {
+                Storage::disk('public')->delete($vendor->logo);
+            }
+
+            $logo = $request->file('logo');
+            $logoName = 'vendor_logo_' . $vendor->id . '_' . time() . '.' . $logo->getClientOriginalExtension();
+            $logoPath = $logo->storeAs('vendors/logos', $logoName, 'public');
+            $data['logo'] = $logoPath;
+        }
+
+        // Update slug if name changed
+        if ($vendor->name !== $data['name']) {
+            $data['slug'] = Str::slug($data['name']) . '-' . $vendor->id;
+        }
+
+        $vendor->update($data);
+
+        return back()->with('success', 'Business profile updated successfully!');
     }
 
     /**

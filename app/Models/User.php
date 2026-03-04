@@ -60,6 +60,14 @@ class User extends Authenticatable
     }
     
     /**
+     * Get all reviews written by this user
+     */
+    public function reviews()
+    {
+        return $this->hasMany(CustomerReview::class);
+    }
+    
+    /**
      * Get the current active vendor for this user
      */
     public function currentVendor()

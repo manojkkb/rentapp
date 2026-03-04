@@ -329,7 +329,13 @@ class AuthVendorCtrl extends Controller
             return redirect()->route('vendor.login')->withErrors(['error' => 'Please login first']);
         }
         
-        return view('vendor.auth.create');
+        // Get all business categories
+        $categories = \App\Models\BusinessCategory::active()
+            ->whereNull('parent_id')
+            ->orderBy('name')
+            ->get();
+        
+        return view('vendor.auth.create', compact('categories'));
     }
     
     /**
@@ -347,6 +353,7 @@ class AuthVendorCtrl extends Controller
         // Validate request
         $request->validate([
             'name' => 'required|string|max:255',
+            'business_category_id' => 'required|exists:business_categories,id',
             'owner_name' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:255',
             'state' => 'nullable|string|max:255',
@@ -369,6 +376,7 @@ class AuthVendorCtrl extends Controller
         $vendor = Vendor::create([
             'user_id' => $user->id,
             'name' => $request->name,
+            'business_category_id' => $request->business_category_id,
             'owner_name' => $request->owner_name,
             'slug' => $slug,
             'city' => $request->city,

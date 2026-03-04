@@ -97,6 +97,12 @@ class CategorySeeder extends Seeder
         ];
 
         foreach ($vendors as $vendor) {
+            // Check if vendor already has categories
+            if ($vendor->categories()->count() > 0) {
+                $this->command->info("ℹ️  Vendor {$vendor->name} already has categories. Skipping...");
+                continue;
+            }
+            
             $this->command->info("🏪 Creating categories for vendor: {$vendor->name}");
             $categoryCount = 0;
             $subcategoryCount = 0;
