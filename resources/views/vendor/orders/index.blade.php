@@ -86,7 +86,201 @@
         </div>
     @endif
 
+    <!-- Shimmer Loading Indicator -->
+    <div id="ordersLoadingIndicator" class="hidden">
+        <style>
+            @keyframes shimmer {
+                0% { background-position: -1000px 0; }
+                100% { background-position: 1000px 0; }
+            }
+            .shimmer {
+                animation: shimmer 2s infinite linear;
+                background: linear-gradient(to right, #f0f0f0 8%, #e0e0e0 18%, #f0f0f0 33%);
+                background-size: 1000px 100%;
+            }
+        </style>
+        
+        <!-- Desktop Table Shimmer -->
+        <div class="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-6 py-4"><div class="h-4 bg-gray-200 rounded shimmer w-32"></div></th>
+                            <th class="px-6 py-4"><div class="h-4 bg-gray-200 rounded shimmer w-24"></div></th>
+                            <th class="px-6 py-4"><div class="h-4 bg-gray-200 rounded shimmer w-20"></div></th>
+                            <th class="px-6 py-4"><div class="h-4 bg-gray-200 rounded shimmer w-28"></div></th>
+                            <th class="px-6 py-4"><div class="h-4 bg-gray-200 rounded shimmer w-24"></div></th>
+                            <th class="px-6 py-4"><div class="h-4 bg-gray-200 rounded shimmer w-20"></div></th>
+                            <th class="px-6 py-4"><div class="h-4 bg-gray-200 rounded shimmer w-24"></div></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        <tr>
+                            <td class="px-6 py-4">
+                                <div class="h-4 bg-gray-200 rounded shimmer w-28 mb-2"></div>
+                                <div class="h-3 bg-gray-200 rounded shimmer w-32"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-4 bg-gray-200 rounded shimmer w-32"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-3 bg-gray-200 rounded shimmer w-24"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-6 w-10 bg-gray-200 rounded-full shimmer"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-4 bg-gray-200 rounded shimmer w-20"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-6 w-20 bg-gray-200 rounded-full shimmer"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-8 w-16 bg-gray-200 rounded-lg shimmer"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4">
+                                <div class="h-4 bg-gray-200 rounded shimmer w-28 mb-2"></div>
+                                <div class="h-3 bg-gray-200 rounded shimmer w-32"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-4 bg-gray-200 rounded shimmer w-32"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-3 bg-gray-200 rounded shimmer w-24"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-6 w-10 bg-gray-200 rounded-full shimmer"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-4 bg-gray-200 rounded shimmer w-20"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-6 w-20 bg-gray-200 rounded-full shimmer"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-8 w-16 bg-gray-200 rounded-lg shimmer"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4">
+                                <div class="h-4 bg-gray-200 rounded shimmer w-28 mb-2"></div>
+                                <div class="h-3 bg-gray-200 rounded shimmer w-32"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-4 bg-gray-200 rounded shimmer w-32"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-3 bg-gray-200 rounded shimmer w-24"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-6 w-10 bg-gray-200 rounded-full shimmer"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-4 bg-gray-200 rounded shimmer w-20"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-6 w-20 bg-gray-200 rounded-full shimmer"></div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="h-8 w-16 bg-gray-200 rounded-lg shimmer"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Mobile Cards Shimmer -->
+        <div class="md:hidden space-y-4">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <div class="h-4 bg-gray-200 rounded shimmer w-28 mb-2"></div>
+                        <div class="h-3 bg-gray-200 rounded shimmer w-32"></div>
+                    </div>
+                    <div class="h-6 w-20 bg-gray-200 rounded-full shimmer"></div>
+                </div>
+                <div class="flex items-center space-x-3 mb-4 pb-4 border-b border-gray-100">
+                    <div class="w-10 h-10 bg-gray-200 rounded-full shimmer"></div>
+                    <div>
+                        <div class="h-4 bg-gray-200 rounded shimmer w-32 mb-1"></div>
+                        <div class="h-3 bg-gray-200 rounded shimmer w-28"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <div class="h-3 bg-gray-200 rounded shimmer w-12 mb-2"></div>
+                        <div class="h-4 bg-gray-200 rounded shimmer w-20"></div>
+                    </div>
+                    <div>
+                        <div class="h-3 bg-gray-200 rounded shimmer w-16 mb-2"></div>
+                        <div class="h-4 bg-gray-200 rounded shimmer w-24"></div>
+                    </div>
+                </div>
+                <div class="h-9 bg-gray-200 rounded-lg shimmer"></div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <div class="h-4 bg-gray-200 rounded shimmer w-28 mb-2"></div>
+                        <div class="h-3 bg-gray-200 rounded shimmer w-32"></div>
+                    </div>
+                    <div class="h-6 w-20 bg-gray-200 rounded-full shimmer"></div>
+                </div>
+                <div class="flex items-center space-x-3 mb-4 pb-4 border-b border-gray-100">
+                    <div class="w-10 h-10 bg-gray-200 rounded-full shimmer"></div>
+                    <div>
+                        <div class="h-4 bg-gray-200 rounded shimmer w-32 mb-1"></div>
+                        <div class="h-3 bg-gray-200 rounded shimmer w-28"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <div class="h-3 bg-gray-200 rounded shimmer w-12 mb-2"></div>
+                        <div class="h-4 bg-gray-200 rounded shimmer w-20"></div>
+                    </div>
+                    <div>
+                        <div class="h-3 bg-gray-200 rounded shimmer w-16 mb-2"></div>
+                        <div class="h-4 bg-gray-200 rounded shimmer w-24"></div>
+                    </div>
+                </div>
+                <div class="h-9 bg-gray-200 rounded-lg shimmer"></div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <div class="h-4 bg-gray-200 rounded shimmer w-28 mb-2"></div>
+                        <div class="h-3 bg-gray-200 rounded shimmer w-32"></div>
+                    </div>
+                    <div class="h-6 w-20 bg-gray-200 rounded-full shimmer"></div>
+                </div>
+                <div class="flex items-center space-x-3 mb-4 pb-4 border-b border-gray-100">
+                    <div class="w-10 h-10 bg-gray-200 rounded-full shimmer"></div>
+                    <div>
+                        <div class="h-4 bg-gray-200 rounded shimmer w-32 mb-1"></div>
+                        <div class="h-3 bg-gray-200 rounded shimmer w-28"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <div class="h-3 bg-gray-200 rounded shimmer w-12 mb-2"></div>
+                        <div class="h-4 bg-gray-200 rounded shimmer w-20"></div>
+                    </div>
+                    <div>
+                        <div class="h-3 bg-gray-200 rounded shimmer w-16 mb-2"></div>
+                        <div class="h-4 bg-gray-200 rounded shimmer w-24"></div>
+                    </div>
+                </div>
+                <div class="h-9 bg-gray-200 rounded-lg shimmer"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Orders List -->
+    <div id="ordersContainer">
     @if($orders->count() > 0)
         <!-- Desktop View -->
         <div class="hidden md:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -267,5 +461,26 @@
             </div>
         </div>
     @endif
+    </div>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loader = document.getElementById('ordersLoadingIndicator');
+    const container = document.getElementById('ordersContainer');
+    
+    // Show shimmer briefly for better UX
+    if (loader && container) {
+        loader.classList.remove('hidden');
+        container.classList.add('hidden');
+        
+        setTimeout(() => {
+            loader.classList.add('hidden');
+            container.classList.remove('hidden');
+        }, 300); // Brief shimmer effect
+    }
+});
+</script>
 @endsection

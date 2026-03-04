@@ -26,6 +26,7 @@ return new class extends Migration
             // Basic Info
             $table->string('name');
             $table->string('slug');
+            $table->string('photo')->nullable();
             $table->text('description')->nullable();
 
             // Pricing

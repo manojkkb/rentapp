@@ -124,7 +124,7 @@ class CategoryController extends Controller
                 'name' => $request->name,
                 'slug' => $slug,
                 'icon' => $request->icon,
-                'is_active' => $request->has('is_active') ? true : false,
+                'is_active' => filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN),
             ]);
             
             // Handle AJAX requests
@@ -197,7 +197,7 @@ class CategoryController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'icon' => 'nullable|string|max:100',
-            'is_active' => 'boolean',
+            'is_active' => 'nullable|boolean',
         ]);
         
         // Generate unique slug if name changed
@@ -239,13 +239,29 @@ class CategoryController extends Controller
                 'name' => $request->name,
                 'slug' => $slug,
                 'icon' => $request->icon,
-                'is_active' => $request->has('is_active') ? true : false,
+                'is_active' => filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN),
             ]);
+            
+            // Handle AJAX requests
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Category updated successfully!',
+                    'category' => $category->fresh()->load('subcategories', 'items')
+                ]);
+            }
             
             return redirect()->route('vendor.categories.index')
                 ->with('success', 'Category updated successfully!');
                 
         } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update category: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return back()->withInput()
                 ->withErrors(['error' => 'Failed to update category: ' . $e->getMessage()]);
         }
@@ -269,15 +285,35 @@ class CategoryController extends Controller
         
         // Check if category has items
         if ($category->items()->count() > 0) {
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete category with existing items.'
+                ], 400);
+            }
             return back()->withErrors(['error' => 'Cannot delete category with existing items.']);
         }
         
         // Check if category has subcategories
         if ($category->subcategories()->count() > 0) {
+            if (request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete category with subcategories.'
+                ], 400);
+            }
             return back()->withErrors(['error' => 'Cannot delete category with subcategories.']);
         }
         
         $category->delete();
+        
+        // Handle AJAX requests
+        if (request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Category deleted successfully!'
+            ]);
+        }
         
         return redirect()->route('vendor.categories.index')
             ->with('success', 'Category deleted successfully!');

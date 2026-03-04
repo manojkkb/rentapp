@@ -15,7 +15,7 @@ class StaffController extends Controller
     /**
      * Display a listing of staff users
      */
-    public function index()
+    public function index(Request $request)
     {
         $vendor = Auth::user()->currentVendor();
         
@@ -24,10 +24,25 @@ class StaffController extends Controller
         }
         
         // Get all users for this vendor with pivot data
-        $staff = $vendor->users()
-            ->withPivot('id', 'role', 'is_owner', 'is_active', 'last_login_at', 'permissions')
-            ->orderBy('vendor_users.created_at', 'desc')
-            ->paginate(15);
+        $query = $vendor->users()
+            ->withPivot('id', 'role', 'is_owner', 'is_active', 'last_login_at', 'permissions');
+        
+        // Search functionality
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('users.name', 'like', '%' . $search . '%')
+                  ->orWhere('users.mobile', 'like', '%' . $search . '%')
+                  ->orWhere('vendor_users.role', 'like', '%' . $search . '%');
+            });
+        }
+        
+        $staff = $query->orderBy('vendor_users.created_at', 'desc')->paginate(15);
+        
+        // Return only the partial for AJAX requests
+        if ($request->ajax() || $request->wantsJson()) {
+            return view('vendor.staff.partials.staff-list', compact('staff'))->render();
+        }
         
         return view('vendor.staff.index', compact('staff', 'vendor'));
     }
@@ -61,6 +76,9 @@ class StaffController extends Controller
         $vendor = Auth::user()->currentVendor();
         
         if (!$vendor) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Please select a vendor'], 403);
+            }
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
         
@@ -85,6 +103,12 @@ class StaffController extends Controller
                 
                 if ($existingVendorUser) {
                     DB::rollBack();
+                    if ($request->wantsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'This user is already added to your vendor. Please edit the existing staff member.'
+                        ], 422);
+                    }
                     return back()->withInput()
                         ->withErrors(['mobile' => 'This user is already added to your vendor. Please edit the existing staff member.']);
                 }
@@ -98,6 +122,13 @@ class StaffController extends Controller
                 ]);
                 
                 DB::commit();
+                
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Existing user added to your vendor successfully!'
+                    ]);
+                }
                 
                 return redirect()->route('vendor.staff.index')
                     ->with('success', 'Existing user added to your vendor successfully!');
@@ -121,11 +152,24 @@ class StaffController extends Controller
             
             DB::commit();
             
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Staff user added successfully! Default password: password123'
+                ]);
+            }
+            
             return redirect()->route('vendor.staff.index')
                 ->with('success', 'Staff user added successfully! Default password: password123');
                 
         } catch (\Exception $e) {
             DB::rollBack();
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create staff user: ' . $e->getMessage()
+                ], 500);
+            }
             return back()->withInput()
                 ->withErrors(['error' => 'Failed to create staff user: ' . $e->getMessage()]);
         }

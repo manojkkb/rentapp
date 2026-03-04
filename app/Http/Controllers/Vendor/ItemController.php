@@ -22,12 +22,106 @@ class ItemController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
         
+        // Get all categories for filter
+        $categories = Category::where('vendor_id', $vendor->id)
+            ->whereNull('parent_id')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        
+        // Price types for modals
+        $priceTypes = [
+            'per_day' => 'Per Day',
+            'per_hour' => 'Per Hour',
+            'fixed' => 'Fixed Price',
+        ];
+        
         $items = Items::where('vendor_id', $vendor->id)
             ->with('category')
             ->orderBy('created_at', 'desc')
             ->paginate(15);
         
-        return view('vendor.items.index', compact('items', 'vendor'));
+        return view('vendor.items.index', compact('items', 'vendor', 'categories', 'priceTypes'));
+    }
+    
+    /**
+     * Fetch items via AJAX with filters
+     */
+    public function fetchItems(Request $request)
+    {
+        $vendor = Auth::user()->currentVendor();
+        
+        if (!$vendor) {
+            return response()->json(['error' => 'Please select a vendor'], 403);
+        }
+        
+        $query = Items::where('vendor_id', $vendor->id)
+            ->with('category');
+        
+        // Filter by category
+        if ($request->filled('category_id') && $request->category_id != '') {
+            $query->where('category_id', $request->category_id);
+        }
+        
+        // Filter by subcategory
+        if ($request->filled('subcategory_id') && $request->subcategory_id != '') {
+            $query->where('category_id', $request->subcategory_id);
+        }
+        
+        // Search filter
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%")
+                  ->orWhere('slug', 'like', "%{$search}%");
+            });
+        }
+        
+        // Sorting
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+        $query->orderBy($sortBy, $sortOrder);
+        
+        $items = $query->paginate(15);
+        
+        return response()->json([
+            'success' => true,
+            'items' => $items->items(),
+            'pagination' => [
+                'current_page' => $items->currentPage(),
+                'last_page' => $items->lastPage(),
+                'per_page' => $items->perPage(),
+                'total' => $items->total(),
+                'from' => $items->firstItem(),
+                'to' => $items->lastItem(),
+            ]
+        ]);
+    }
+    
+    /**
+     * Get subcategories by category ID
+     */
+    public function getSubcategories(Request $request)
+    {
+        $vendor = Auth::user()->currentVendor();
+        
+        if (!$vendor) {
+            return response()->json(['error' => 'Please select a vendor'], 403);
+        }
+        
+        $categoryId = $request->get('category_id');
+        
+        $subcategories = Category::where('vendor_id', $vendor->id)
+            ->where('parent_id', $categoryId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+        
+        return response()->json([
+            'success' => true,
+            'subcategories' => $subcategories
+        ]);
     }
     
     /**
@@ -75,15 +169,15 @@ class ItemController extends Controller
             'price' => 'required|numeric|min:0',
             'price_type' => 'required|in:per_day,per_hour,fixed',
             'stock' => 'required|integer|min:0',
-            'manage_stock' => 'boolean',
-            'is_available' => 'boolean',
-            'is_active' => 'boolean',
+            'manage_stock' => 'nullable',
+            'is_available' => 'nullable',
+            'is_active' => 'nullable',
         ]);
         
-        // Ensure empty values are converted to proper types
-        $manageStock = $request->has('manage_stock') ? true : false;
-        $isAvailable = $request->has('is_available') ? true : false;
-        $isActive = $request->has('is_active') ? true : false;
+        // Convert checkbox values to booleans
+        $manageStock = filter_var($request->input('manage_stock', false), FILTER_VALIDATE_BOOLEAN);
+        $isAvailable = filter_var($request->input('is_available', false), FILTER_VALIDATE_BOOLEAN);
+        $isActive = filter_var($request->input('is_active', false), FILTER_VALIDATE_BOOLEAN);
         
         // Generate unique slug
         $slug = Str::slug($request->name);
@@ -112,10 +206,27 @@ class ItemController extends Controller
                 'is_active' => $isActive,
             ]);
             
+            // If AJAX request, return JSON
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Item created successfully!',
+                    'item' => $item
+                ]);
+            }
+            
             return redirect()->route('vendor.items.index')
                 ->with('success', 'Item created successfully!');
                 
         } catch (\Exception $e) {
+            // If AJAX request, return JSON error
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create item: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return back()->withInput()
                 ->withErrors(['error' => 'Failed to create item: ' . $e->getMessage()]);
         }
@@ -135,6 +246,25 @@ class ItemController extends Controller
         // Verify item belongs to this vendor
         if ($item->vendor_id != $vendor->id) {
             abort(403, 'Unauthorized action.');
+        }
+        
+        // If AJAX request, return JSON
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'item' => [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'category_id' => $item->category_id,
+                    'description' => $item->description,
+                    'price' => $item->price,
+                    'price_type' => $item->price_type,
+                    'stock' => $item->stock,
+                    'manage_stock' => $item->manage_stock,
+                    'is_available' => $item->is_available,
+                    'is_active' => $item->is_active,
+                ]
+            ]);
         }
         
         // Get active categories for dropdown
@@ -176,15 +306,15 @@ class ItemController extends Controller
             'price' => 'required|numeric|min:0',
             'price_type' => 'required|in:per_day,per_hour,fixed',
             'stock' => 'required|integer|min:0',
-            'manage_stock' => 'boolean',
-            'is_available' => 'boolean',
-            'is_active' => 'boolean',
+            'manage_stock' => 'nullable',
+            'is_available' => 'nullable',
+            'is_active' => 'nullable',
         ]);
         
-        // Ensure empty values are converted to proper types
-        $manageStock = $request->has('manage_stock') ? true : false;
-        $isAvailable = $request->has('is_available') ? true : false;
-        $isActive = $request->has('is_active') ? true : false;
+        // Convert checkbox values to booleans
+        $manageStock = filter_var($request->input('manage_stock', false), FILTER_VALIDATE_BOOLEAN);
+        $isAvailable = filter_var($request->input('is_available', false), FILTER_VALIDATE_BOOLEAN);
+        $isActive = filter_var($request->input('is_active', false), FILTER_VALIDATE_BOOLEAN);
         
         // Generate unique slug if name changed
         $slug = Str::slug($request->name);
@@ -217,10 +347,27 @@ class ItemController extends Controller
                 'is_active' => $isActive,
             ]);
             
+            // If AJAX request, return JSON
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Item updated successfully!',
+                    'item' => $item
+                ]);
+            }
+            
             return redirect()->route('vendor.items.index')
                 ->with('success', 'Item updated successfully!');
                 
         } catch (\Exception $e) {
+            // If AJAX request, return JSON error
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update item: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return back()->withInput()
                 ->withErrors(['error' => 'Failed to update item: ' . $e->getMessage()]);
         }

@@ -15,7 +15,7 @@ class VendorCustomerController extends Controller
     /**
      * Display a listing of customers
      */
-    public function index()
+    public function index(Request $request)
     {
         $vendor = Auth::user()->currentVendor();
         
@@ -23,9 +23,24 @@ class VendorCustomerController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
         
-        $customers = VendorCustomer::where('vendor_id', $vendor->id)
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
+        $query = VendorCustomer::where('vendor_id', $vendor->id);
+        
+        // Search functionality
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('mobile', 'like', '%' . $search . '%')
+                  ->orWhere('address', 'like', '%' . $search . '%');
+            });
+        }
+        
+        $customers = $query->orderBy('created_at', 'desc')->paginate(15);
+        
+        // Return only the partial for AJAX requests
+        if ($request->ajax() || $request->wantsJson()) {
+            return view('vendor.customers.partials.customers-list', compact('customers'))->render();
+        }
         
         return view('vendor.customers.index', compact('customers'));
     }
@@ -52,6 +67,9 @@ class VendorCustomerController extends Controller
         $vendor = Auth::user()->currentVendor();
         
         if (!$vendor) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Please select a vendor'], 403);
+            }
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
         
@@ -74,13 +92,22 @@ class VendorCustomerController extends Controller
             ]);
         }
 
-        VendorCustomer::create([
+        $customer = VendorCustomer::create([
             'vendor_id' => $vendor->id,
             'user_id' => $user->id,
             'name' => $request->name,
             'mobile' => $request->mobile,
             'address' => $request->address,
         ]);
+        
+        // AJAX response
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer created successfully!',
+                'customer' => $customer
+            ]);
+        }
         
         return redirect()->route('vendor.customers.index')
             ->with('success', 'Customer created successfully!');

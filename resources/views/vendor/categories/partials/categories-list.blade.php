@@ -103,22 +103,18 @@
                                         <i class="fas fa-eye w-5 text-gray-400 mr-3"></i>
                                         {{ __('vendor.view') }}
                                     </a>
-                                    <a href="{{ route('vendor.categories.edit', $category) }}" 
-                                       class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                    <button type="button" 
+                                            onclick="openEditModal({{ $category->id }}, '{{ $category->name }}', '{{ $category->icon }}', {{ $category->is_active ? 'true' : 'false' }}, '{{ route('vendor.categories.update', $category) }}')"
+                                            class="w-full text-left block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                         <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
                                         {{ __('vendor.edit') }}
-                                    </a>
-                                    <form action="{{ route('vendor.categories.destroy', $category) }}" 
-                                          method="POST" 
-                                          onsubmit="return confirm('{{ __('vendor.confirm_delete') }}');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" 
-                                                class="w-full text-left block px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                                            <i class="fas fa-trash w-5 mr-3"></i>
-                                            {{ __('vendor.delete') }}
-                                        </button>
-                                    </form>
+                                    </button>
+                                    <button type="button" 
+                                            onclick="deleteCategory('{{ route('vendor.categories.destroy', $category) }}', '{{ __('vendor.confirm_delete') }}')"
+                                            class="w-full text-left block px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                        <i class="fas fa-trash w-5 mr-3"></i>
+                                        {{ __('vendor.delete') }}
+                                    </button>
                                 </div>
                             </div>
                         </td>
@@ -191,22 +187,18 @@
                                     <i class="fas fa-eye w-5 text-gray-400 mr-3"></i>
                                     {{ __('vendor.view') }}
                                 </a>
-                                <a href="{{ route('vendor.categories.edit', $category) }}" 
-                                   class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
+                                <button type="button" 
+                                        onclick="openEditModal({{ $category->id }}, '{{ $category->name }}', '{{ $category->icon }}', {{ $category->is_active ? 'true' : 'false' }}, '{{ route('vendor.categories.update', $category) }}')"
+                                        class="w-full text-left block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
                                     <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
                                     {{ __('vendor.edit') }}
-                                </a>
-                                <form action="{{ route('vendor.categories.destroy', $category) }}" 
-                                      method="POST" 
-                                      onsubmit="return confirm('{{ __('vendor.confirm_delete') }}');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" 
-                                            class="w-full text-left block px-4 py-3 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors">
-                                        <i class="fas fa-trash w-5 mr-3"></i>
-                                        {{ __('vendor.delete') }}
-                                    </button>
-                                </form>
+                                </button>
+                                <button type="button" 
+                                        onclick="deleteCategory('{{ route('vendor.categories.destroy', $category) }}', '{{ __('vendor.confirm_delete') }}')"
+                                        class="w-full text-left block px-4 py-3 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors">
+                                    <i class="fas fa-trash w-5 mr-3"></i>
+                                    {{ __('vendor.delete') }}
+                                </button>
                             </div>
                         </div>
                     </div>

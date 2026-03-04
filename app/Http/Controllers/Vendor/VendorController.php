@@ -20,6 +20,88 @@ class VendorController extends Controller
     }
 
     /**
+     * Get dashboard statistics via AJAX
+     */
+    public function getDashboardStats(Request $request)
+    {
+        $vendor = Auth::user()->currentVendor();
+        
+        if (!$vendor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vendor not found'
+            ], 404);
+        }
+
+        // Simulate delay for demo (remove in production)
+        // sleep(1);
+
+        // Get statistics
+        $totalItems = $vendor->items()->count();
+        $activeItems = $vendor->items()->where('is_active', true)->count();
+        $totalOrders = $vendor->orders()->count();
+        $monthlyOrders = $vendor->orders()->whereMonth('created_at', now()->month)->count();
+        $totalRevenue = $vendor->orders()->where('status', 'completed')->sum('total_amount');
+        $monthlyRevenue = $vendor->orders()
+            ->where('status', 'completed')
+            ->whereMonth('created_at', now()->month)
+            ->sum('total_amount');
+        $averageRating = $vendor->reviews()->avg('rating') ?? 0;
+        $totalReviews = $vendor->reviews()->count();
+
+        // Get recent activities (latest orders)
+        $recentActivities = $vendor->orders()
+            ->with(['customer', 'items'])
+            ->latest()
+            ->take(5)
+            ->get()
+            ->map(function($order) {
+                return [
+                    'id' => $order->id,
+                    'customer_name' => $order->customer->name ?? 'N/A',
+                    'items_count' => $order->items->count(),
+                    'total_amount' => $order->total_amount,
+                    'status' => $order->status,
+                    'created_at' => $order->created_at->diffForHumans(),
+                ];
+            });
+
+        // Get popular items
+        $popularItems = $vendor->items()
+            ->withCount('orders')
+            ->orderBy('orders_count', 'desc')
+            ->take(5)
+            ->get()
+            ->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'price' => $item->price,
+                    'orders_count' => $item->orders_count ?? 0,
+                    'image' => $item->image_url ?? null,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'stats' => [
+                    'total_items' => $totalItems,
+                    'active_items' => $activeItems,
+                    'total_orders' => $totalOrders,
+                    'monthly_orders' => $monthlyOrders,
+                    'total_revenue' => $totalRevenue,
+                    'monthly_revenue' => $monthlyRevenue,
+                    'average_rating' => round($averageRating, 1),
+                    'total_reviews' => $totalReviews,
+                ],
+                'recent_activities' => $recentActivities,
+                'popular_items' => $popularItems,
+            ]
+        ]);
+    }
+
+    /**
      * Display the vendor profile
      */
     public function profile()

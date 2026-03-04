@@ -28,7 +28,12 @@ class VendorCartController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(15);
         
-        return view('vendor.carts.index', compact('carts'));
+        // Get customers for create modal
+        $customers = \App\Models\VendorCustomer::where('vendor_id', $vendor->id)
+            ->orderBy('name')
+            ->get();
+        
+        return view('vendor.carts.index', compact('carts', 'customers'));
     }
     
     /**
@@ -57,6 +62,9 @@ class VendorCartController extends Controller
         $vendor = Auth::user()->currentVendor();
         
         if (!$vendor) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Please select a vendor'], 403);
+            }
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
         
@@ -67,7 +75,7 @@ class VendorCartController extends Controller
             'end_time' => 'nullable|date|after:start_time',
         ]);
 
-        VendorCart::create([
+        $cart = VendorCart::create([
             'vendor_id' => $vendor->id,
             'customer_id' => $request->customer_id,
             'cart_name' => $request->cart_name,
@@ -80,6 +88,15 @@ class VendorCartController extends Controller
             'start_time' => $request->start_time,
             'end_time' => $request->end_time,
         ]);
+        
+        // AJAX response
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Cart created successfully!',
+                'cart' => $cart->load('customer')
+            ]);
+        }
         
         return redirect()->route('vendor.carts.index')
             ->with('success', 'Cart created successfully!');

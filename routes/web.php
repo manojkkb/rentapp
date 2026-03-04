@@ -60,6 +60,7 @@ Route::prefix('vendor')->name('vendor.')->group(function ()
     Route::middleware([VendorAuthMiddleware::class])->group(function () {
 
         Route::get('/home',[VendorController::class, 'home'])->name('home');
+        Route::get('/dashboard/stats',[VendorController::class, 'getDashboardStats'])->name('dashboard.stats');
 
         // Profile
         Route::get('/profile',[VendorController::class, 'profile'])->name('profile');
@@ -80,6 +81,8 @@ Route::prefix('vendor')->name('vendor.')->group(function ()
         Route::get('categories/{category}/subcategories', [CategoryController::class, 'subcategories'])->name('categories.subcategories');
 
         // Items
+        Route::get('items/fetch', [ItemController::class, 'fetchItems'])->name('items.fetch');
+        Route::get('items/subcategories', [ItemController::class, 'getSubcategories'])->name('items.subcategories');
         Route::resource('items', ItemController::class)->except(['show']);
         Route::post('items/{item}/toggle', [ItemController::class, 'toggleStatus'])->name('items.toggle');
         Route::post('items/{item}/availability', [ItemController::class, 'toggleAvailability'])->name('items.availability');

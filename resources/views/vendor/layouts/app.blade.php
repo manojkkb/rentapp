@@ -9,6 +9,10 @@
     <!-- Vite Assets (includes Tailwind CSS, Alpine.js, Font Awesome, and Inter Font) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
  
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+ 
     @yield('styles')
 </head>
 <body class="bg-gray-50 min-h-screen" 
