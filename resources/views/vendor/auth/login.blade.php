@@ -135,15 +135,15 @@
             }
             
             .glass-effect {
-                padding: 1rem !important;
-                max-width: calc(100vw - 1.5rem) !important;
+                padding: 0.875rem !important;
+                max-width: calc(100vw - 1rem) !important;
                 margin: 0 auto !important;
                 width: 100% !important;
             }
             
             body {
                 padding: 0.5rem !important;
-                padding-top: 1rem !important;
+                padding-top: 0.875rem !important;
                 align-items: flex-start !important;
             }
             
@@ -181,68 +181,115 @@
             }
         }
         
-        /* Extra small devices */
+        /* Extra small devices (iPhone SE, etc.) */
         @media (max-width: 400px) {
             .otp-input {
-                width: 2.25rem !important;
-                height: 2.75rem !important;
+                width: 2.2rem !important;
+                height: 2.7rem !important;
                 font-size: 1.125rem !important;
                 color: #1f2937 !important;
                 background-color: #ffffff !important;
             }
             
             .otp-container {
-                gap: 0.375rem !important;
+                gap: 0.35rem !important;
                 flex-wrap: nowrap !important;
             }
             
             .glass-effect {
-                padding: 0.875rem !important;
-                max-width: calc(100vw - 1rem) !important;
+                padding: 0.75rem !important;
+                max-width: calc(100vw - 0.75rem) !important;
             }
             
             body {
                 padding: 0.375rem !important;
-                padding-top: 0.75rem !important;
+                padding-top: 0.5rem !important;
             }
             
             h2 {
-                font-size: 1.375rem !important;
+                font-size: 1.25rem !important;
                 margin-bottom: 0.5rem !important;
             }
             
             .text-2xl {
-                font-size: 1.375rem !important;
+                font-size: 1.25rem !important;
             }
             
-            input[type="text"] {
-                padding-left: 2.75rem !important;
-                padding-right: 0.75rem !important;
-                font-size: 0.9375rem !important;
-            }
             
             .space-x-4 > * + * {
-                margin-left: 0.5rem !important;
+                margin-left: 0.375rem !important;
             }
             
             button {
-                font-size: 0.9375rem !important;
+                font-size: 0.875rem !important;
+                padding-top: 0.625rem !important;
+                padding-bottom: 0.625rem !important;
             }
             
             .mb-8 {
-                margin-bottom: 0.75rem !important;
+                margin-bottom: 0.625rem !important;
             }
             
             .step-indicator {
-                transform: scale(0.9);
+                transform: scale(0.85);
+                margin-bottom: 0.75rem !important;
             }
             
             .space-y-6 > * + * {
-                margin-top: 1rem !important;
+                margin-top: 0.875rem !important;
             }
             
             .mb-6 {
-                margin-bottom: 1rem !important;
+                margin-bottom: 0.875rem !important;
+            }
+            
+            label {
+                font-size: 0.8125rem !important;
+                margin-bottom: 0.375rem !important;
+            }
+            
+            p {
+                font-size: 0.75rem !important;
+            }
+        }
+        
+        /* iPhone SE and similar (375px) */
+        @media (max-width: 375px) {
+            .otp-input {
+                width: 2.1rem !important;
+                height: 2.6rem !important;
+                font-size: 1.0625rem !important;
+            }
+            
+            .otp-container {
+                gap: 0.3rem !important;
+            }
+            
+            .glass-effect {
+                padding: 0.625rem !important;
+                max-width: calc(100vw - 0.5rem) !important;
+            }
+            
+            body {
+                padding: 0.25rem !important;
+                padding-top: 0.375rem !important;
+            }
+            
+            h2 {
+                font-size: 1.125rem !important;
+            }
+            
+            input[type="text"] {
+                padding-left: 2.25rem !important;
+                font-size: 0.8125rem !important;
+            }
+            
+            button {
+                font-size: 0.8125rem !important;
+            }
+            
+            .step-indicator {
+                transform: scale(0.8);
             }
         }
         
