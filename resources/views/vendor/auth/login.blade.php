@@ -280,7 +280,6 @@
             }
             
             input[type="text"] {
-                padding-left: 2.25rem !important;
                 font-size: 0.8125rem !important;
             }
             
