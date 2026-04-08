@@ -3,6 +3,27 @@
 @section('title', __('vendor.cart'))
 @section('page-title', __('vendor.cart'))
 
+@section('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
+<style>
+    .flatpickr-calendar { border-radius: 12px !important; box-shadow: 0 10px 40px rgba(0,0,0,.15) !important; border: 1px solid #e5e7eb !important; font-family: 'Inter', sans-serif !important; }
+    .flatpickr-day.selected, .flatpickr-day.selected:hover { background: #059669 !important; border-color: #059669 !important; }
+    .flatpickr-day.today { border-color: #059669 !important; }
+    .flatpickr-day:hover { background: #d1fae5 !important; }
+    .flatpickr-months .flatpickr-month { height: 40px !important; }
+    .flatpickr-current-month { font-size: 1rem !important; font-weight: 600 !important; }
+    .flatpickr-time input { font-size: 1rem !important; }
+    .date-input-wrapper { position: relative; }
+    .date-input-wrapper .date-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; font-size: 14px; }
+    .date-input-wrapper input { padding-right: 32px; }
+    .date-clear-btn { position: absolute; right: 28px; top: 50%; transform: translateY(-50%); color: #9ca3af; cursor: pointer; font-size: 12px; padding: 2px 4px; display: none; }
+    .date-clear-btn:hover { color: #ef4444; }
+    .date-input-wrapper input:not([value=""]) ~ .date-clear-btn,
+    .date-input-wrapper input.has-value ~ .date-clear-btn { display: block; }
+</style>
+@endsection
+
 @section('content')
 <!-- Header with Add Button -->
 <div class="mb-6 flex items-start justify-between gap-3">
@@ -502,30 +523,80 @@
                         <label class="block text-sm font-semibold text-gray-700 mb-2">
                             {{ __('vendor.select') }} {{ __('vendor.customer') }} <span class="text-red-500">*</span>
                         </label>
-                        <div class="relative">
+                        <input type="hidden" name="customer_id" id="modal_customer_id" required>
+                        <div class="relative" id="customerSearchWrapper">
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <i class="fas fa-user text-gray-400"></i>
+                                <i class="fas fa-search text-gray-400"></i>
                             </div>
-                            <select name="customer_id" 
-                                    id="modal_customer_id"
-                                    class="w-full pl-11 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                    required>
-                                <option value="">{{ __('vendor.choose_customer') }}</option>
-                                @foreach($customers as $customer)
-                                    <option value="{{ $customer->id }}">
-                                        {{ $customer->name }} - {{ $customer->mobile }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <input type="text" 
+                                   id="customerSearchInput" 
+                                   class="w-full pl-11 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                   placeholder="Search customer by name or mobile..."
+                                   autocomplete="off">
+                            <button type="button" id="customerClearBtn" class="absolute inset-y-0 right-0 pr-4 hidden items-center text-gray-400 hover:text-gray-600" onclick="clearCustomerSelection()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <!-- Dropdown -->
+                            <div id="customerDropdown" class="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto hidden">
+                                <!-- Add Customer Option -->
+                                <div id="addCustomerBtn" 
+                                     class="px-4 py-3 flex items-center gap-2 text-emerald-600 font-semibold cursor-pointer hover:bg-emerald-50 border-b border-gray-100 sticky top-0 bg-white"
+                                     onclick="openAddCustomerInline()">
+                                    <i class="fas fa-plus-circle"></i>
+                                    <span>Add New Customer</span>
+                                </div>
+                                <!-- Customer List -->
+                                <div id="customerList">
+                                    @foreach($customers as $customer)
+                                        <div class="customer-option px-4 py-2.5 cursor-pointer hover:bg-emerald-50 flex items-center justify-between transition-colors"
+                                             data-id="{{ $customer->id }}" 
+                                             data-name="{{ $customer->name }}" 
+                                             data-mobile="{{ $customer->mobile }}"
+                                             onclick="selectCustomer(this)">
+                                            <div>
+                                                <span class="text-sm font-medium text-gray-900">{{ $customer->name }}</span>
+                                                <span class="text-xs text-gray-500 ml-2">{{ $customer->mobile }}</span>
+                                            </div>
+                                            <i class="fas fa-check text-emerald-500 hidden check-icon"></i>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <div id="customerNoResults" class="px-4 py-3 text-sm text-gray-500 text-center hidden">
+                                    <i class="fas fa-search mr-1"></i> No customers found
+                                </div>
+                            </div>
                         </div>
-                        @if($customers->count() == 0)
-                            <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                <p class="text-sm text-yellow-800">
-                                    <i class="fas fa-info-circle mr-1"></i>
-                                    {{ __('vendor.no_customers') }}. <a href="{{ route('vendor.customers.create') }}" class="font-semibold underline hover:text-yellow-900">{{ __('vendor.create_customer_first') }}</a>
-                                </p>
+                    </div>
+
+                    <!-- Inline Add Customer Form -->
+                    <div id="addCustomerInline" class="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg hidden">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-bold text-emerald-800">
+                                <i class="fas fa-user-plus mr-1"></i> Add New Customer
+                            </h4>
+                            <button type="button" onclick="closeAddCustomerInline()" class="text-gray-400 hover:text-gray-600">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Name <span class="text-red-500">*</span></label>
+                                <input type="text" id="newCustomerName" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="Customer name">
                             </div>
-                        @endif
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Mobile <span class="text-red-500">*</span></label>
+                                <input type="text" id="newCustomerMobile" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="10 digit mobile" maxlength="10">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Address</label>
+                            <input type="text" id="newCustomerAddress" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent" placeholder="Address (optional)">
+                        </div>
+                        <p id="addCustomerError" class="text-xs text-red-600 mb-2 hidden"></p>
+                        <button type="button" onclick="saveNewCustomer()" id="saveCustomerBtn"
+                                class="w-full px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all active:scale-95">
+                            <i class="fas fa-save mr-1"></i> Save & Select Customer
+                        </button>
                     </div>
 
                     <!-- Cart Name -->
@@ -553,27 +624,43 @@
                             {{ __('vendor.booking_dates') }} <span class="text-gray-500 text-xs">({{ __('vendor.optional') }})</span>
                         </label>
                         
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="grid grid-cols-2 gap-4">
                             <!-- Start Time -->
                             <div>
-                                <label for="modal_start_time" class="block text-xs font-medium text-gray-600 mb-2">
-                                    {{ __('vendor.start_date_time') }}
+                                <label for="modal_start_time" class="block text-sm font-semibold text-gray-700 mb-1">
+                                    <i class="far fa-calendar-alt text-emerald-600 mr-1"></i>{{ __('vendor.start_date_time') }}
                                 </label>
-                                <input type="datetime-local" 
-                                       name="start_time" 
-                                       id="modal_start_time" 
-                                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                                <div class="date-input-wrapper">
+                                    <input type="text" 
+                                           name="start_time" 
+                                           id="modal_start_time" 
+                                           readonly
+                                           class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white cursor-pointer"
+                                           placeholder="Select start date">
+                                    <span class="date-clear-btn" onclick="clearModalDate('start')" title="Clear">
+                                        <i class="fas fa-times"></i>
+                                    </span>
+                                    <span class="date-icon"><i class="fas fa-chevron-down"></i></span>
+                                </div>
                             </div>
 
                             <!-- End Time -->
                             <div>
-                                <label for="modal_end_time" class="block text-xs font-medium text-gray-600 mb-2">
-                                    {{ __('vendor.end_date_time') }}
+                                <label for="modal_end_time" class="block text-sm font-semibold text-gray-700 mb-1">
+                                    <i class="far fa-calendar-alt text-emerald-600 mr-1"></i>{{ __('vendor.end_date_time') }}
                                 </label>
-                                <input type="datetime-local" 
-                                       name="end_time" 
-                                       id="modal_end_time" 
-                                       class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                                <div class="date-input-wrapper">
+                                    <input type="text" 
+                                           name="end_time" 
+                                           id="modal_end_time" 
+                                           readonly
+                                           class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white cursor-pointer"
+                                           placeholder="Select end date">
+                                    <span class="date-clear-btn" onclick="clearModalDate('end')" title="Clear">
+                                        <i class="fas fa-times"></i>
+                                    </span>
+                                    <span class="date-icon"><i class="fas fa-chevron-down"></i></span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -613,8 +700,72 @@
 @endsection
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // --- Flatpickr Date Pickers ---
+    function toggleClearBtn(instance) {
+        const wrapper = instance.element.closest('.date-input-wrapper');
+        if (!wrapper) return;
+        const clearBtn = wrapper.querySelector('.date-clear-btn');
+        if (clearBtn) {
+            clearBtn.style.display = instance.selectedDates.length > 0 ? 'block' : 'none';
+        }
+    }
+
+    const fpConfig = {
+        enableTime: true,
+        dateFormat: 'Y-m-d H:i',
+        altInput: true,
+        altFormat: 'M j, Y h:i K',
+        time_24hr: false,
+        allowInput: false,
+        disableMobile: false,
+        monthSelectorType: 'dropdown',
+        animate: true,
+        onReady: function(selectedDates, dateStr, instance) {
+            toggleClearBtn(instance);
+        },
+        onChange: function(selectedDates, dateStr, instance) {
+            toggleClearBtn(instance);
+        }
+    };
+
+    const modalStartPicker = flatpickr('#modal_start_time', {
+        ...fpConfig,
+        onChange: function(selectedDates, dateStr, instance) {
+            toggleClearBtn(instance);
+            if (selectedDates.length > 0) {
+                modalEndPicker.set('minDate', selectedDates[0]);
+            } else {
+                modalEndPicker.set('minDate', null);
+            }
+        }
+    });
+
+    const modalEndPicker = flatpickr('#modal_end_time', {
+        ...fpConfig,
+        onChange: function(selectedDates, dateStr, instance) {
+            toggleClearBtn(instance);
+            if (selectedDates.length > 0) {
+                modalStartPicker.set('maxDate', selectedDates[0]);
+            } else {
+                modalStartPicker.set('maxDate', null);
+            }
+        }
+    });
+
+    window.clearModalDate = function(which) {
+        if (which === 'start') {
+            modalStartPicker.clear();
+            modalEndPicker.set('minDate', null);
+        } else {
+            modalEndPicker.clear();
+            modalStartPicker.set('maxDate', null);
+        }
+        toggleClearBtn(which === 'start' ? modalStartPicker : modalEndPicker);
+    };
+
     const loader = document.getElementById('cartsLoadingIndicator');
     const container = document.getElementById('cartsContainer');
     
@@ -661,6 +812,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Reset form
                     createCartForm.reset();
+                    clearCustomerSelection();
+                    closeAddCustomerInline();
+                    modalStartPicker.clear();
+                    modalEndPicker.clear();
+                    modalEndPicker.set('minDate', null);
+                    modalStartPicker.set('maxDate', null);
                     
                     // Close modal
                     window.dispatchEvent(new CustomEvent('close-create-cart-modal'));
@@ -708,6 +865,156 @@ function showToast(message, type = 'success') {
     setTimeout(() => {
         toast.remove();
     }, 5000);
+}
+
+// --- Customer Search & Add ---
+const customerSearchInput = document.getElementById('customerSearchInput');
+const customerDropdown = document.getElementById('customerDropdown');
+const customerList = document.getElementById('customerList');
+const customerNoResults = document.getElementById('customerNoResults');
+const customerClearBtn = document.getElementById('customerClearBtn');
+const customerIdInput = document.getElementById('modal_customer_id');
+
+customerSearchInput.addEventListener('focus', function() {
+    customerDropdown.classList.remove('hidden');
+    filterCustomers();
+});
+
+customerSearchInput.addEventListener('input', function() {
+    customerDropdown.classList.remove('hidden');
+    filterCustomers();
+});
+
+document.addEventListener('click', function(e) {
+    if (!document.getElementById('customerSearchWrapper').contains(e.target)) {
+        customerDropdown.classList.add('hidden');
+    }
+});
+
+function filterCustomers() {
+    const query = customerSearchInput.value.toLowerCase().trim();
+    const options = customerList.querySelectorAll('.customer-option');
+    let hasVisible = false;
+
+    options.forEach(function(opt) {
+        const name = opt.dataset.name.toLowerCase();
+        const mobile = opt.dataset.mobile.toLowerCase();
+        if (name.includes(query) || mobile.includes(query)) {
+            opt.classList.remove('hidden');
+            hasVisible = true;
+        } else {
+            opt.classList.add('hidden');
+        }
+    });
+
+    customerNoResults.classList.toggle('hidden', hasVisible || query === '');
+}
+
+function selectCustomer(el) {
+    customerIdInput.value = el.dataset.id;
+    customerSearchInput.value = el.dataset.name + ' - ' + el.dataset.mobile;
+    customerDropdown.classList.add('hidden');
+    customerClearBtn.classList.remove('hidden');
+    customerClearBtn.classList.add('flex');
+
+    // Show check on selected
+    customerList.querySelectorAll('.check-icon').forEach(i => i.classList.add('hidden'));
+    el.querySelector('.check-icon').classList.remove('hidden');
+}
+
+function clearCustomerSelection() {
+    customerIdInput.value = '';
+    customerSearchInput.value = '';
+    customerClearBtn.classList.add('hidden');
+    customerClearBtn.classList.remove('flex');
+    customerList.querySelectorAll('.check-icon').forEach(i => i.classList.add('hidden'));
+    customerSearchInput.focus();
+}
+
+function openAddCustomerInline() {
+    customerDropdown.classList.add('hidden');
+    document.getElementById('addCustomerInline').classList.remove('hidden');
+    document.getElementById('newCustomerName').value = customerSearchInput.value.trim();
+    document.getElementById('newCustomerMobile').value = '';
+    document.getElementById('newCustomerAddress').value = '';
+    document.getElementById('addCustomerError').classList.add('hidden');
+    document.getElementById('newCustomerName').focus();
+}
+
+function closeAddCustomerInline() {
+    document.getElementById('addCustomerInline').classList.add('hidden');
+}
+
+function saveNewCustomer() {
+    const name = document.getElementById('newCustomerName').value.trim();
+    const mobile = document.getElementById('newCustomerMobile').value.trim();
+    const address = document.getElementById('newCustomerAddress').value.trim();
+    const errorEl = document.getElementById('addCustomerError');
+    const saveBtn = document.getElementById('saveCustomerBtn');
+
+    if (!name || !mobile) {
+        errorEl.textContent = 'Name and mobile are required.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+    if (!/^\d{10}$/.test(mobile)) {
+        errorEl.textContent = 'Mobile must be exactly 10 digits.';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    errorEl.classList.add('hidden');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving...';
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    fetch('{{ route("vendor.customers.store") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ name, mobile, address })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.customer) {
+            const c = data.customer;
+            // Add to dropdown list
+            const optionHtml = `<div class="customer-option px-4 py-2.5 cursor-pointer hover:bg-emerald-50 flex items-center justify-between transition-colors"
+                 data-id="${c.id}" data-name="${c.name}" data-mobile="${c.mobile}"
+                 onclick="selectCustomer(this)">
+                <div>
+                    <span class="text-sm font-medium text-gray-900">${c.name}</span>
+                    <span class="text-xs text-gray-500 ml-2">${c.mobile}</span>
+                </div>
+                <i class="fas fa-check text-emerald-500 hidden check-icon"></i>
+            </div>`;
+            customerList.insertAdjacentHTML('afterbegin', optionHtml);
+
+            // Auto-select the new customer
+            const newOpt = customerList.querySelector('.customer-option');
+            selectCustomer(newOpt);
+
+            closeAddCustomerInline();
+            showToast('Customer added successfully!', 'success');
+        } else {
+            errorEl.textContent = data.message || 'Error creating customer.';
+            errorEl.classList.remove('hidden');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        errorEl.textContent = 'Something went wrong. Please try again.';
+        errorEl.classList.remove('hidden');
+    })
+    .finally(() => {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save mr-1"></i> Save & Select Customer';
+    });
 }
 </script>
 @endsection

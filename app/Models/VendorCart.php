@@ -18,11 +18,17 @@ class VendorCart extends Model
         'sub_total',
         'tax_total',
         'discount_total',
+        'discount_type',
+        'discount_value',
+        'discount_amount',
         'token_amount',
         'paid_amount',
         'grand_total',
         'start_time',
         'end_time',
+        'coupon_id',
+        'coupon_code',
+        'coupon_discount',
     ];
 
     protected $casts = [
@@ -61,5 +67,13 @@ class VendorCart extends Model
     public function items(): HasMany
     {
         return $this->hasMany(VendorCartItem::class);
+    }
+
+    /**
+     * Get the coupon applied to this cart
+     */
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
     }
 }

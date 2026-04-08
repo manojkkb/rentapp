@@ -1,4 +1,3 @@
-<!-- Sidebar for larger screens -->
 <aside 
     x-show="sidebarOpen" 
     @click.away="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
@@ -143,6 +142,44 @@
                     <span class="ml-3">{{ __('vendor.staff') }}</span>
                 </a>
             </li>
+            <!-- Coupons -->
+            <li>
+                <a href="{{ route('vendor.coupons.index') }}" 
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
+                   class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                          {{ request()->routeIs('vendor.coupons.*') 
+                              ? 'bg-emerald-500 text-white' 
+                              : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-600' }}">
+                    <i class="fas fa-ticket-alt w-5"></i>
+                    <span class="ml-3">{{ __('vendor.coupons') }}</span>
+                </a>
+            </li>
+
+            <!-- Calendar -->
+            <li>
+                <a href="{{ route('vendor.calendar') }}" 
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
+                   class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                          {{ request()->routeIs('vendor.calendar') 
+                              ? 'bg-emerald-500 text-white' 
+                              : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-600' }}">
+                    <i class="fas fa-calendar-alt w-5"></i>
+                    <span class="ml-3">Calendar</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="{{ route('vendor.subscription.plans') }}"
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
+                   class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors
+                          {{ request()->routeIs('vendor.subscription.plans.*')
+                              ? 'bg-emerald-500 text-white'
+                              : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-600' }}">
+                    <i class="fas fa-file-invoice-dollar w-5"></i>
+                    <span class="ml-3">{{ __('vendor.subscription_plans') }}</span>
+                </a>
+            </li>
+
         </ul>
     </nav>
 

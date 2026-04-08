@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
             VendorSeeder::class,
             CategorySeeder::class,
             ItemSeeder::class,
+            CouponSeeder::class,
+            SubscriptionPlanSeeder::class,
         ]);
     }
 }

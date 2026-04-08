@@ -861,7 +861,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('Filter script loaded');
     
-    // Fetch items function
+    // Fetch items function (global scope for access from form handlers)
+    window.fetchItems = fetchItems;
     function fetchItems(page = 1) {
         console.log('Fetching items...', {
             search: searchInput.value,

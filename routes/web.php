@@ -9,8 +9,11 @@ use App\Http\Controllers\Vendor\CategoryController;
 use App\Http\Controllers\Vendor\ItemController;
 use App\Http\Controllers\Vendor\ReviewController;
 use App\Http\Controllers\Vendor\StaffController;
+use App\Http\Controllers\Vendor\SubscriptionVendorController;
 use App\Http\Controllers\Vendor\VendorCartController;
 use App\Http\Controllers\Vendor\VendorController;
+use App\Http\Controllers\Vendor\VendorCouponController;
+use App\Http\Controllers\Vendor\VendorCalendarController;
 use App\Http\Controllers\Vendor\VendorCustomerController;
 use App\Http\Controllers\Vendor\VendorOrderController;
 use App\Http\Controllers\WelcomeCtrl;
@@ -92,11 +95,24 @@ Route::prefix('vendor')->name('vendor.')->group(function ()
 
         // Carts
         Route::resource('carts', VendorCartController::class);
+
+        Route::resource('coupons', VendorCouponController::class);
+        Route::post('coupons/{coupon}/toggle', [VendorCouponController::class, 'toggleStatus'])->name('coupons.toggle');
+
+        // Calendar
+        Route::get('calendar', [VendorCalendarController::class, 'index'])->name('calendar');
+        Route::get('calendar/events', [VendorCalendarController::class, 'events'])->name('calendar.events');
         
         // Cart Items Management
         Route::post('carts/{cart}/items', [VendorCartController::class, 'addItem'])->name('carts.items.add');
         Route::put('carts/{cart}/items/{item}', [VendorCartController::class, 'updateItem'])->name('carts.items.update');
         Route::delete('carts/{cart}/items/{item}', [VendorCartController::class, 'removeItem'])->name('carts.items.remove');
+        Route::delete('carts/{cart}/empty', [VendorCartController::class, 'emptyCart'])->name('carts.empty');
+        Route::post('carts/{cart}/discount', [VendorCartController::class, 'applyDiscount'])->name('carts.discount');
+        Route::delete('carts/{cart}/discount', [VendorCartController::class, 'removeDiscount'])->name('carts.discount.remove');
+        Route::post('carts/{cart}/coupon', [VendorCartController::class, 'applyCoupon'])->name('carts.coupon.apply');
+        Route::delete('carts/{cart}/coupon', [VendorCartController::class, 'removeCoupon'])->name('carts.coupon.remove');
+        Route::get('carts/{cart}/coupons', [VendorCartController::class, 'listCoupons'])->name('carts.coupons.list');
         
         // Place Order from Cart
         Route::post('carts/{cart}/place-order', [VendorCartController::class, 'placeOrder'])->name('carts.place-order');
@@ -110,6 +126,9 @@ Route::prefix('vendor')->name('vendor.')->group(function ()
         Route::get('reviews', [ReviewController::class, 'index'])->name('reviews.index');
         Route::post('reviews/{review}/reply', [ReviewController::class, 'reply'])->name('reviews.reply');
         Route::post('reviews/{review}/toggle', [ReviewController::class, 'toggleApproval'])->name('reviews.toggle');
-        
+
+         Route::get('subscription/plans', [SubscriptionVendorController::class, 'subscriptionPlans'])->name('subscription.plans');
+         Route::post('subscription/create-order', [SubscriptionVendorController::class, 'createOrder'])->name('subscription.create-order');
+         Route::post('subscription/verify-payment', [SubscriptionVendorController::class, 'verifyPayment'])->name('subscription.verify-payment');        
     });
 });

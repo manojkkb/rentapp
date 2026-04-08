@@ -3,6 +3,27 @@
 @section('title', __('vendor.add') . ' ' . __('vendor.cart'))
 @section('page-title', __('vendor.add') . ' ' . __('vendor.cart'))
 
+@section('styles')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
+<style>
+    .flatpickr-calendar { border-radius: 12px !important; box-shadow: 0 10px 40px rgba(0,0,0,.15) !important; border: 1px solid #e5e7eb !important; font-family: 'Inter', sans-serif !important; }
+    .flatpickr-day.selected, .flatpickr-day.selected:hover { background: #059669 !important; border-color: #059669 !important; }
+    .flatpickr-day.today { border-color: #059669 !important; }
+    .flatpickr-day:hover { background: #d1fae5 !important; }
+    .flatpickr-months .flatpickr-month { height: 40px !important; }
+    .flatpickr-current-month { font-size: 1rem !important; font-weight: 600 !important; }
+    .flatpickr-time input { font-size: 1rem !important; }
+    .date-input-wrapper { position: relative; }
+    .date-input-wrapper .date-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; font-size: 14px; }
+    .date-input-wrapper input { padding-right: 32px; }
+    .date-clear-btn { position: absolute; right: 28px; top: 50%; transform: translateY(-50%); color: #9ca3af; cursor: pointer; font-size: 12px; padding: 2px 4px; display: none; }
+    .date-clear-btn:hover { color: #ef4444; }
+    .date-input-wrapper input:not([value=""]) ~ .date-clear-btn,
+    .date-input-wrapper input.has-value ~ .date-clear-btn { display: block; }
+</style>
+@endsection
+
 @section('content')
 <!-- Back Button -->
 <div class="mb-4 md:mb-6">
@@ -105,21 +126,29 @@
             <!-- Booking Dates -->
             <div class="mb-6 md:mb-8">
                 <label class="block text-sm md:text-base font-semibold text-gray-700 mb-3">
-                    <i class="fas fa-calendar text-blue-600 mr-1"></i>
+                    <i class="fas fa-calendar text-emerald-600 mr-1"></i>
                     {{ __('vendor.booking_dates') }} <span class="text-gray-500 text-xs">({{ __('vendor.optional') }})</span>
                 </label>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4">
                     <!-- Start Time -->
                     <div>
-                        <label for="start_time" class="block text-xs font-medium text-gray-600 mb-2">
-                            {{ __('vendor.start_date_time') }}
+                        <label for="start_time" class="block text-sm font-semibold text-gray-700 mb-1">
+                            <i class="far fa-calendar-alt text-emerald-600 mr-1"></i>{{ __('vendor.start_date_time') }}
                         </label>
-                        <input type="datetime-local" 
-                               name="start_time" 
-                               id="start_time" 
-                               value="{{ old('start_time') }}"
-                               class="w-full px-4 py-2.5 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all @error('start_time') border-red-500 @enderror">
+                        <div class="date-input-wrapper">
+                            <input type="text" 
+                                   name="start_time" 
+                                   id="start_time" 
+                                   value="{{ old('start_time') }}"
+                                   readonly
+                                   class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white cursor-pointer @error('start_time') border-red-500 @enderror"
+                                   placeholder="Select start date">
+                            <span class="date-clear-btn" onclick="clearDate('start')" title="Clear">
+                                <i class="fas fa-times"></i>
+                            </span>
+                            <span class="date-icon"><i class="fas fa-chevron-down"></i></span>
+                        </div>
                         @error('start_time')
                             <p class="mt-2 text-sm text-red-600 flex items-center">
                                 <i class="fas fa-exclamation-circle mr-1"></i>
@@ -130,14 +159,22 @@
 
                     <!-- End Time -->
                     <div>
-                        <label for="end_time" class="block text-xs font-medium text-gray-600 mb-2">
-                            {{ __('vendor.end_date_time') }}
+                        <label for="end_time" class="block text-sm font-semibold text-gray-700 mb-1">
+                            <i class="far fa-calendar-alt text-emerald-600 mr-1"></i>{{ __('vendor.end_date_time') }}
                         </label>
-                        <input type="datetime-local" 
-                               name="end_time" 
-                               id="end_time" 
-                               value="{{ old('end_time') }}"
-                               class="w-full px-4 py-2.5 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all @error('end_time') border-red-500 @enderror">
+                        <div class="date-input-wrapper">
+                            <input type="text" 
+                                   name="end_time" 
+                                   id="end_time" 
+                                   value="{{ old('end_time') }}"
+                                   readonly
+                                   class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white cursor-pointer @error('end_time') border-red-500 @enderror"
+                                   placeholder="Select end date">
+                            <span class="date-clear-btn" onclick="clearDate('end')" title="Clear">
+                                <i class="fas fa-times"></i>
+                            </span>
+                            <span class="date-icon"><i class="fas fa-chevron-down"></i></span>
+                        </div>
                         @error('end_time')
                             <p class="mt-2 text-sm text-red-600 flex items-center">
                                 <i class="fas fa-exclamation-circle mr-1"></i>
@@ -176,4 +213,73 @@
         </form>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function toggleClearBtn(instance) {
+        const wrapper = instance.element.closest('.date-input-wrapper');
+        if (!wrapper) return;
+        const clearBtn = wrapper.querySelector('.date-clear-btn');
+        if (clearBtn) {
+            clearBtn.style.display = instance.selectedDates.length > 0 ? 'block' : 'none';
+        }
+    }
+
+    const fpConfig = {
+        enableTime: true,
+        dateFormat: 'Y-m-d H:i',
+        altInput: true,
+        altFormat: 'M j, Y h:i K',
+        time_24hr: false,
+        allowInput: false,
+        disableMobile: false,
+        monthSelectorType: 'dropdown',
+        animate: true,
+        onReady: function(selectedDates, dateStr, instance) {
+            toggleClearBtn(instance);
+        },
+        onChange: function(selectedDates, dateStr, instance) {
+            toggleClearBtn(instance);
+        }
+    };
+
+    const startPicker = flatpickr('#start_time', {
+        ...fpConfig,
+        onChange: function(selectedDates, dateStr, instance) {
+            toggleClearBtn(instance);
+            if (selectedDates.length > 0) {
+                endPicker.set('minDate', selectedDates[0]);
+            } else {
+                endPicker.set('minDate', null);
+            }
+        }
+    });
+
+    const endPicker = flatpickr('#end_time', {
+        ...fpConfig,
+        onChange: function(selectedDates, dateStr, instance) {
+            toggleClearBtn(instance);
+            if (selectedDates.length > 0) {
+                startPicker.set('maxDate', selectedDates[0]);
+            } else {
+                startPicker.set('maxDate', null);
+            }
+        }
+    });
+
+    window.clearDate = function(which) {
+        if (which === 'start') {
+            startPicker.clear();
+            endPicker.set('minDate', null);
+        } else {
+            endPicker.clear();
+            startPicker.set('maxDate', null);
+        }
+        toggleClearBtn(which === 'start' ? startPicker : endPicker);
+    };
+});
+</script>
 @endsection
