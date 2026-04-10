@@ -3,9 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Vendor extends Model
 {
@@ -156,6 +157,22 @@ class Vendor extends Model
         return $query->where('is_active', true);
     }
     
+    /**
+     * Public URL for the business logo, or null if missing / not on disk.
+     */
+    public function getLogoUrlAttribute(): ?string
+    {
+        if (! $this->logo) {
+            return null;
+        }
+
+        if (! Storage::disk('public')->exists($this->logo)) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->logo);
+    }
+
     /**
      * Get the full address.
      */

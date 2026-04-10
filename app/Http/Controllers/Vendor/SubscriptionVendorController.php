@@ -15,10 +15,16 @@ class SubscriptionVendorController extends Controller
     //
     public function subscriptionPlans()
     {
-        $plans = SubscriptionPlan::all();
+        $typeOrder = ['silver' => 1, 'gold' => 2, 'diamond' => 3];
 
+        $plansByType = SubscriptionPlan::query()
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->get()
+            ->groupBy('type')
+            ->sortBy(fn ($_, $type) => $typeOrder[$type] ?? 99);
 
-        return view('vendor.subscription.plans', compact('plans'));
+        return view('vendor.subscription.plans', compact('plansByType'));
     }
     public function createOrder(Request $request)
     {
