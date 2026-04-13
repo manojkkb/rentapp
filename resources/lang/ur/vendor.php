@@ -392,6 +392,7 @@ return [
     'calendar' => 'کیلنڈر',
     'booking_calendar' => 'بکنگ کیلنڈر',
     'calendar_total_bookings' => 'کل بکنگ',
+    'pwa_description' => 'اپنا کرایے کا اسٹور، آرڈر اور بکنگز منظم کریں۔',
     'view_all_bookings' => 'تمام بکنگ ایک نظر میں دیکھیں',
     'view_full_order' => 'مکمل آرڈر دیکھیں',
     'today' => 'آج',

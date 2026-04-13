@@ -392,6 +392,7 @@ return [
     'calendar' => 'ಕ್ಯಾಲೆಂಡರ್',
     'booking_calendar' => 'ಬುಕಿಂಗ್ ಕ್ಯಾಲೆಂಡರ್',
     'calendar_total_bookings' => 'ಒಟ್ಟು ಬುಕಿಂಗ್',
+    'pwa_description' => 'ನಿಮ್ಮ ಬಾಡಿಗೆ ಅಂಗಡಿ, ಆರ್ಡರ್‌ಗಳು ಮತ್ತು ಬುಕಿಂಗ್‌ಗಳನ್ನು ನಿರ್ವಹಿಸಿ.',
     'view_all_bookings' => 'ಎಲ್ಲಾ ಬುಕಿಂಗ್‌ಗಳನ್ನು ಒಂದೇ ನೋಟದಲ್ಲಿ ನೋಡಿ',
     'view_full_order' => 'ಪೂರ್ಣ ಆರ್ಡರ್ ನೋಡಿ',
     'today' => 'ಇಂದು',

@@ -392,6 +392,7 @@ return [
     'calendar' => 'କ୍ୟାଲେଣ୍ଡର',
     'booking_calendar' => 'ବୁକିଂ କ୍ୟାଲେଣ୍ଡର',
     'calendar_total_bookings' => 'ମୋଟ ବୁକିଂ',
+    'pwa_description' => 'ଆପଣଙ୍କ ଭଡ଼ା ଷ୍ଟୋର୍, ଅର୍ଡର୍ ଏବଂ ବୁକିଂ ପରିଚାଳନା କରନ୍ତୁ।',
     'view_all_bookings' => 'ସମସ୍ତ ବୁକିଂ ଏକ ନଜରରେ ଦେଖନ୍ତୁ',
     'view_full_order' => 'ସମ୍ପୂର୍ଣ୍ଣ ଅର୍ଡର ଦେଖନ୍ତୁ',
     'today' => 'ଆଜି',

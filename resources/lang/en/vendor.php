@@ -426,6 +426,7 @@ return [
     'calendar' => 'Calendar',
     'booking_calendar' => 'Booking Calendar',
     'calendar_total_bookings' => 'Total bookings',
+    'pwa_description' => 'Manage your rental store, orders, and bookings.',
     'view_all_bookings' => 'View all bookings at a glance',
     'view_full_order' => 'View Full Order',
     'today' => 'Today',

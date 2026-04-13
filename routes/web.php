@@ -16,6 +16,7 @@ use App\Http\Controllers\Vendor\VendorCouponController;
 use App\Http\Controllers\Vendor\VendorCalendarController;
 use App\Http\Controllers\Vendor\VendorCustomerController;
 use App\Http\Controllers\Vendor\VendorOrderController;
+use App\Http\Controllers\Vendor\VendorPwaController;
 use App\Http\Controllers\WelcomeCtrl;
 use App\Http\Middleware\AdminAuthMidddleware;
 use App\Http\Middleware\VendorAuthMiddleware;
@@ -44,7 +45,8 @@ Route::prefix('admin')->name('admin.')->group(function ()
 
 Route::prefix('vendor')->name('vendor.')->group(function () 
 {
-    
+    Route::get('manifest.webmanifest', [VendorPwaController::class, 'manifest'])->name('manifest');
+
     Route::get('login',[AuthVendorCtrl::class, 'loginForm'])->name('login');
     Route::post('login',[AuthVendorCtrl::class, 'login'])->name('login.submit');
     Route::post('otp/send',[AuthVendorCtrl::class, 'sendOTP'])->name('otp.send');

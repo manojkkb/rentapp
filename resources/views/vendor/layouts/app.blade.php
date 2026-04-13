@@ -1,9 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="#059669" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#047857" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="{{ config('app.name', 'RentApp') }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="{{ config('app.name', 'RentApp') }}">
+    <link rel="manifest" href="{{ route('vendor.manifest') }}">
+    <link rel="apple-touch-icon" href="{{ asset('vendor/icons/icon-192.png') }}">
     <title>@yield('title', 'Vendor Home - RentApp')</title>
     
     <!-- Vite Assets (includes Tailwind CSS, Alpine.js, Font Awesome, and Inter Font) -->
@@ -45,6 +54,21 @@
     
     <!-- Mobile Bottom Navigation -->
     @include('vendor.layouts.mobile-nav')
+
+    @php
+        $pwaHomePath = parse_url(route('vendor.home', [], false), PHP_URL_PATH) ?: '/vendor/home';
+        $pwaSwScope = rtrim(str_replace('\\', '/', dirname($pwaHomePath)), '/') . '/';
+    @endphp
+    <script>
+        (function () {
+            if (!('serviceWorker' in navigator)) return;
+            var swUrl = @json(asset('vendor/sw.js'));
+            var scope = @json($pwaSwScope);
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register(swUrl, { scope: scope }).catch(function () {});
+            });
+        })();
+    </script>
     
     @yield('scripts')
 </body>

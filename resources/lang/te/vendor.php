@@ -392,6 +392,7 @@ return [
     'calendar' => 'క్యాలెండర్',
     'booking_calendar' => 'బుకింగ్ క్యాలెండర్',
     'calendar_total_bookings' => 'మొత్తం బుకింగ్‌లు',
+    'pwa_description' => 'మీ అద్దె దుకాణం, ఆర్డర్లు మరియు బుకింగ్‌లను నిర్వహించండి.',
     'view_all_bookings' => 'అన్ని బుకింగ్‌లను ఒక చూపులో చూడండి',
     'view_full_order' => 'పూర్తి ఆర్డర్ చూడండి',
     'today' => 'ఈరోజు',

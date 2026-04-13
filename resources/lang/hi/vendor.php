@@ -426,6 +426,7 @@ return [
     'calendar' => 'कैलेंडर',
     'booking_calendar' => 'बुकिंग कैलेंडर',
     'calendar_total_bookings' => 'कुल बुकिंग',
+    'pwa_description' => 'अपना रेंटल स्टोर, ऑर्डर और बुकिंग प्रबंधित करें।',
     'view_all_bookings' => 'सभी बुकिंग एक नज़र में देखें',
     'view_full_order' => 'पूरा ऑर्डर देखें',
     'today' => 'आज',

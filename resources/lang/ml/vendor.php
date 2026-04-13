@@ -392,6 +392,7 @@ return [
     'calendar' => 'കലണ്ടർ',
     'booking_calendar' => 'ബുക്കിംഗ് കലണ്ടർ',
     'calendar_total_bookings' => 'മൊത്തം ബുക്കിംഗുകൾ',
+    'pwa_description' => 'നിങ്ങളുടെ വാടക സ്റ്റോർ, ഓർഡറുകൾ, ബുക്കിംഗുകൾ നിയന്ത്രിക്കുക.',
     'view_all_bookings' => 'എല്ലാ ബുക്കിംഗുകളും ഒറ്റനോട്ടത്തിൽ കാണുക',
     'view_full_order' => 'മുഴുവൻ ഓർഡർ കാണുക',
     'today' => 'ഇന്ന്',

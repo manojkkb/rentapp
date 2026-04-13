@@ -392,6 +392,7 @@ return [
     'calendar' => 'ক্যালেন্ডার',
     'booking_calendar' => 'বুকিং ক্যালেন্ডার',
     'calendar_total_bookings' => 'মোট বুকিং',
+    'pwa_description' => 'আপনার ভাড়ার দোকান, অর্ডার ও বুকিং পরিচালনা করুন।',
     'view_all_bookings' => 'সব বুকিং এক নজরে দেখুন',
     'view_full_order' => 'সম্পূর্ণ অর্ডার দেখুন',
     'today' => 'আজ',

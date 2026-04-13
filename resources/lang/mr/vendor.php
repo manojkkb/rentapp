@@ -392,6 +392,7 @@ return [
     'calendar' => 'कॅलेंडर',
     'booking_calendar' => 'बुकिंग कॅलेंडर',
     'calendar_total_bookings' => 'एकूण बुकिंग',
+    'pwa_description' => 'तुमचे भाडेपट्टी स्टोअर, ऑर्डर आणि बुकिंग व्यवस्थापित करा.',
     'view_all_bookings' => 'सर्व बुकिंग एका नजरेत पहा',
     'view_full_order' => 'संपूर्ण ऑर्डर पहा',
     'today' => 'आज',

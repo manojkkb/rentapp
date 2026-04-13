@@ -392,6 +392,7 @@ return [
     'calendar' => 'કૅલેન્ડર',
     'booking_calendar' => 'બુકિંગ કૅલેન્ડર',
     'calendar_total_bookings' => 'કુલ બુકિંગ',
+    'pwa_description' => 'તમારું ભાડેની દુકાન, ઓર્ડર અને બુકિંગ સંચાલિત કરો.',
     'view_all_bookings' => 'બધી બુકિંગ એક નજરમાં જુઓ',
     'view_full_order' => 'સંપૂર્ણ ઓર્ડર જુઓ',
     'today' => 'આજે',

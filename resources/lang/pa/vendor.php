@@ -392,6 +392,7 @@ return [
     'calendar' => 'ਕੈਲੰਡਰ',
     'booking_calendar' => 'ਬੁਕਿੰਗ ਕੈਲੰਡਰ',
     'calendar_total_bookings' => 'ਕੁੱਲ ਬੁਕਿੰਗ',
+    'pwa_description' => 'ਆਪਣਾ ਰੈਂਟਲ ਸਟੋਰ, ਆਰਡਰ ਅਤੇ ਬੁਕਿੰਗ ਪ੍ਰਬੰਧਿਤ ਕਰੋ।',
     'view_all_bookings' => 'ਸਾਰੀਆਂ ਬੁਕਿੰਗਾਂ ਇੱਕ ਨਜ਼ਰ ਵਿੱਚ ਵੇਖੋ',
     'view_full_order' => 'ਪੂਰਾ ਆਰਡਰ ਵੇਖੋ',
     'today' => 'ਅੱਜ',
