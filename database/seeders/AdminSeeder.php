@@ -14,7 +14,7 @@ class AdminSeeder extends Seeder
     public function run(): void
     {
         Admin::updateOrCreate(
-            ['email' => 'admin@rentapp.com'],
+            ['email' => 'admin@rentkia.com'],
             [
                 'name' => 'Super Admin',
                 'phone' => '+919876543210',

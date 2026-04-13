@@ -1,6 +1,6 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Edit Staff Member - RentApp')
+@section('title', 'Edit Staff Member - Rentkia')
 @section('page-title', 'Edit Staff Member')
 
 @section('content')
@@ -71,7 +71,7 @@
                 <input type="email" 
                        id="email" 
                        name="email" 
-                       value="{{ old('email', !str_contains($staffUser->email, '@staff.temp') && !str_contains($staffUser->email, '@rentapp.temp') ? $staffUser->email : '') }}"
+                       value="{{ old('email', !str_contains($staffUser->email, '@staff.temp') && !str_contains($staffUser->email, '@rentapp.temp') && !str_contains($staffUser->email, '@rentkia.temp') ? $staffUser->email : '') }}"
                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all @error('email') border-red-500 @enderror"
                        placeholder="email@example.com">
                 @error('email')

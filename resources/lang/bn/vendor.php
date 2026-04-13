@@ -23,7 +23,7 @@ return [
     'customers' => 'গ্রাহক',
     'staff' => 'কর্মী',
     'profile' => 'প্রোফাইল',
-    'title' => 'হোম - RentApp',
+    'title' => 'হোম - Rentkia',
     'welcome_back' => 'আবার স্বাগতম, :name!',
     'today_summary' => 'আজ আপনার দোকানে কী হচ্ছে দেখুন',
     'total_items' => 'মোট আইটেম',
@@ -406,7 +406,7 @@ return [
 
     // Subscription & billing
     'subscription_plans' => 'সাবস্ক্রিপশন প্ল্যান',
-    'subscription_plans_page_title' => 'সাবস্ক্রিপশন প্ল্যান - RentApp',
+    'subscription_plans_page_title' => 'সাবস্ক্রিপশন প্ল্যান - Rentkia',
     'billing_intro' => 'আপনার ব্যবসার জন্য উপযুক্ত বিলিং বেছে নিন। চেকআউটের আগে যেকোনো সময় মাসিক ও বার্ষিকের মধ্যে বদলান।',
     'billing_monthly' => 'মাসিক',
     'billing_yearly' => 'বার্ষিক',

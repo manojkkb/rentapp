@@ -23,7 +23,7 @@ return [
     'customers' => 'ഉപഭോക്താക്കൾ',
     'staff' => 'ജീവനക്കാർ',
     'profile' => 'പ്രൊഫൈൽ',
-    'title' => 'ഹോം - RentApp',
+    'title' => 'ഹോം - Rentkia',
     'welcome_back' => 'തിരികെ സ്വാഗതം, :name!',
     'today_summary' => 'ഇന്ന് നിങ്ങളുടെ സ്റ്റോറിൽ എന്തു സംഭവിക്കുന്നുവെന്ന് കാണുക',
     'total_items' => 'ആകെ ഇനങ്ങൾ',
@@ -406,7 +406,7 @@ return [
 
     // Subscription & billing
     'subscription_plans' => 'സബ്‌സ്‌ക്രിപ്‌ഷൻ പ്ലാനുകൾ',
-    'subscription_plans_page_title' => 'സബ്‌സ്‌ക്രിപ്‌ഷൻ പ്ലാനുകൾ - RentApp',
+    'subscription_plans_page_title' => 'സബ്‌സ്‌ക്രിപ്‌ഷൻ പ്ലാനുകൾ - Rentkia',
     'billing_intro' => 'നിങ്ങളുടെ ബിസിനസിന് അനുയോജ്യമായ ബില്ലിംഗ് തിരഞ്ഞെടുക്കുക. ചെക്ക്‌ഔട്ടിന് മുമ്പ് എപ്പോൾ വേണമെങ്കിലും മാസവും വാർഷികവും മാറ്റാം.',
     'billing_monthly' => 'പ്രതിമാസം',
     'billing_yearly' => 'വാർഷിക',

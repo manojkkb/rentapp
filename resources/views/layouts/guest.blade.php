@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'RentApp - Rent Anything, Anytime')</title>
+    <title>@yield('title', 'Rentkia - Rent Anything, Anytime')</title>
     
     <!-- Vite Assets (includes Tailwind CSS, Alpine.js, Font Awesome, and Poppins Font) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])

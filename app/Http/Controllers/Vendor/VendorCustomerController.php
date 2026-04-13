@@ -87,7 +87,7 @@ class VendorCustomerController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'mobile' => $request->mobile,
-                'email' => $request->mobile . '@rentapp.temp',
+                'email' => $request->mobile . '@rentkia.temp',
                 'password' => Hash::make(Str::random(16)),
             ]);
         }
@@ -152,7 +152,7 @@ class VendorCustomerController extends Controller
             $user = User::create([
                 'name' => $request->name,
                 'mobile' => $request->mobile,
-                'email' => $request->mobile . '@rentapp.temp',
+                'email' => $request->mobile . '@rentkia.temp',
                 'password' => Hash::make(Str::random(16)),
             ]);
         }

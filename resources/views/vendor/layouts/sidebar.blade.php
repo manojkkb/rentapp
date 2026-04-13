@@ -239,8 +239,9 @@
     </div>
 </aside>
 
-<!-- Overlay for mobile -->
-<div x-show="sidebarOpen"
+<!-- Overlay for mobile (x-cloak: must not cover the page before Alpine runs, or taps are dead) -->
+<div x-cloak
+     x-show="sidebarOpen"
      @click="sidebarOpen = false; localStorage.setItem('sidebarOpen', false);"
      x-transition:enter="transition-opacity ease-out duration-300"
      x-transition:enter-start="opacity-0"

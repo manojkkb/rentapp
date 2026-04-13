@@ -255,7 +255,7 @@ document.querySelectorAll('.buy-btn').forEach(button => {
             "key": "{{ env('RAZORPAY_KEY') }}",
             "amount": data.amount,
             "currency": "INR",
-            "name": "RentApp",
+            "name": "Rentkia",
             "description": data.plan_name,
             "order_id": data.order_id,
 

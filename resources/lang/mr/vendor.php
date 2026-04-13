@@ -23,7 +23,7 @@ return [
     'customers' => 'ग्राहक',
     'staff' => 'कर्मचारी',
     'profile' => 'प्रोफाइल',
-    'title' => 'होम - RentApp',
+    'title' => 'होम - Rentkia',
     'welcome_back' => 'पुन्हा स्वागत, :name!',
     'today_summary' => 'आज तुमच्या दुकानात काय चालू आहे ते पहा',
     'total_items' => 'एकूण वस्तू',
@@ -406,7 +406,7 @@ return [
 
     // Subscription & billing
     'subscription_plans' => 'सदस्यता योजना',
-    'subscription_plans_page_title' => 'सदस्यता योजना - RentApp',
+    'subscription_plans_page_title' => 'सदस्यता योजना - Rentkia',
     'billing_intro' => 'तुमच्या व्यवसायाला सूटणारे बिलिंग निवडा. चेकआउटपूर्वी कधीही मासिक आणि वार्षिक दरम्यान बदला.',
     'billing_monthly' => 'मासिक',
     'billing_yearly' => 'वार्षिक',

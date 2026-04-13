@@ -28,7 +28,7 @@ return [
     'profile' => 'Profile',
 
     // Dashboard
-    'title' => 'Home - RentApp',
+    'title' => 'Home - Rentkia',
     'welcome_back' => 'Welcome back, :name!',
     'today_summary' => "Here's what's happening with your store today",
     'total_items' => 'Total Items',
@@ -441,7 +441,7 @@ return [
 
     // Subscription & billing
     'subscription_plans' => 'Subscription Plans',
-    'subscription_plans_page_title' => 'Subscription Plans - RentApp',
+    'subscription_plans_page_title' => 'Subscription Plans - Rentkia',
     'billing_intro' => 'Choose billing that fits your business. Switch between monthly and yearly anytime before checkout.',
     'billing_monthly' => 'Monthly',
     'billing_yearly' => 'Yearly',

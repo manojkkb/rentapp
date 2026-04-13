@@ -1,6 +1,6 @@
 @extends('layouts.guest')
 
-@section('title', 'RentApp - Rent Anything, Anytime')
+@section('title', 'Rentkia - Rent Anything, Anytime')
 
 @section('content')
     <!-- Hero Section -->
@@ -100,7 +100,7 @@
         <div class="max-w-7xl mx-auto">
             <div class="text-center mb-16 fade-in">
                 <h2 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
-                    Why Choose <span class="text-gradient">RentApp?</span>
+                    Why Choose <span class="text-gradient">Rentkia?</span>
                 </h2>
                 <p class="text-xl text-gray-600 max-w-2xl mx-auto">
                     Experience a seamless rental platform with features designed for your convenience

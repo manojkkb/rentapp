@@ -17,10 +17,13 @@ class VendorPwaController extends Controller
         $scopePath = str_replace('\\', '/', dirname($homePath));
         $scope = rtrim($scopePath, '/') . '/';
 
+        $pwaName = config('pwa.vendor.name', 'Rentkia App');
+        $pwaShort = config('pwa.vendor.short_name', 'Rentkia App');
+
         return response()->json([
             'id' => $scope,
-            'name' => config('app.name', 'RentApp') . ' — Vendor',
-            'short_name' => config('app.name', 'RentApp'),
+            'name' => $pwaName,
+            'short_name' => $pwaShort,
             'description' => __('vendor.pwa_description'),
             'lang' => str_replace('_', '-', app()->getLocale()),
             'dir' => 'auto',

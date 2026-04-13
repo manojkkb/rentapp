@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Admin Login - RentApp</title>
+    <title>Admin Login - Rentkia</title>
     
     <!-- Vite Assets -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -90,7 +90,7 @@
                                        :required="loginType === 'email'"
                                        value="{{ old('email') }}"
                                        class="block w-full pl-11 pr-4 py-3.5 border-2 border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all font-medium"
-                                       placeholder="admin@rentapp.com">
+                                       placeholder="admin@rentkia.com">
                             </div>
                             @error('email')
                                 <p class="mt-2 text-sm text-red-600 dark:text-red-400 font-medium">{{ $message }}</p>
@@ -202,7 +202,7 @@
 
                 <!-- Footer -->
                 <p class="text-center text-sm text-gray-500 dark:text-gray-400">
-                    © 2026 RentApp. All rights reserved.
+                    © 2026 Rentkia. All rights reserved.
                 </p>
             </div>
         </div>
@@ -222,7 +222,7 @@
                             <i class="fas fa-building text-white text-5xl"></i>
                         </div>
                         <h1 class="text-5xl font-black mb-4 text-gray-900">
-                            RentApp Admin
+                            Rentkia Admin
                         </h1>
                         <p class="text-xl text-gray-700 font-medium">
                             Manage your properties with ease

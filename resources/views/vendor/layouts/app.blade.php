@@ -8,12 +8,12 @@
     <meta name="theme-color" content="#047857" media="(prefers-color-scheme: dark)">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="{{ config('app.name', 'RentApp') }}">
+    <meta name="apple-mobile-web-app-title" content="{{ config('pwa.vendor.short_name', 'Rentkia App') }}">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="application-name" content="{{ config('app.name', 'RentApp') }}">
+    <meta name="application-name" content="{{ config('pwa.vendor.short_name', 'Rentkia App') }}">
     <link rel="manifest" href="{{ route('vendor.manifest') }}">
     <link rel="apple-touch-icon" href="{{ asset('vendor/icons/icon-192.png') }}">
-    <title>@yield('title', 'Vendor Home - RentApp')</title>
+    <title>@yield('title', 'Rentkia')</title>
     
     <!-- Vite Assets (includes Tailwind CSS, Alpine.js, Font Awesome, and Inter Font) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])

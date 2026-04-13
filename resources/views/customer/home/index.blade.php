@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Home - RentApp</title>
+    <title>Home - Rentkia</title>
     
     <!-- Vite Assets (includes Tailwind CSS, Alpine.js, Font Awesome, and Poppins Font) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -120,7 +120,7 @@
                             <i class="fas fa-box-open text-white text-xl lg:text-2xl"></i>
                         </div>
                         <div class="hidden sm:block">
-                            <h1 class="text-xl lg:text-2xl font-bold text-gradient">RentApp</h1>
+                            <h1 class="text-xl lg:text-2xl font-bold text-gradient">Rentkia</h1>
                             <p class="text-xs text-gray-600 -mt-1">Rent. Share. Save.</p>
                         </div>
                     </a>

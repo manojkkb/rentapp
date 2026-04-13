@@ -1,6 +1,6 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Subcategories - ' . $category->name . ' - RentApp')
+@section('title', 'Subcategories - ' . $category->name . ' - Rentkia')
 @section('page-title', 'Subcategories')
 
 @section('content')

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Select Vendor - RentApp</title>
+    <title>Select Vendor - Rentkia</title>
     
     <!-- Vite Assets (includes Tailwind CSS, Alpine.js, Font Awesome, and Inter Font) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -246,7 +246,7 @@
         
         <!-- Footer Links -->
         <div class="mt-8 text-center text-white text-sm">
-            <p class="mb-2">© 2026 RentApp. All rights reserved.</p>
+            <p class="mb-2">© 2026 Rentkia. All rights reserved.</p>
             <div class="space-x-4">
                 <a href="#" class="hover:underline">Privacy Policy</a>
                 <span>•</span>

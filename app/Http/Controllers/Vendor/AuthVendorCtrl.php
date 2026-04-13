@@ -195,7 +195,7 @@ class AuthVendorCtrl extends Controller
             ],
             [
                 'name' => 'Vendor User', // Temporary name, will be updated during vendor creation
-                'email' => $request->mobile . '@rentapp.temp', // Temporary email using mobile number
+                'email' => $request->mobile . '@rentkia.temp', // Temporary email using mobile number
                 'password' => Hash::make(uniqid()), // Random password
             ]
         );

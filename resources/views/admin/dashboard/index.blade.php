@@ -1,6 +1,6 @@
 @extends('admin.layouts.app')
 
-@section('title', 'Dashboard - RentApp Admin')
+@section('title', 'Dashboard - Rentkia Admin')
 
 @section('content')
 <div class="space-y-6">

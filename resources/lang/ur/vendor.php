@@ -23,7 +23,7 @@ return [
     'customers' => 'صارفین',
     'staff' => 'عملہ',
     'profile' => 'پروفائل',
-    'title' => 'ہوم - RentApp',
+    'title' => 'ہوم - Rentkia',
     'welcome_back' => 'واپسی پر خوش آمدید، :name!',
     'today_summary' => 'آج آپ کی دکان میں کیا ہو رہا ہے دیکھیں',
     'total_items' => 'کل آئٹمز',
@@ -406,7 +406,7 @@ return [
 
     // Subscription & billing
     'subscription_plans' => 'سبسکرپشن منصوبے',
-    'subscription_plans_page_title' => 'سبسکرپشن منصوبے - RentApp',
+    'subscription_plans_page_title' => 'سبسکرپشن منصوبے - Rentkia',
     'billing_intro' => 'اپنے کاروبار کے لیے موزوں بلنگ منتخب کریں۔ چیک آؤٹ سے پہلے کسی بھی وقت ماہانہ اور سالانہ کے درمیان تبدیل کریں۔',
     'billing_monthly' => 'ماہانہ',
     'billing_yearly' => 'سالانہ',

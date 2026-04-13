@@ -9,7 +9,7 @@
                         <i class="fas fa-box-open text-white text-2xl"></i>
                     </div>
                     <div>
-                        <h3 class="text-2xl font-bold">RentApp</h3>
+                        <h3 class="text-2xl font-bold">Rentkia</h3>
                         <p class="text-sm text-gray-400">Rent. Share. Save.</p>
                     </div>
                 </div>
@@ -70,7 +70,7 @@
                     </li>
                     <li class="flex items-center space-x-3">
                         <i class="fas fa-envelope text-green-400"></i>
-                        <span class="text-gray-400">support@rentapp.com</span>
+                        <span class="text-gray-400">support@rentkia.com</span>
                     </li>
                 </ul>
             </div>
@@ -78,7 +78,7 @@
         
         <!-- Bottom Bar -->
         <div class="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p class="text-gray-400 text-sm mb-4 md:mb-0">© 2026 RentApp. All rights reserved.</p>
+            <p class="text-gray-400 text-sm mb-4 md:mb-0">© 2026 Rentkia. All rights reserved.</p>
             <div class="flex space-x-6 text-sm">
                 <a href="#" class="text-gray-400 hover:text-green-400 transition">Privacy Policy</a>
                 <a href="#" class="text-gray-400 hover:text-green-400 transition">Terms of Service</a>

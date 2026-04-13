@@ -23,7 +23,7 @@ return [
     'customers' => 'வாடிக்கையாளர்கள்',
     'staff' => 'ஊழியர்கள்',
     'profile' => 'சுயவிவரம்',
-    'title' => 'முகப்பு - RentApp',
+    'title' => 'முகப்பு - Rentkia',
     'welcome_back' => 'மீண்டும் வரவேற்கிறோம், :name!',
     'today_summary' => 'இன்று உங்கள் கடையில் என்ன நடக்கிறது என்பதைப் பாருங்கள்',
     'total_items' => 'மொத்த பொருட்கள்',
@@ -406,7 +406,7 @@ return [
 
     // Subscription & billing
     'subscription_plans' => 'சந்தா திட்டங்கள்',
-    'subscription_plans_page_title' => 'சந்தா திட்டங்கள் - RentApp',
+    'subscription_plans_page_title' => 'சந்தா திட்டங்கள் - Rentkia',
     'billing_intro' => 'உங்கள் வணிகத்திற்கு ஏற்ற பில்லிஙைத் தேர்ந்தெடுங்கள். செக் அவுட்டுக்கு முன் எப்போதும் மாதாந்திரம் மற்றும் வருடாந்திரத்திற்கு இடையே மாறலாம்.',
     'billing_monthly' => 'மாதாந்திரம்',
     'billing_yearly' => 'வருடாந்திரம்',

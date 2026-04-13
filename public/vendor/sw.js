@@ -1,5 +1,5 @@
-/* RentApp vendor area — minimal service worker for PWA install (network-first). */
-const CACHE = 'rentapp-vendor-v2';
+/* Rentkia vendor area — minimal service worker for PWA install (no fetch interception). */
+const CACHE = 'rentkia-vendor-v4';
 
 self.addEventListener('install', (event) => {
     const base = new URL('.', self.location.href).href;
@@ -21,11 +21,7 @@ self.addEventListener('activate', (event) => {
     );
 });
 
+/* Do not intercept fetch: avoids broken navigations / dead clicks when cache has no match. */
 self.addEventListener('fetch', (event) => {
-    if (event.request.method !== 'GET') {
-        return;
-    }
-    event.respondWith(
-        fetch(event.request).catch(() => caches.match(event.request))
-    );
+    event.respondWith(fetch(event.request));
 });

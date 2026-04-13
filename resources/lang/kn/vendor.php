@@ -23,7 +23,7 @@ return [
     'customers' => 'ಗ್ರಾಹಕರು',
     'staff' => 'ಸಿಬ್ಬಂದಿ',
     'profile' => 'ಪ್ರೊಫೈಲ್',
-    'title' => 'ಮುಖಪುಟ - RentApp',
+    'title' => 'ಮುಖಪುಟ - Rentkia',
     'welcome_back' => 'ಮತ್ತೆ ಸ್ವಾಗತ, :name!',
     'today_summary' => 'ಇಂದು ನಿಮ್ಮ ಅಂಗಡಿಯಲ್ಲಿ ಏನು ನಡೆಯುತ್ತಿದೆ ಎಂದು ನೋಡಿ',
     'total_items' => 'ಒಟ್ಟು ಐಟಂಗಳು',
@@ -406,7 +406,7 @@ return [
 
     // Subscription & billing
     'subscription_plans' => 'ಚಂದಾದಾರಿಕೆ ಯೋಜನೆಗಳು',
-    'subscription_plans_page_title' => 'ಚಂದಾದಾರಿಕೆ ಯೋಜನೆಗಳು - RentApp',
+    'subscription_plans_page_title' => 'ಚಂದಾದಾರಿಕೆ ಯೋಜನೆಗಳು - Rentkia',
     'billing_intro' => 'ನಿಮ್ಮ ವ್ಯವಸಾಯಕ್ಕೆ ಸೂಕ್ತವಾದ ಬಿಲ್ಲಿಂಗ್ ಆಯ್ಕೆಮಾಡಿ. ಚೆಕ್‌ಔಟ್ ಮೊದಲು ಮಾಸಿಕ ಮತ್ತು ವಾರ್ಷಿಕ ನಡುವೆ ಯಾವಾಗ ಬೇಕಾದರೂ ಬದಲಾಯಿಸಿ.',
     'billing_monthly' => 'ಮಾಸಿಕ',
     'billing_yearly' => 'ವಾರ್ಷಿಕ',

@@ -1,6 +1,6 @@
 @extends('vendor.layouts.app')
 
-@section('title', 'Edit Customer - RentApp')
+@section('title', 'Edit Customer - Rentkia')
 @section('page-title', 'Edit Customer')
 
 @section('content')

@@ -28,7 +28,7 @@ return [
     'profile' => 'प्रोफाइल',
 
     // Dashboard
-    'title' => 'होम - RentApp',
+    'title' => 'होम - Rentkia',
     'welcome_back' => 'स्वागत है, :name!',
     'today_summary' => 'आज आपके स्टोर में क्या हो रहा है',
     'total_items' => 'कुल आइटम',
@@ -441,7 +441,7 @@ return [
 
     // Subscription & billing
     'subscription_plans' => 'सदस्यता योजनाएँ',
-    'subscription_plans_page_title' => 'सदस्यता योजनाएँ - RentApp',
+    'subscription_plans_page_title' => 'सदस्यता योजनाएँ - Rentkia',
     'billing_intro' => 'वह बिलिंग चुनें जो आपके व्यवसाय के अनुकूल हो। चेकआउट से पहले कभी भी मासिक और वार्षिक के बीच स्विच करें।',
     'billing_monthly' => 'मासिक',
     'billing_yearly' => 'वार्षिक',

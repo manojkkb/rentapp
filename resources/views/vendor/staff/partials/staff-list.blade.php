@@ -47,7 +47,7 @@
                     <!-- Contact -->
                     <td class="px-6 py-4">
                         <p class="text-sm text-gray-900">{{ $member->mobile }}</p>
-                        @if($member->email && !str_contains($member->email, '@staff.temp') && !str_contains($member->email, '@rentapp.temp'))
+                        @if($member->email && !str_contains($member->email, '@staff.temp') && !str_contains($member->email, '@rentapp.temp') && !str_contains($member->email, '@rentkia.temp'))
                             <p class="text-xs text-gray-500">{{ $member->email }}</p>
                         @endif
                     </td>

@@ -15,7 +15,7 @@
                 <i class="fas fa-home text-white text-xl"></i>
             </div>
             <div>
-                <h1 class="text-xl font-bold text-gray-900 dark:text-white">RentApp</h1>
+                <h1 class="text-xl font-bold text-gray-900 dark:text-white">Rentkia</h1>
                 <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Admin Panel</p>
             </div>
         </div>

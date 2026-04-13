@@ -23,7 +23,7 @@ return [
     'customers' => 'కస్టమర్లు',
     'staff' => 'సిబ్బంది',
     'profile' => 'ప్రొఫైల్',
-    'title' => 'హోమ్ - RentApp',
+    'title' => 'హోమ్ - Rentkia',
     'welcome_back' => 'తిరిగి స్వాగతం, :name!',
     'today_summary' => 'ఈరోజు మీ స్టోర్‌లో ఏమి జరుగుతోందో చూడండి',
     'total_items' => 'మొత్తం ఐటమ్‌లు',
@@ -406,7 +406,7 @@ return [
 
     // Subscription & billing
     'subscription_plans' => 'సభ్యత్వ ప్రణాళికలు',
-    'subscription_plans_page_title' => 'సభ్యత్వ ప్రణాళికలు - RentApp',
+    'subscription_plans_page_title' => 'సభ్యత్వ ప్రణాళికలు - Rentkia',
     'billing_intro' => 'మీ వ్యాపారానికి సరిపోయే బిల్లింగ్ ఎంచుకోండి. చెక్‌అవుట్ ముందు ఎప్పుడైనా నెలవారీ మరియు వార్షిక మధ్య మారండి.',
     'billing_monthly' => 'నెలవారీ',
     'billing_yearly' => 'వార్షిక',

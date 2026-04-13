@@ -16,7 +16,7 @@
                         <i class="fas fa-box-open text-white text-2xl"></i>
                     </div>
                     <div>
-                        <h1 class="text-xl md:text-2xl font-bold text-gradient">RentApp</h1>
+                        <h1 class="text-xl md:text-2xl font-bold text-gradient">Rentkia</h1>
                         <p class="text-xs text-gray-600">Rent. Share. Save.</p>
                     </div>
                 </a>

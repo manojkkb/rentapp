@@ -23,7 +23,7 @@ return [
     'customers' => 'ਗਾਹਕ',
     'staff' => 'ਸਟਾਫ਼',
     'profile' => 'ਪ੍ਰੋਫਾਈਲ',
-    'title' => 'ਹੋਮ - RentApp',
+    'title' => 'ਹੋਮ - Rentkia',
     'welcome_back' => 'ਵਾਪਸ ਸੁਆਗਤ ਹੈ, :name!',
     'today_summary' => 'ਅੱਜ ਤੁਹਾਡੀ ਦੁਕਾਨ ਵਿੱਚ ਕੀ ਹੋ ਰਿਹਾ ਹੈ ਵੇਖੋ',
     'total_items' => 'ਕੁੱਲ ਆਈਟਮ',
@@ -406,7 +406,7 @@ return [
 
     // Subscription & billing
     'subscription_plans' => 'ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਯੋਜਨਾਵਾਂ',
-    'subscription_plans_page_title' => 'ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਯੋਜਨਾਵਾਂ - RentApp',
+    'subscription_plans_page_title' => 'ਸਬਸਕ੍ਰਿਪਸ਼ਨ ਯੋਜਨਾਵਾਂ - Rentkia',
     'billing_intro' => 'ਆਪਣੇ ਕਾਰੋਬਾਰ ਲਈ ਢੁਕਵਾਂ ਬਿਲਿੰਗ ਚੁਣੋ। ਚੈਕਆਉਟ ਤੋਂ ਪਹਿਲਾਂ ਕਿਸੇ ਵੀ ਸਮੇਂ ਮਹੀਨਾਵਾਰ ਅਤੇ ਸਾਲਾਨਾ ਵਿਚਕਾਰ ਬਦਲੋ।',
     'billing_monthly' => 'ਮਹੀਨਾਵਾਰ',
     'billing_yearly' => 'ਸਾਲਾਨਾ',
