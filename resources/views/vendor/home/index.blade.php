@@ -4,6 +4,32 @@
 @section('page-title', __('vendor.home'))
 
 @section('content')
+{{-- Mobile PWA install prompt (hidden when already installed or on md+ viewports) --}}
+<div x-data="vendorDashboardPwaInstall()"
+     x-show="show"
+     x-transition.opacity.duration.200ms
+     x-cloak
+     class="md:hidden fixed bottom-20 left-3 right-3 z-[60] rounded-xl border border-emerald-200 bg-white p-4 shadow-lg ring-1 ring-black/5"
+     style="display: none;">
+    <div class="flex gap-3 items-start">
+        <div class="flex-shrink-0 w-11 h-11 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
+            <i class="fas fa-mobile-screen-button text-lg" aria-hidden="true"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+            <p class="font-semibold text-gray-900 text-sm leading-snug">{{ __('vendor.install_app_title') }}</p>
+            <p class="text-xs text-gray-600 mt-1 leading-relaxed">{{ __('vendor.install_app_body') }}</p>
+            <p class="text-xs text-gray-500 mt-2 leading-relaxed" x-show="isIOS">{{ __('vendor.install_app_ios_help') }}</p>
+            <p class="text-xs text-gray-500 mt-2 leading-relaxed" x-show="!isIOS && !canPrompt">{{ __('vendor.install_app_android_hint') }}</p>
+        </div>
+        <button type="button"
+                x-show="!isIOS && canPrompt"
+                @click="install()"
+                class="flex-shrink-0 mt-0.5 inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 active:bg-emerald-800 transition-colors">
+            {{ __('vendor.install_app_cta') }}
+        </button>
+    </div>
+</div>
+
 <!-- Shimmer Loading Indicator -->
 <div id="dashboardLoadingIndicator" class="">
     <style>
