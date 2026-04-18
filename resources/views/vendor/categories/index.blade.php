@@ -313,6 +313,19 @@
                     </p>
                 </div>
 
+                <!-- Optional image (AWS S3) -->
+                <div class="mb-5">
+                    <label for="modal_image" class="block text-sm font-semibold text-gray-700 mb-2">
+                        {{ __('vendor.optional') }} image
+                    </label>
+                    <input type="file"
+                           name="image"
+                           id="modal_image"
+                           accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+                           class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg cursor-pointer">
+                    <p class="mt-2 text-xs text-gray-500">JPEG, PNG, GIF or WebP. Max 2 MB. Stored on AWS S3.</p>
+                </div>
+
                 <!-- Status -->
                 <div class="mb-6">
                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
@@ -433,6 +446,17 @@
                                class="w-full pl-12 pr-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                                placeholder="fa-tag">
                     </div>
+                </div>
+                <div class="mb-5">
+                    <label for="add_sub_image" class="block text-sm font-semibold text-gray-700 mb-2">
+                        {{ __('vendor.optional') }} image
+                    </label>
+                    <input type="file"
+                           name="image"
+                           id="add_sub_image"
+                           accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+                           class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg cursor-pointer">
+                    <p class="mt-2 text-xs text-gray-500">JPEG, PNG, GIF or WebP. Max 2 MB. AWS S3.</p>
                 </div>
                 <div class="mb-6">
                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
@@ -567,6 +591,23 @@
                         <i class="fas fa-info-circle mr-1"></i>
                         Use FontAwesome class names. Examples: fa-folder, fa-box, fa-tag
                     </p>
+                </div>
+
+                <!-- Optional image -->
+                <div class="mb-5">
+                    <label for="edit_image" class="block text-sm font-semibold text-gray-700 mb-2">
+                        {{ __('vendor.optional') }} image
+                    </label>
+                    <div id="edit_image_preview_wrap" class="mb-3 hidden">
+                        <img id="edit_image_preview" src="" alt="" class="w-16 h-16 rounded-lg object-cover border border-gray-200">
+                        <p class="text-xs text-gray-500 mt-1">Current image. Choose a file to replace.</p>
+                    </div>
+                    <input type="file"
+                           name="image"
+                           id="edit_image"
+                           accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+                           class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-300 rounded-lg cursor-pointer">
+                    <p class="mt-2 text-xs text-gray-500">JPEG, PNG, GIF or WebP. Max 2 MB. AWS S3.</p>
                 </div>
 
                 <!-- Status -->
@@ -981,12 +1022,28 @@ function openAddSubcategoryModal(parentId, parentName) {
 }
 
 // Function to open edit modal and populate with category data
-function openEditModal(id, name, icon, isActive, updateUrl) {
+function openEditModal(id, name, icon, isActive, updateUrl, imageUrl) {
     // Populate form fields
     document.getElementById('edit_category_id').value = id;
     document.getElementById('edit_name').value = name;
     document.getElementById('edit_icon').value = icon || '';
     document.getElementById('edit_is_active').checked = isActive;
+
+    const fileInput = document.getElementById('edit_image');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+    const previewWrap = document.getElementById('edit_image_preview_wrap');
+    const previewImg = document.getElementById('edit_image_preview');
+    if (previewWrap && previewImg) {
+        if (imageUrl) {
+            previewImg.src = imageUrl;
+            previewWrap.classList.remove('hidden');
+        } else {
+            previewImg.removeAttribute('src');
+            previewWrap.classList.add('hidden');
+        }
+    }
     
     // Store update URL for form submission
     document.getElementById('editCategoryForm').dataset.updateUrl = updateUrl;

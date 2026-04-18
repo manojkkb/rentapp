@@ -321,6 +321,21 @@
                         <p class="mt-1.5 text-sm text-red-600" x-text="errors.icon[0]"></p>
                     </template>
                 </div>
+                <div>
+                    <label for="modal_sub_image" class="block text-sm font-semibold text-gray-700 mb-1.5">
+                        Optional image <span class="text-gray-500 font-normal text-xs">(AWS S3)</span>
+                    </label>
+                    <input type="file"
+                           id="modal_sub_image"
+                           x-ref="subcategoryImageFile"
+                           accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+                           class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 border border-gray-300 rounded-lg cursor-pointer"
+                           :class="errors.image ? 'border-red-500' : 'border-gray-300'">
+                    <template x-if="errors.image">
+                        <p class="mt-1.5 text-sm text-red-600" x-text="errors.image[0]"></p>
+                    </template>
+                    <p class="mt-1 text-xs text-gray-500">JPEG, PNG, GIF or WebP. Max 2 MB.</p>
+                </div>
                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                     <label class="flex items-start cursor-pointer gap-3">
                         <input type="checkbox"
@@ -374,6 +389,9 @@ function subcategoryModal() {
             this.name = '';
             this.icon = 'fa-folder';
             this.isActive = true;
+            if (this.$refs.subcategoryImageFile) {
+                this.$refs.subcategoryImageFile.value = '';
+            }
         },
         openModal() {
             this.resetForm();
@@ -392,6 +410,10 @@ function subcategoryModal() {
             fd.append('parent_id', String(this.parentId));
             fd.append('icon', this.icon || '');
             fd.append('is_active', this.isActive ? '1' : '0');
+            const imgInput = this.$refs.subcategoryImageFile;
+            if (imgInput && imgInput.files && imgInput.files[0]) {
+                fd.append('image', imgInput.files[0]);
+            }
             try {
                 const res = await fetch(this.storeUrl, {
                     method: 'POST',

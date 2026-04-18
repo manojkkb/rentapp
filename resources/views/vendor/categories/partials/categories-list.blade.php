@@ -24,9 +24,13 @@
                     <tr class="hover:bg-gray-50 transition-colors relative">
                         <td class="px-6 py-4">
                             <div class="flex items-center">
-                                <div class="w-10 h-10 flex items-center justify-center bg-emerald-100 rounded-lg mr-3">
-                                    <i class="fas fa-tag text-emerald-600"></i>
-                                </div>
+                                @if($category->image_url)
+                                    <img src="{{ $category->image_url }}" alt="" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 mr-3 border border-gray-100 bg-gray-50">
+                                @else
+                                    <div class="w-10 h-10 flex items-center justify-center bg-emerald-100 rounded-lg mr-3 flex-shrink-0">
+                                        <i class="fas fa-tag text-emerald-600"></i>
+                                    </div>
+                                @endif
                                 <div>
                                     <div class="text-sm font-semibold text-gray-900">
                                         {{ $category->name }}
@@ -105,7 +109,7 @@
                                         {{ __('vendor.view') }}
                                     </a>
                                     <button type="button" 
-                                            onclick="openEditModal({{ $category->id }}, '{{ $category->name }}', '{{ $category->icon }}', {{ $category->is_active ? 'true' : 'false' }}, '{{ route('vendor.categories.update', $category) }}')"
+                                            onclick="openEditModal({{ $category->id }}, @js($category->name), @js($category->icon), {{ $category->is_active ? 'true' : 'false' }}, @js(route('vendor.categories.update', $category)), @js($category->image_url))"
                                             class="w-full text-left block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                         <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
                                         {{ __('vendor.edit') }}
@@ -140,9 +144,13 @@
                     <!-- Header -->
                     <div class="flex items-start justify-between">
                         <div class="flex items-center space-x-3 flex-1 min-w-0">
-                            <div class="w-12 h-12 flex items-center justify-center bg-emerald-100 rounded-xl flex-shrink-0">
-                                <i class="fas fa-tag text-emerald-600 text-lg"></i>
-                            </div>
+                            @if($category->image_url)
+                                <img src="{{ $category->image_url }}" alt="" class="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-gray-100 bg-gray-50">
+                            @else
+                                <div class="w-12 h-12 flex items-center justify-center bg-emerald-100 rounded-xl flex-shrink-0">
+                                    <i class="fas fa-tag text-emerald-600 text-lg"></i>
+                                </div>
+                            @endif
                             <div class="flex-1 min-w-0">
                                 <h3 class="text-base font-semibold text-gray-900 truncate">
                                     {{ $category->name }}
@@ -196,7 +204,7 @@
                                     {{ __('vendor.view') }}
                                 </a>
                                 <button type="button" 
-                                        onclick="openEditModal({{ $category->id }}, '{{ $category->name }}', '{{ $category->icon }}', {{ $category->is_active ? 'true' : 'false' }}, '{{ route('vendor.categories.update', $category) }}')"
+                                        onclick="openEditModal({{ $category->id }}, @js($category->name), @js($category->icon), {{ $category->is_active ? 'true' : 'false' }}, @js(route('vendor.categories.update', $category)), @js($category->image_url))"
                                         class="w-full text-left block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
                                     <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
                                     {{ __('vendor.edit') }}

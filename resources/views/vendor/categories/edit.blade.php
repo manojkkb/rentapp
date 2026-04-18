@@ -37,7 +37,7 @@
             </div>
         </div>
 
-        <form action="{{ route('vendor.categories.update', $category) }}" method="POST" class="p-4 md:p-6">
+        <form action="{{ route('vendor.categories.update', $category) }}" method="POST" enctype="multipart/form-data" class="p-4 md:p-6">
             @csrf
             @method('PUT')
 
@@ -99,6 +99,31 @@
                     <i class="fas fa-info-circle mr-1"></i>
                     Use FontAwesome class names. Examples: fa-folder, fa-box, fa-tag, fa-laptop, fa-car
                 </p>
+            </div>
+
+            <!-- Category image (AWS S3) -->
+            <div class="mb-5 md:mb-6">
+                <label for="image" class="block text-sm md:text-base font-semibold text-gray-700 mb-2">
+                    Optional image
+                </label>
+                @if($category->image_url)
+                    <div class="mb-3 flex items-center gap-3">
+                        <img src="{{ $category->image_url }}" alt="" class="w-16 h-16 rounded-lg object-cover border border-gray-200">
+                        <span class="text-xs text-gray-500">Current image. Upload a new file to replace it.</span>
+                    </div>
+                @endif
+                <input type="file"
+                       name="image"
+                       id="image"
+                       accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+                       class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg cursor-pointer @error('image') border-red-500 @enderror">
+                @error('image')
+                    <p class="mt-2 text-sm text-red-600 flex items-center">
+                        <i class="fas fa-exclamation-circle mr-1"></i>
+                        {{ $message }}
+                    </p>
+                @enderror
+                <p class="mt-2 text-xs md:text-sm text-gray-500">JPEG, PNG, GIF or WebP. Max 2 MB. Stored on AWS S3.</p>
             </div>
 
             <!-- Status -->
