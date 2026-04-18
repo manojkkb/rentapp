@@ -225,11 +225,11 @@
      x-show="open"
      x-cloak
      id="createCategoryModal"
-     class="fixed inset-0 z-50 overflow-y-auto"
+     class="fixed inset-0 z-50 isolate overflow-y-auto"
      style="display: none;">
     
-    <!-- Backdrop -->
-    <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" 
+    <!-- Backdrop (Tailwind v4: use bg-black/50 — bg-opacity-* no longer applies) -->
+    <div class="fixed inset-0 z-0 bg-black/50 transition-opacity" 
          @click="open = false"
          x-show="open"
          x-transition:enter="ease-out duration-300"
@@ -240,11 +240,11 @@
          x-transition:leave-end="opacity-0"></div>
     
     <!-- Modal Container -->
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0 relative z-10">
+    <div class="relative z-10 flex min-h-full items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
         
-        <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full"
+        <div class="relative z-10 inline-block w-full max-w-2xl align-bottom overflow-hidden rounded-xl bg-white text-left shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl"
              x-show="open"
              x-transition:enter="ease-out duration-300"
              x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
@@ -291,28 +291,6 @@
                     <p class="mt-1 text-sm text-red-600 hidden" id="name_error"></p>
                 </div>
 
-                <!-- Icon -->
-                <div class="mb-5">
-                    <label for="modal_icon" class="block text-sm font-semibold text-gray-700 mb-2">
-                        {{ __('vendor.optional') }} Icon <span class="text-gray-500 text-xs">(FontAwesome class)</span>
-                    </label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                            <i class="fas fa-icons text-gray-400"></i>
-                        </div>
-                        <input type="text" 
-                               name="icon" 
-                               id="modal_icon" 
-                               value="fa-folder"
-                               class="w-full pl-12 pr-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                               placeholder="fa-folder, fa-box, fa-tag">
-                    </div>
-                    <p class="mt-2 text-xs text-gray-500">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Use FontAwesome class names. Examples: fa-folder, fa-box, fa-tag
-                    </p>
-                </div>
-
                 <!-- Optional image (AWS S3) -->
                 <div class="mb-5">
                     <label for="modal_image" class="block text-sm font-semibold text-gray-700 mb-2">
@@ -322,8 +300,8 @@
                            name="image"
                            id="modal_image"
                            accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
-                           class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg cursor-pointer">
-                    <p class="mt-2 text-xs text-gray-500">JPEG, PNG, GIF or WebP. Max 2 MB. Stored on AWS S3.</p>
+                           class="js-category-image-input block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg cursor-pointer">
+                    <p class="mt-2 text-xs text-gray-500">Square crop before upload. Max 2 MB. AWS S3.</p>
                 </div>
 
                 <!-- Status -->
@@ -378,9 +356,9 @@
      x-show="open"
      x-cloak
      id="addSubcategoryModal"
-     class="fixed inset-0 z-[55] overflow-y-auto"
+     class="fixed inset-0 z-[55] isolate overflow-y-auto"
      style="display: none;">
-    <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+    <div class="fixed inset-0 z-0 bg-black/50 transition-opacity"
          @click="open = false"
          x-show="open"
          x-transition:enter="ease-out duration-300"
@@ -389,9 +367,9 @@
          x-transition:leave="ease-in duration-200"
          x-transition:leave-start="opacity-100"
          x-transition:leave-end="opacity-0"></div>
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0 relative z-10">
+    <div class="relative z-10 flex min-h-full items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-        <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+        <div class="relative z-10 inline-block w-full max-w-lg align-bottom overflow-hidden rounded-xl bg-white text-left shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg"
              x-show="open"
              x-transition:enter="ease-out duration-300"
              x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
@@ -432,22 +410,6 @@
                     <p class="mt-1 text-sm text-red-600 hidden" id="add_sub_name_error"></p>
                 </div>
                 <div class="mb-5">
-                    <label for="add_sub_icon" class="block text-sm font-semibold text-gray-700 mb-2">
-                        {{ __('vendor.optional') }} Icon <span class="text-gray-500 text-xs">(FontAwesome)</span>
-                    </label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                            <i class="fas fa-icons text-gray-400"></i>
-                        </div>
-                        <input type="text"
-                               name="icon"
-                               id="add_sub_icon"
-                               value="fa-folder"
-                               class="w-full pl-12 pr-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                               placeholder="fa-tag">
-                    </div>
-                </div>
-                <div class="mb-5">
                     <label for="add_sub_image" class="block text-sm font-semibold text-gray-700 mb-2">
                         {{ __('vendor.optional') }} image
                     </label>
@@ -455,8 +417,8 @@
                            name="image"
                            id="add_sub_image"
                            accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
-                           class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg cursor-pointer">
-                    <p class="mt-2 text-xs text-gray-500">JPEG, PNG, GIF or WebP. Max 2 MB. AWS S3.</p>
+                           class="js-category-image-input block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg cursor-pointer">
+                    <p class="mt-2 text-xs text-gray-500">Square crop before upload. Max 2 MB.</p>
                 </div>
                 <div class="mb-6">
                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
@@ -504,11 +466,11 @@
      x-show="open"
      x-cloak
      id="editCategoryModal"
-     class="fixed inset-0 z-50 overflow-y-auto"
+     class="fixed inset-0 z-50 isolate overflow-y-auto"
      style="display: none;">
     
     <!-- Backdrop -->
-    <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity" 
+    <div class="fixed inset-0 z-0 bg-black/50 transition-opacity" 
          @click="open = false"
          x-show="open"
          x-transition:enter="ease-out duration-300"
@@ -519,11 +481,11 @@
          x-transition:leave-end="opacity-0"></div>
     
     <!-- Modal Container -->
-    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0 relative z-10">
+    <div class="relative z-10 flex min-h-full items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
         
-        <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full"
+        <div class="relative z-10 inline-block w-full max-w-2xl align-bottom overflow-hidden rounded-xl bg-white text-left shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl"
              x-show="open"
              x-transition:enter="ease-out duration-300"
              x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
@@ -572,27 +534,6 @@
                     <p class="mt-1 text-sm text-red-600 hidden" id="edit_name_error"></p>
                 </div>
 
-                <!-- Icon -->
-                <div class="mb-5">
-                    <label for="edit_icon" class="block text-sm font-semibold text-gray-700 mb-2">
-                        {{ __('vendor.optional') }} Icon <span class="text-gray-500 text-xs">(FontAwesome class)</span>
-                    </label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                            <i class="fas fa-icons text-gray-400"></i>
-                        </div>
-                        <input type="text" 
-                               name="icon" 
-                               id="edit_icon" 
-                               class="w-full pl-12 pr-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                               placeholder="fa-folder, fa-box, fa-tag">
-                    </div>
-                    <p class="mt-2 text-xs text-gray-500">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Use FontAwesome class names. Examples: fa-folder, fa-box, fa-tag
-                    </p>
-                </div>
-
                 <!-- Optional image -->
                 <div class="mb-5">
                     <label for="edit_image" class="block text-sm font-semibold text-gray-700 mb-2">
@@ -606,8 +547,8 @@
                            name="image"
                            id="edit_image"
                            accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
-                           class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-300 rounded-lg cursor-pointer">
-                    <p class="mt-2 text-xs text-gray-500">JPEG, PNG, GIF or WebP. Max 2 MB. AWS S3.</p>
+                           class="js-category-image-input block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-300 rounded-lg cursor-pointer">
+                    <p class="mt-2 text-xs text-gray-500">Square crop before upload. Max 2 MB.</p>
                 </div>
 
                 <!-- Status -->
@@ -652,6 +593,8 @@
         </div>
     </div>
 </div>
+
+@include('vendor.categories.partials.image-crop-modal')
 
 @endsection
 
@@ -958,7 +901,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (response.ok && data.success) {
                     showToast(data.message, 'success');
                     addSubcategoryForm.reset();
-                    document.getElementById('add_sub_icon').value = 'fa-folder';
                     document.getElementById('add_sub_is_active').checked = true;
 
                     const modal = document.getElementById('addSubcategoryModal');
@@ -1007,7 +949,6 @@ function openAddSubcategoryModal(parentId, parentName) {
     document.getElementById('add_sub_parent_id').value = parentId;
     document.getElementById('add_sub_parent_display').textContent = parentName;
     document.getElementById('add_sub_name').value = '';
-    document.getElementById('add_sub_icon').value = 'fa-folder';
     document.getElementById('add_sub_is_active').checked = true;
     const nameErr = document.getElementById('add_sub_name_error');
     if (nameErr) {
@@ -1022,11 +963,10 @@ function openAddSubcategoryModal(parentId, parentName) {
 }
 
 // Function to open edit modal and populate with category data
-function openEditModal(id, name, icon, isActive, updateUrl, imageUrl) {
+function openEditModal(id, name, isActive, updateUrl, imageUrl) {
     // Populate form fields
     document.getElementById('edit_category_id').value = id;
     document.getElementById('edit_name').value = name;
-    document.getElementById('edit_icon').value = icon || '';
     document.getElementById('edit_is_active').checked = isActive;
 
     const fileInput = document.getElementById('edit_image');

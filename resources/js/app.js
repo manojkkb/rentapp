@@ -1,5 +1,8 @@
 import './bootstrap';
 
+// Category image square crop (Croppie) — bundled here so it always loads with the vendor app
+import './category-image-crop';
+
 // Import Alpine.js
 import Alpine from 'alpinejs';
 

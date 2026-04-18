@@ -109,7 +109,7 @@
                                         {{ __('vendor.view') }}
                                     </a>
                                     <button type="button" 
-                                            onclick="openEditModal({{ $category->id }}, @js($category->name), @js($category->icon), {{ $category->is_active ? 'true' : 'false' }}, @js(route('vendor.categories.update', $category)), @js($category->image_url))"
+                                            onclick="openEditModal({{ $category->id }}, @js($category->name), {{ $category->is_active ? 'true' : 'false' }}, @js(route('vendor.categories.update', $category)), @js($category->image_url))"
                                             class="w-full text-left block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                         <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
                                         {{ __('vendor.edit') }}
@@ -204,7 +204,7 @@
                                     {{ __('vendor.view') }}
                                 </a>
                                 <button type="button" 
-                                        onclick="openEditModal({{ $category->id }}, @js($category->name), @js($category->icon), {{ $category->is_active ? 'true' : 'false' }}, @js(route('vendor.categories.update', $category)), @js($category->image_url))"
+                                        onclick="openEditModal({{ $category->id }}, @js($category->name), {{ $category->is_active ? 'true' : 'false' }}, @js(route('vendor.categories.update', $category)), @js($category->image_url))"
                                         class="w-full text-left block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
                                     <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
                                     {{ __('vendor.edit') }}

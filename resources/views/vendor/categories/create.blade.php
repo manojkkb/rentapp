@@ -73,34 +73,6 @@
                 @enderror
             </div>
 
-            <!-- Icon -->
-            <div class="mb-5 md:mb-6">
-                <label for="icon" class="block text-sm md:text-base font-semibold text-gray-700 mb-2">
-                    Icon <span class="text-gray-500 text-xs">(FontAwesome class)</span>
-                </label>
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                        <i class="fas fa-icons text-gray-400"></i>
-                    </div>
-                    <input type="text" 
-                           name="icon" 
-                           id="icon" 
-                           value="{{ old('icon', 'fa-folder') }}"
-                           class="w-full pl-12 pr-4 py-2.5 md:py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all @error('icon') border-red-500 @enderror"
-                           placeholder="fa-folder, fa-box, fa-tag">
-                    @error('icon')
-                        <p class="mt-2 text-sm text-red-600 flex items-center">
-                            <i class="fas fa-exclamation-circle mr-1"></i>
-                            {{ $message }}
-                        </p>
-                    @enderror
-                </div>
-                <p class="mt-2 text-xs md:text-sm text-gray-500">
-                    <i class="fas fa-info-circle mr-1"></i>
-                    Use FontAwesome class names. Examples: fa-folder, fa-box, fa-tag, fa-laptop, fa-car
-                </p>
-            </div>
-
             <!-- Category image (AWS S3) -->
             <div class="mb-5 md:mb-6">
                 <label for="image" class="block text-sm md:text-base font-semibold text-gray-700 mb-2">
@@ -110,14 +82,14 @@
                        name="image"
                        id="image"
                        accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
-                       class="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg cursor-pointer @error('image') border-red-500 @enderror">
+                       class="js-category-image-input block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg cursor-pointer @error('image') border-red-500 @enderror">
                 @error('image')
                     <p class="mt-2 text-sm text-red-600 flex items-center">
                         <i class="fas fa-exclamation-circle mr-1"></i>
                         {{ $message }}
                     </p>
                 @enderror
-                <p class="mt-2 text-xs md:text-sm text-gray-500">JPEG, PNG, GIF or WebP. Max 2 MB. Stored on AWS S3.</p>
+                <p class="mt-2 text-xs md:text-sm text-gray-500">Choose a photo—you will crop it to a square before upload. Max 2 MB. Stored on AWS S3.</p>
             </div>
 
             <!-- Status -->
@@ -152,4 +124,6 @@
         </form>
     </div>
 </div>
+
+@include('vendor.categories.partials.image-crop-modal')
 @endsection

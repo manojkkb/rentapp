@@ -83,7 +83,6 @@ class CategoryController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'icon' => 'nullable|string|max:100',
             'parent_id' => 'nullable|numeric|exists:categories,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
@@ -125,7 +124,7 @@ class CategoryController extends Controller
                 'parent_id' => $parentId,
                 'name' => $request->name,
                 'slug' => $slug,
-                'icon' => $request->icon,
+                'icon' => null,
                 'is_active' => filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN),
             ]);
 
@@ -203,7 +202,6 @@ class CategoryController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'icon' => 'nullable|string|max:100',
             'is_active' => 'nullable|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
@@ -246,7 +244,6 @@ class CategoryController extends Controller
             $data = [
                 'name' => $request->name,
                 'slug' => $slug,
-                'icon' => $request->icon,
                 'is_active' => filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN),
             ];
 
@@ -418,7 +415,7 @@ class CategoryController extends Controller
             $filename,
             [
                 'disk' => 's3',
-                'visibility' => 'public'
+                'visibility' => 'public',
             ]
         );
 
