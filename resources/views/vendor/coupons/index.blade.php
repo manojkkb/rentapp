@@ -29,9 +29,7 @@
 <div class="mb-6 flex items-start justify-between gap-3">
     <div class="flex-1">
         <div class="flex items-center space-x-3 mb-2">
-            <div class="w-12 h-12 flex items-center justify-center bg-emerald-100 rounded-xl">
-                <i class="fas fa-ticket-alt text-emerald-600 text-xl"></i>
-            </div>
+            
             <div>
                 <h2 class="text-2xl font-bold text-gray-900">{{ __('vendor.coupons') }}</h2>
                 <p class="text-sm text-gray-600">

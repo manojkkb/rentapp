@@ -89,4 +89,52 @@ class Items extends Model
     {
         return $query->where('is_available', true);
     }
+
+    /**
+     * Allowed values for items.price_type and vendor_cart_items.price_type.
+     *
+     * @return list<string>
+     */
+    public static function priceTypeKeys(): array
+    {
+        return ['per_minute', 'per_hour', 'per_day', 'per_week', 'per_month', 'per_year', 'fixed'];
+    }
+
+    /**
+     * Localized labels for cart / item forms (vendor lang file).
+     *
+     * @return array<string, string>
+     */
+    public static function priceTypeSelectOptions(): array
+    {
+        $out = [];
+        foreach (self::priceTypeKeys() as $key) {
+            $out[$key] = $key === 'fixed'
+                ? __('vendor.price_fixed')
+                : __("vendor.{$key}");
+        }
+
+        return $out;
+    }
+
+    public static function priceTypeUsesBillingUnits(string $priceType): bool
+    {
+        return $priceType !== 'fixed';
+    }
+
+    /**
+     * Short label for the "how many units" field (days, hours, …).
+     */
+    public static function billingUnitsFieldLabel(string $priceType): string
+    {
+        return match ($priceType) {
+            'per_minute' => __('vendor.number_of_minutes'),
+            'per_hour' => __('vendor.number_of_hours'),
+            'per_day' => __('vendor.number_of_days'),
+            'per_week' => __('vendor.number_of_weeks'),
+            'per_month' => __('vendor.number_of_months'),
+            'per_year' => __('vendor.number_of_years'),
+            default => '',
+        };
+    }
 }

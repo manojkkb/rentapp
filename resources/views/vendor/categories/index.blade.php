@@ -12,7 +12,7 @@
             <h1 class="text-2xl font-bold text-gray-900">{{ __('vendor.categories') }}</h1>
             <p class="text-sm text-gray-600 mt-1">
                 <i class="fas fa-folder-tree text-emerald-600 mr-1"></i>
-                <span class="font-medium">{{ $categories->total() }}</span> {{ __('vendor.total_categories_count', ['count' => $categories->total()]) }}
+                <span class="font-medium">{{ __('vendor.total_categories_count', ['count' => $categories->total()]) }}</span>
             </p>
         </div>
         <button type="button"
@@ -350,6 +350,121 @@
                             class="w-full sm:w-auto px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-lg font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="fas fa-save mr-2"></i>
                         <span id="submitBtnText">{{ __('vendor.add_category') }}</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Subcategory Modal (parent category from list) -->
+<div x-data="{ open: false }"
+     @open-add-subcategory-modal.window="open = true"
+     @close-add-subcategory-modal.window="open = false"
+     @keydown.escape.window="open = false"
+     x-show="open"
+     x-cloak
+     id="addSubcategoryModal"
+     class="fixed inset-0 z-[55] overflow-y-auto"
+     style="display: none;">
+    <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+         @click="open = false"
+         x-show="open"
+         x-transition:enter="ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"></div>
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0 relative z-10">
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
+             x-show="open"
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+             x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             @click.stop>
+            <div class="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-teal-50">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <h3 class="text-xl font-bold text-gray-900">{{ __('vendor.add_subcategory') }}</h3>
+                        <p class="text-sm text-gray-600 mt-1">
+                            <i class="fas fa-layer-group text-emerald-600 mr-1"></i>
+                            {{ __('vendor.category') }}:
+                            <span id="add_sub_parent_display" class="font-semibold text-gray-900"></span>
+                        </p>
+                    </div>
+                    <button type="button" @click="open = false"
+                            class="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <form id="addSubcategoryForm" class="p-6">
+                @csrf
+                <input type="hidden" name="parent_id" id="add_sub_parent_id" value="">
+                <div class="mb-5">
+                    <label for="add_sub_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                        {{ __('vendor.category_name') }} <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text"
+                           name="name"
+                           id="add_sub_name"
+                           class="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                           placeholder="{{ __('vendor.category_name_placeholder') }}"
+                           required>
+                    <p class="mt-1 text-sm text-red-600 hidden" id="add_sub_name_error"></p>
+                </div>
+                <div class="mb-5">
+                    <label for="add_sub_icon" class="block text-sm font-semibold text-gray-700 mb-2">
+                        {{ __('vendor.optional') }} Icon <span class="text-gray-500 text-xs">(FontAwesome)</span>
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                            <i class="fas fa-icons text-gray-400"></i>
+                        </div>
+                        <input type="text"
+                               name="icon"
+                               id="add_sub_icon"
+                               value="fa-folder"
+                               class="w-full pl-12 pr-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                               placeholder="fa-tag">
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <label class="flex items-start cursor-pointer">
+                            <input type="checkbox"
+                                   name="is_active"
+                                   id="add_sub_is_active"
+                                   checked
+                                   class="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 mt-0.5">
+                            <div class="ml-3">
+                                <div class="text-sm font-medium text-gray-900">{{ __('vendor.active') }}</div>
+                                <div class="text-xs text-gray-600 mt-0.5">{{ __('vendor.category') }} {{ __('vendor.available') }}</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                <div id="addSubcategoryFormErrors" class="hidden mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="flex items-start">
+                        <i class="fas fa-exclamation-circle text-red-500 mt-0.5 mr-2"></i>
+                        <div class="text-sm text-red-700" id="addSubcategoryFormErrorsContent"></div>
+                    </div>
+                </div>
+                <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end space-y-2 space-y-reverse sm:space-y-0 sm:space-x-3 pt-4 border-t border-gray-200">
+                    <button type="button"
+                            @click="open = false"
+                            class="w-full sm:w-auto text-center px-5 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold transition-all">
+                        {{ __('vendor.cancel') }}
+                    </button>
+                    <button type="submit"
+                            id="addSubSubmitBtn"
+                            class="w-full sm:w-auto px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span id="addSubSubmitBtnText" class="inline-flex items-center justify-center"><i class="fas fa-plus mr-2"></i>{{ __('vendor.add_subcategory') }}</span>
                     </button>
                 </div>
             </form>
@@ -762,7 +877,108 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    const addSubcategoryForm = document.getElementById('addSubcategoryForm');
+    if (addSubcategoryForm) {
+        addSubcategoryForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('addSubSubmitBtn');
+            const submitBtnText = document.getElementById('addSubSubmitBtnText');
+            const formErrors = document.getElementById('addSubcategoryFormErrors');
+            const formErrorsContent = document.getElementById('addSubcategoryFormErrorsContent');
+            const nameError = document.getElementById('add_sub_name_error');
+
+            formErrors.classList.add('hidden');
+            nameError.classList.add('hidden');
+            nameError.textContent = '';
+
+            submitBtn.disabled = true;
+            submitBtnText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>{{ __('vendor.add_subcategory') }}…';
+
+            const formData = new FormData(addSubcategoryForm);
+            const isActiveCheckbox = document.getElementById('add_sub_is_active');
+            formData.set('is_active', isActiveCheckbox.checked ? '1' : '0');
+
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+            fetch('{{ route('vendor.categories.store') }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': token,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                body: formData,
+            })
+            .then(async response => {
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showToast(data.message, 'success');
+                    addSubcategoryForm.reset();
+                    document.getElementById('add_sub_icon').value = 'fa-folder';
+                    document.getElementById('add_sub_is_active').checked = true;
+
+                    const modal = document.getElementById('addSubcategoryModal');
+                    if (modal && modal.__x) {
+                        modal.__x.$data.open = false;
+                    } else if (modal && modal._x_dataStack) {
+                        modal._x_dataStack[0].open = false;
+                    } else {
+                        window.dispatchEvent(new CustomEvent('close-add-subcategory-modal'));
+                    }
+
+                    setTimeout(() => {
+                        loadCategories(1, searchInput.value);
+                    }, 300);
+                } else if (response.status === 422) {
+                    if (data.errors) {
+                        let errorMessage = '';
+                        Object.keys(data.errors).forEach(key => {
+                            errorMessage += data.errors[key].join('<br>') + '<br>';
+                            if (key === 'name') {
+                                nameError.textContent = data.errors[key][0];
+                                nameError.classList.remove('hidden');
+                            }
+                        });
+                        formErrorsContent.innerHTML = errorMessage;
+                        formErrors.classList.remove('hidden');
+                    }
+                } else {
+                    formErrorsContent.textContent = data.message || 'Failed to create subcategory';
+                    formErrors.classList.remove('hidden');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Failed to create subcategory. Please try again.', 'error');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtnText.innerHTML = '<i class="fas fa-plus mr-2"></i>{{ __('vendor.add_subcategory') }}';
+            });
+        });
+    }
 });
+
+function openAddSubcategoryModal(parentId, parentName) {
+    document.getElementById('add_sub_parent_id').value = parentId;
+    document.getElementById('add_sub_parent_display').textContent = parentName;
+    document.getElementById('add_sub_name').value = '';
+    document.getElementById('add_sub_icon').value = 'fa-folder';
+    document.getElementById('add_sub_is_active').checked = true;
+    const nameErr = document.getElementById('add_sub_name_error');
+    if (nameErr) {
+        nameErr.classList.add('hidden');
+        nameErr.textContent = '';
+    }
+    const formErr = document.getElementById('addSubcategoryFormErrors');
+    const formErrContent = document.getElementById('addSubcategoryFormErrorsContent');
+    if (formErr) formErr.classList.add('hidden');
+    if (formErrContent) formErrContent.innerHTML = '';
+    window.dispatchEvent(new CustomEvent('open-add-subcategory-modal'));
+}
 
 // Function to open edit modal and populate with category data
 function openEditModal(id, name, icon, isActive, updateUrl) {

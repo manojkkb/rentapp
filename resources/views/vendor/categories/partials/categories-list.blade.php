@@ -40,11 +40,12 @@
                                                 <i class="fas fa-arrow-right text-[10px] ml-1.5"></i>
                                             </a>
                                         @else
-                                            <a href="{{ route('vendor.categories.create', ['parent_id' => $category->id]) }}" 
-                                            class="inline-flex items-center px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold rounded-full transition-colors">
+                                            <button type="button"
+                                                    onclick="openAddSubcategoryModal({{ $category->id }}, @js($category->name))"
+                                                    class="inline-flex items-center px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold rounded-full transition-colors">
                                                 <i class="fas fa-plus text-xs mr-1.5"></i>
                                                 <span>{{ __('vendor.add_subcategory') }}</span>
-                                            </a>
+                                            </button>
                                         @endif
                                     </div>
                                 </div>
@@ -109,6 +110,12 @@
                                         <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
                                         {{ __('vendor.edit') }}
                                     </button>
+                                    <button type="button"
+                                            onclick="openAddSubcategoryModal({{ $category->id }}, @js($category->name))"
+                                            class="w-full text-left block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                        <i class="fas fa-plus w-5 text-emerald-600 mr-3"></i>
+                                        {{ __('vendor.add_subcategory') }}
+                                    </button>
                                     <button type="button" 
                                             onclick="deleteCategory('{{ route('vendor.categories.destroy', $category) }}', '{{ __('vendor.confirm_delete') }}')"
                                             class="w-full text-left block px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
@@ -154,11 +161,12 @@
                                             <i class="fas fa-arrow-right text-[8px] ml-1"></i>
                                         </a>
                                     @else
-                                        <a href="{{ route('vendor.categories.create', ['parent_id' => $category->id]) }}" 
-                                           class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded-full active:bg-gray-200 transition-all">
+                                        <button type="button"
+                                                onclick="openAddSubcategoryModal({{ $category->id }}, @js($category->name))"
+                                                class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-semibold rounded-full active:bg-gray-200 transition-all">
                                             <i class="fas fa-plus text-[8px] mr-1"></i>
                                             <span>{{ __('vendor.add_subcategory') }}</span>
-                                        </a>
+                                        </button>
                                     @endif
                                 </div>
                             </div>
@@ -192,6 +200,12 @@
                                         class="w-full text-left block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
                                     <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
                                     {{ __('vendor.edit') }}
+                                </button>
+                                <button type="button"
+                                        onclick="openAddSubcategoryModal({{ $category->id }}, @js($category->name))"
+                                        class="w-full text-left block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
+                                    <i class="fas fa-plus w-5 text-emerald-600 mr-3"></i>
+                                    {{ __('vendor.add_subcategory') }}
                                 </button>
                                 <button type="button" 
                                         onclick="deleteCategory('{{ route('vendor.categories.destroy', $category) }}', '{{ __('vendor.confirm_delete') }}')"

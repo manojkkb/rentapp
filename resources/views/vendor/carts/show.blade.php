@@ -4,86 +4,268 @@
 @section('page-title', __('vendor.cart_details'))
 
 @section('content')
-<div id="cartApp" x-data="{
-    showAddItem: false,
-    addedItems: {{ $cart->items->pluck('quantity', 'item_id')->toJson() }},
-    addingItem: null,
-    updatingItem: null,
-    editingItem: null,
-    editQuantity: 1,
-    searchQuery: '',
-    selectedCategory: '',
-    items: {{ $availableItems->toJson() }},
-    isAdded(itemId) {
-        return this.addedItems[itemId] !== undefined;
-    },
-    getAddedQty(itemId) {
-        return this.addedItems[itemId] || 1;
-    },
-    addItemToCart(itemId) {
-        if (this.addingItem === itemId) return;
-        this.addingItem = itemId;
-        addItemToCartAjax(itemId, 1, this);
-    },
-    incrementCartQty(itemId) {
-        if (this.updatingItem === itemId) return;
-        this.updatingItem = itemId;
-        const newQty = this.getAddedQty(itemId) + 1;
-        this.addedItems[itemId] = newQty;
-        updateModalItemQty(itemId, newQty, this);
-    },
-    decrementCartQty(itemId) {
-        if (this.updatingItem === itemId) return;
-        this.updatingItem = itemId;
-        const currentQty = this.getAddedQty(itemId);
-        if (currentQty > 1) {
-            const newQty = currentQty - 1;
+{{-- Alpine state must not live inside x-data="..." — JSON quotes break the HTML attribute and leak JS as visible text. --}}
+<script>
+function isoToDatetimeLocalValue(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+function cartPageData() {
+    const p = {
+        addedItems: @json($cart->items->pluck('quantity', 'item_id')),
+        addedItemBillingUnits: @json($cart->items->mapWithKeys(fn ($row) => [$row->item_id => (float) ($row->billing_units ?? 1)])->all()),
+        billingUnitsLabels: @json($cartBillingUnitsLabels),
+        items: @json($availableItems),
+        fulfillmentType: @json($cart->fulfillment_type ?: 'pickup'),
+        deliveryAddress: @json($cart->delivery_address ?? ''),
+        pickupAt: @json($cart->pickup_at ? $cart->pickup_at->copy()->timezone(config('app.timezone'))->format('Y-m-d\TH:i') : ''),
+        deliveryCharge: @json(round((float) ($cart->delivery_charge ?? 0), 2)),
+        saveFulfillmentUrl: @json(route('vendor.carts.fulfillment', $cart)),
+    };
+    return {
+        showAddItem: false,
+        addedItems: p.addedItems,
+        addedItemBillingUnits: p.addedItemBillingUnits,
+        billingUnitsLabels: p.billingUnitsLabels,
+        addingItem: null,
+        updatingItem: null,
+        searchQuery: '',
+        selectedCategory: '',
+        items: p.items,
+        fulfillmentType: p.fulfillmentType,
+        deliveryAddress: p.deliveryAddress,
+        pickupAt: p.pickupAt,
+        deliveryCharge: p.deliveryCharge,
+        savingFulfillment: false,
+        fulfillmentFieldError: '',
+        saveFulfillmentUrl: p.saveFulfillmentUrl,
+        async saveFulfillment() {
+            this.fulfillmentFieldError = '';
+            this.savingFulfillment = true;
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            try {
+                const res = await fetch(this.saveFulfillmentUrl, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        fulfillment_type: this.fulfillmentType,
+                        delivery_address: this.fulfillmentType === 'delivery' ? this.deliveryAddress : '',
+                        pickup_at: this.fulfillmentType === 'pickup' && this.pickupAt ? this.pickupAt : null,
+                        delivery_charge: this.fulfillmentType === 'delivery' ? (parseFloat(this.deliveryCharge) || 0) : 0,
+                    }),
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    if (this.fulfillmentType === 'pickup') {
+                        this.deliveryAddress = '';
+                        this.deliveryCharge = 0;
+                    } else {
+                        this.pickupAt = '';
+                    }
+                    if (data.pickup_at) {
+                        this.pickupAt = isoToDatetimeLocalValue(data.pickup_at);
+                    } else if (this.fulfillmentType === 'pickup') {
+                        this.pickupAt = '';
+                    }
+                    if (data.delivery_charge !== undefined && data.delivery_charge !== null) {
+                        this.deliveryCharge = parseFloat(data.delivery_charge) || 0;
+                    }
+                    if (data.cart && typeof updateSummary === 'function') {
+                        updateSummary(data.cart);
+                    }
+                    showToast(data.message || 'Saved', 'success');
+                } else if (res.status === 422 && data.errors) {
+                    const msgs = Object.values(data.errors).flat();
+                    this.fulfillmentFieldError = msgs[0] || data.message || '';
+                    showToast(this.fulfillmentFieldError, 'error');
+                } else {
+                    showToast(data.message || 'Could not save', 'error');
+                }
+            } catch (e) {
+                showToast('Error saving', 'error');
+            } finally {
+                this.savingFulfillment = false;
+            }
+        },
+        isAdded(itemId) {
+            return this.addedItems[itemId] !== undefined;
+        },
+        getAddedQty(itemId) {
+            return this.addedItems[itemId] || 1;
+        },
+        lineUsesBillingUnits(item) {
+            return item.price_type !== 'fixed';
+        },
+        billingUnitsLabelForLine(item) {
+            const t = item.price_type;
+            return this.billingUnitsLabels[t] || '';
+        },
+        getLineBillingUnits(itemId) {
+            const v = this.addedItemBillingUnits[itemId];
+            if (v !== undefined && v !== null && !Number.isNaN(parseFloat(v))) {
+                return parseFloat(v);
+            }
+            return 1;
+        },
+        onBillingUnitsBlur(itemId, item, ev) {
+            let v = parseFloat(ev.target.value);
+            if (!Number.isFinite(v) || v < 0.01) {
+                v = 1;
+                ev.target.value = '1';
+            }
+            this.addedItemBillingUnits = { ...this.addedItemBillingUnits, [itemId]: v };
+            if (this.isAdded(itemId)) {
+                this.updatingItem = itemId;
+                updateModalItemQty(itemId, this.getAddedQty(itemId), this);
+            }
+        },
+        incrementBillingUnits(itemId, item) {
+            if (this.updatingItem === itemId) return;
+            const cur = parseFloat(this.getLineBillingUnits(itemId));
+            const v = Math.round((Number.isFinite(cur) ? cur : 1) * 100 + 100) / 100;
+            this.addedItemBillingUnits = { ...this.addedItemBillingUnits, [itemId]: v };
+            if (this.isAdded(itemId)) {
+                this.updatingItem = itemId;
+                updateModalItemQty(itemId, this.getAddedQty(itemId), this);
+            }
+        },
+        decrementBillingUnits(itemId, item) {
+            if (this.updatingItem === itemId) return;
+            const cur = parseFloat(this.getLineBillingUnits(itemId));
+            if (!Number.isFinite(cur) || cur <= 0.011) return;
+            let v = Math.round((Number.isFinite(cur) ? cur : 1) * 100 - 100) / 100;
+            if (!Number.isFinite(v) || v < 0.01) v = 0.01;
+            this.addedItemBillingUnits = { ...this.addedItemBillingUnits, [itemId]: v };
+            if (this.isAdded(itemId)) {
+                this.updatingItem = itemId;
+                updateModalItemQty(itemId, this.getAddedQty(itemId), this);
+            }
+        },
+        addItemToCart(itemId) {
+            if (this.addingItem === itemId) return;
+            this.addingItem = itemId;
+            addItemToCartAjax(itemId, 1, this);
+        },
+        incrementCartQty(itemId) {
+            if (this.updatingItem === itemId) return;
+            this.updatingItem = itemId;
+            const newQty = this.getAddedQty(itemId) + 1;
             this.addedItems[itemId] = newQty;
             updateModalItemQty(itemId, newQty, this);
-        } else {
-            removeModalItem(itemId, this);
-        }
-    },
-    syncItemRemoved(itemId) {
-        const updated = { ...this.addedItems };
-        delete updated[itemId];
-        this.addedItems = updated;
-    },
-    syncItemUpdated(itemId, qty) {
-        this.addedItems = { ...this.addedItems, [itemId]: qty };
-    },
-    syncAllRemoved() {
-        this.addedItems = {};
-    },
-    get filteredItems() {
-        return this.items.filter(item => {
-            const matchesSearch = !this.searchQuery || 
-                item.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-                (item.category && item.category.name.toLowerCase().includes(this.searchQuery.toLowerCase()));
-            const matchesCategory = !this.selectedCategory || 
-                (item.category_id == this.selectedCategory);
-            return matchesSearch && matchesCategory;
-        });
-    }
-}"
+        },
+        decrementCartQty(itemId) {
+            if (this.updatingItem === itemId) return;
+            this.updatingItem = itemId;
+            const currentQty = this.getAddedQty(itemId);
+            if (currentQty > 1) {
+                const newQty = currentQty - 1;
+                this.addedItems[itemId] = newQty;
+                updateModalItemQty(itemId, newQty, this);
+            } else {
+                removeModalItem(itemId, this);
+            }
+        },
+        syncItemRemoved(itemId) {
+            const updated = { ...this.addedItems };
+            delete updated[itemId];
+            this.addedItems = updated;
+            const bu = { ...this.addedItemBillingUnits };
+            delete bu[itemId];
+            this.addedItemBillingUnits = bu;
+        },
+        syncItemUpdated(itemId, qty, billingUnits) {
+            this.addedItems = { ...this.addedItems, [itemId]: qty };
+            if (billingUnits !== undefined && billingUnits !== null) {
+                this.addedItemBillingUnits = { ...this.addedItemBillingUnits, [itemId]: parseFloat(billingUnits) };
+            }
+        },
+        syncAllRemoved() {
+            this.addedItems = {};
+            this.addedItemBillingUnits = {};
+        },
+        get filteredItems() {
+            return this.items.filter(item => {
+                const matchesSearch = !this.searchQuery ||
+                    item.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                    (item.category && item.category.name.toLowerCase().includes(this.searchQuery.toLowerCase()));
+                const matchesCategory = !this.selectedCategory ||
+                    (item.category_id == this.selectedCategory);
+                return matchesSearch && matchesCategory;
+            });
+        },
+    };
+}
+</script>
+<div id="cartApp" x-data="cartPageData()"
 @cart-item-removed.window="syncItemRemoved($event.detail.itemId)"
-@cart-item-updated.window="syncItemUpdated($event.detail.itemId, $event.detail.quantity)"
+@cart-item-updated.window="syncItemUpdated($event.detail.itemId, $event.detail.quantity, $event.detail.billing_units)"
 @cart-emptied.window="syncAllRemoved()"
 >
     
-    <!-- Back Button -->
-    <div class="mb-4 md:mb-6">
-        <a href="{{ route('vendor.carts.index') }}" 
-           class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 bg-white hover:bg-blue-50 rounded-lg border border-gray-200 transition-all active:scale-95">
-            <i class="fas fa-arrow-left mr-2"></i>
-            <span class="hidden sm:inline">{{ __('vendor.back') }}</span>
-            <span class="sm:hidden">{{ __('vendor.back') }}</span>
+    <div class="mb-4 md:mb-6 flex flex-wrap items-center justify-between gap-3">
+        <a href="{{ route('vendor.carts.index') }}"
+           class="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/80 hover:text-blue-800 active:scale-[0.98]">
+            <i class="fas fa-arrow-left text-blue-600"></i>
+            {{ __('vendor.back') }}
         </a>
+        <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+            <a href="{{ route('vendor.carts.quote', $cart) }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-blue-600 transition hover:text-blue-800 sm:px-2">
+                <i class="fas fa-share-alt text-xs opacity-80"></i>
+                {{ __('vendor.share_quote') }}
+            </a>
+            <a href="{{ route('vendor.carts.quote.download', $cart) }}"
+               class="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-blue-600 transition hover:text-blue-800 sm:px-2">
+                <i class="fas fa-file-download text-xs opacity-80"></i>
+                {{ __('vendor.download_quote') }}
+            </a>
+            <button type="button"
+                    data-print-url="{{ route('vendor.carts.print', $cart) }}"
+                    onclick="window.open(this.getAttribute('data-print-url') + '?autoprint=1', '_blank', 'noopener,noreferrer')"
+                    class="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50 active:scale-[0.98]">
+                <i class="fas fa-file-invoice text-gray-600"></i>
+                {{ __('vendor.print_quote') }}
+            </button>
+            @if($cart->items->count() > 0)
+                <button type="button"
+                        onclick="openPlaceOrderConfirmModal()"
+                        class="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.98]">
+                    <i class="fas fa-check-circle"></i>
+                    {{ __('vendor.place_order') }}
+                </button>
+            @else
+                <button type="button" disabled
+                        class="inline-flex min-h-[44px] cursor-not-allowed items-center gap-2 rounded-xl bg-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-500">
+                    <i class="fas fa-check-circle"></i>
+                    {{ __('vendor.place_order') }}
+                </button>
+            @endif
+        </div>
     </div>
+
+    @if($cart->items->count() > 0)
+        <form id="vendorPlaceOrderForm"
+              action="{{ route('vendor.carts.place-order', $cart->id) }}"
+              method="POST"
+              class="hidden"
+              aria-hidden="true">
+            @csrf
+        </form>
+    @endif
 
     <!-- Success/Error Messages -->
     @if(session('success'))
-        <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-start space-x-3">
+        <div class="mb-6 flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50/90 p-4 shadow-sm ring-1 ring-green-100">
             <i class="fas fa-check-circle text-green-600 mt-0.5"></i>
             <div class="flex-1">
                 <p class="text-sm font-medium text-green-900">{{ session('success') }}</p>
@@ -95,7 +277,7 @@
     @endif
 
     @if($errors->any())
-        <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+        <div class="mb-6 rounded-2xl border border-red-200 bg-red-50/90 p-4 shadow-sm ring-1 ring-red-100">
             <div class="flex items-start space-x-3">
                 <i class="fas fa-exclamation-circle text-red-600 mt-0.5"></i>
                 <div class="flex-1">
@@ -110,273 +292,540 @@
         </div>
     @endif
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <!-- Left Column: Cart Info & Items -->
-        <div class="lg:col-span-2 space-y-6">
-            
-            <!-- Cart Information -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <!-- Header -->
-                <div class="px-4 py-4 md:px-6 md:py-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-blue-600 rounded-lg">
-                                <i class="fas fa-shopping-cart text-white text-lg"></i>
+    <div class="grid grid-cols-1 gap-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:grid-cols-3 lg:gap-8">
+
+        <div class="space-y-5 lg:col-span-2 lg:space-y-6">
+
+            <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
+                <div class="border-b border-gray-100 bg-gradient-to-r from-blue-50 via-white to-indigo-50/80 px-4 py-4 sm:px-6 sm:py-5">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex min-w-0 items-center gap-3">
+                            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-md ring-2 ring-white/50">
+                                <i class="fas fa-shopping-cart text-lg text-white"></i>
                             </div>
-                            <div>
-                                <h2 class="text-lg md:text-xl font-bold text-gray-900" data-cart-name>{{ $cart->cart_name }}</h2>
-                                <p class="text-xs md:text-sm text-gray-600">Created {{ $cart->created_at->format('M d, Y') }}</p>
+                            <div class="min-w-0">
+                                <h2 class="truncate text-lg font-bold tracking-tight text-gray-900 sm:text-xl" data-cart-name>{{ $cart->cart_name }}</h2>
+                                <p class="mt-0.5 text-sm text-gray-600">{{ __('vendor.created') }} {{ $cart->created_at->format('M d, Y') }}</p>
                             </div>
                         </div>
                         <button type="button" onclick="openEditCartModal()"
-                                class="px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
-                            <i class="fas fa-edit mr-1"></i>
-                            Edit
+                                class="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:px-4">
+                            <i class="fas fa-edit"></i>
+                            <span class="hidden sm:inline">{{ __('vendor.edit') }}</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Cart Details -->
-                <div class="p-4 md:p-6 space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Customer -->
-                        <div class="flex items-start space-x-3">
-                            <div class="w-10 h-10 flex items-center justify-center bg-emerald-100 rounded-lg">
-                                <i class="fas fa-user text-emerald-600"></i>
+                <div class="space-y-4 p-4 sm:p-6">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                        <div class="flex gap-3 rounded-xl border border-gray-100 bg-gray-50/80 p-4">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 ring-1 ring-emerald-200/60">
+                                <i class="fas fa-user text-emerald-700"></i>
                             </div>
-                            <div>
-                                <p class="text-xs text-gray-500 font-medium">{{ __('vendor.customer') }}</p>
-                                <p class="text-sm font-semibold text-gray-900">{{ $cart->customer->name }}</p>
-                                <p class="text-xs text-gray-600">{{ $cart->customer->mobile }}</p>
+                            <div class="min-w-0">
+                                <p class="text-xs font-bold uppercase tracking-wide text-gray-500">{{ __('vendor.customer') }}</p>
+                                <p class="mt-1 text-sm font-semibold text-gray-900">{{ $cart->customer->name }}</p>
+                                <p class="mt-0.5 text-sm text-gray-600">{{ $cart->customer->mobile }}</p>
                             </div>
                         </div>
-
-                        <!-- Booking Dates -->
-                        <div class="flex items-start space-x-3">
-                            <div class="w-10 h-10 flex items-center justify-center bg-purple-100 rounded-lg">
-                                <i class="fas fa-calendar text-purple-600"></i>
+                        <div class="flex gap-3 rounded-xl border border-gray-100 bg-gray-50/80 p-4">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 ring-1 ring-violet-200/60">
+                                <i class="fas fa-calendar text-violet-700"></i>
                             </div>
-                            <div data-booking-dates>
-                                <p class="text-xs text-gray-500 font-medium">Booking Period</p>
+                            <div class="min-w-0" data-booking-dates>
+                                <p class="text-xs font-bold uppercase tracking-wide text-gray-500">{{ __('vendor.booking_period') }}</p>
                                 @if($cart->start_time && $cart->end_time)
-                                    <p class="text-sm font-semibold text-gray-900">{{ $cart->start_time->format('M d, Y h:i A') }}</p>
-                                    <p class="text-xs text-gray-600">to {{ $cart->end_time->format('M d, Y h:i A') }}</p>
+                                    <p class="mt-1 text-sm font-semibold leading-snug text-gray-900">{{ $cart->start_time->format('M d, Y h:i A') }}</p>
+                                    <p class="mt-0.5 text-xs text-gray-600">{{ __('vendor.to') }} {{ $cart->end_time->format('M d, Y h:i A') }}</p>
                                 @else
-                                    <p class="text-sm text-gray-500 italic">Not specified</p>
+                                    <p class="mt-1 text-sm italic text-gray-500">{{ __('vendor.not_specified') }}</p>
                                 @endif
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Cart Items -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <!-- Header -->
-                <div class="px-4 py-4 md:px-6 md:py-5 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="flex-1">
-                            <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.cart_items') }}</h3>
-                            <p class="text-sm text-gray-600" data-items-count>{{ $cart->items->count() }} {{ __('vendor.items') }}</p>
+            <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
+                <div class="border-b border-gray-100 bg-gradient-to-r from-amber-50 via-white to-orange-50/90 px-4 py-4 sm:px-6 sm:py-5">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-md ring-2 ring-white/40">
+                            <i class="fas fa-truck text-lg text-white"></i>
                         </div>
-                        <div class="flex items-center gap-2">
+                        <div class="min-w-0">
+                            <h3 class="text-lg font-bold tracking-tight text-gray-900">{{ __('vendor.fulfillment_method') }}</h3>
+                            <p class="mt-0.5 text-sm leading-relaxed text-gray-600">{{ __('vendor.fulfillment_method_help') }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-5 p-4 sm:p-6">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                        <label class="relative flex min-h-[52px] cursor-pointer rounded-2xl border-2 p-4 transition-all"
+                               :class="fulfillmentType === 'pickup' ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/30' : 'border-gray-200 hover:border-gray-300 bg-white'">
+                            <input type="radio" name="fulfillment_type" value="pickup" x-model="fulfillmentType" @change="fulfillmentFieldError = ''" class="sr-only">
+                            <div class="flex items-start gap-3 w-full">
+                                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2"
+                                      :class="fulfillmentType === 'pickup' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300 bg-white'">
+                                    <span class="h-2 w-2 rounded-full bg-white" x-show="fulfillmentType === 'pickup'"></span>
+                                </span>
+                                <div>
+                                    <span class="block text-sm font-bold text-gray-900">{{ __('vendor.pickup') }}</span>
+                                    <span class="block text-xs text-gray-600 mt-0.5">{{ __('vendor.pickup_short_help') }}</span>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="relative flex min-h-[52px] cursor-pointer rounded-2xl border-2 p-4 transition-all"
+                               :class="fulfillmentType === 'delivery' ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/30' : 'border-gray-200 hover:border-gray-300 bg-white'">
+                            <input type="radio" name="fulfillment_type" value="delivery" x-model="fulfillmentType" @change="fulfillmentFieldError = ''" class="sr-only">
+                            <div class="flex items-start gap-3 w-full">
+                                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2"
+                                      :class="fulfillmentType === 'delivery' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300 bg-white'">
+                                    <span class="h-2 w-2 rounded-full bg-white" x-show="fulfillmentType === 'delivery'"></span>
+                                </span>
+                                <div>
+                                    <span class="block text-sm font-bold text-gray-900">{{ __('vendor.delivery') }}</span>
+                                    <span class="block text-xs text-gray-600 mt-0.5">{{ __('vendor.delivery_short_help') }}</span>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div x-show="fulfillmentType === 'pickup'" class="space-y-2" x-cloak>
+                        <label for="pickup_at_input" class="block text-sm font-semibold text-gray-800">
+                            {{ __('vendor.pickup_datetime') }}
+                        </label>
+                        <input type="datetime-local"
+                               id="pickup_at_input"
+                               x-model="pickupAt"
+                               class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-base text-gray-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 sm:text-sm"
+                        />
+                        <p class="text-xs text-gray-500">{{ __('vendor.pickup_datetime_help') }}</p>
+                    </div>
+
+                    <div x-show="fulfillmentType === 'delivery'" class="space-y-2" x-cloak>
+                        <div>
+                            <label for="delivery_charge_input" class="block text-sm font-semibold text-gray-800">
+                                {{ __('vendor.delivery_charge') }}
+                            </label>
+                            <div class="relative mt-1">
+                                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-500">₹</span>
+                                <input type="number"
+                                       id="delivery_charge_input"
+                                       x-model.number="deliveryCharge"
+                                       min="0"
+                                       step="0.01"
+                                       class="w-full rounded-xl border border-gray-200 bg-white py-3 pl-9 pr-4 text-base text-gray-900 shadow-inner focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 sm:text-sm"
+                                       placeholder="0.00"
+                                />
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">{{ __('vendor.delivery_charge_help') }}</p>
+                        </div>
+                        <label for="delivery_address_input" class="block text-sm font-semibold text-gray-800">
+                            {{ __('vendor.delivery_address') }}
+                        </label>
+                        <textarea id="delivery_address_input"
+                                  x-model="deliveryAddress"
+                                  rows="4"
+                                  class="w-full resize-y rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-base text-gray-900 shadow-inner placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 sm:text-sm"
+                                  :class="fulfillmentFieldError ? 'border-red-400' : ''"
+                                  placeholder="{{ __('vendor.delivery_address_help') }}"></textarea>
+                        <p class="text-xs text-gray-500">{{ __('vendor.delivery_address_help') }}</p>
+                        <p x-show="fulfillmentFieldError" class="text-sm text-red-600" x-text="fulfillmentFieldError"></p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3 pt-1">
+                        <button type="button"
+                                @click="saveFulfillment()"
+                                :disabled="savingFulfillment"
+                                class="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99]">
+                            <i class="fas fa-spinner fa-spin" x-show="savingFulfillment"></i>
+                            <i class="fas fa-save" x-show="!savingFulfillment"></i>
+                            {{ __('vendor.save') }}
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
+                <div class="border-b border-gray-100 bg-gradient-to-r from-slate-50 via-white to-blue-50/60 px-4 py-4 sm:px-6 sm:py-5">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="min-w-0">
+                            <h3 class="text-lg font-bold tracking-tight text-gray-900">{{ __('vendor.cart_items') }}</h3>
+                            <p class="mt-1 text-sm text-gray-600">
+                                <span data-items-count class="inline-flex items-center gap-2 font-medium text-gray-800">
+                                    <span class="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-blue-100 px-2 text-xs font-bold text-blue-800 tabular-nums">{{ $cart->items->count() }}</span>
+                                    <span>{{ __('vendor.items') }}</span>
+                                </span>
+                            </p>
+                        </div>
+                        <div class="flex w-full flex-shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
                             @if($cart->items->count() > 0)
                             <button type="button" onclick="confirmEmptyCart()"
-                                    class="flex items-center flex-shrink-0 px-3 py-2 md:px-4 md:py-2.5 text-sm font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-all active:scale-95">
-                                <i class="fas fa-trash-alt mr-1 md:mr-2"></i>
-                                <span class="text-xs md:text-sm">Empty</span>
+                                    class="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-100 active:scale-[0.99] sm:flex-none sm:min-h-[44px] sm:py-2.5">
+                                <i class="fas fa-trash-alt"></i>
+                                {{ __('vendor.btn_empty_cart') }}
                             </button>
                             @endif
-                            <button @click="showAddItem = true" 
-                                    class="flex items-center flex-shrink-0 px-3 py-2 md:px-4 md:py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 shadow-sm">
-                                <i class="fas fa-plus mr-1 md:mr-2"></i>
-                                <span class="text-xs md:text-sm">{{ __('vendor.add_item') }}</span>
+                            <button type="button" @click="showAddItem = true"
+                                    class="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 active:scale-[0.99] sm:flex-none sm:min-h-[44px] sm:py-2.5">
+                                <i class="fas fa-plus"></i>
+                                {{ __('vendor.add_item') }}
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Items List -->
-                <div class="py-4 md:py-6" data-items-list>
+                <div data-items-list class="min-h-[10rem] p-3 sm:p-4 md:p-5">
                     @if($cart->items->count() > 0)
-                        <div class="space-y-0 divide-y divide-gray-200">
+                        <style>
+                            @media (max-width: 767px) {
+                                .cart-line-table thead { display: none !important; }
+                                .cart-line-table { display: block; width: 100%; border: 0; }
+                                .cart-line-table tbody { display: block; }
+                                .cart-line-table tbody tr[data-cart-line] {
+                                    display: flex !important;
+                                    flex-direction: column;
+                                    gap: 0.625rem;
+                                    padding: 0.875rem;
+                                    margin-bottom: 0.75rem;
+                                    border: 1px solid #e5e7eb !important;
+                                    border-radius: 0.75rem;
+                                    background: #fff;
+                                    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+                                }
+                                .cart-line-table tbody tr[data-cart-line]:last-child { margin-bottom: 0; }
+                                .cart-line-table tbody td {
+                                    display: grid !important;
+                                    grid-template-columns: minmax(5.25rem, 32%) 1fr;
+                                    gap: 0.5rem 0.75rem;
+                                    align-items: center;
+                                    padding: 0 !important;
+                                    border: none !important;
+                                    width: 100% !important;
+                                    text-align: left !important;
+                                }
+                                .cart-line-table tbody td:first-child,
+                                .cart-line-table tbody td:nth-child(2),
+                                .cart-line-table tbody td:nth-child(3) { align-items: start; }
+                                .cart-line-table tbody td::before {
+                                    content: attr(data-col);
+                                    font-size: 0.65rem;
+                                    font-weight: 600;
+                                    line-height: 1.25;
+                                    text-transform: uppercase;
+                                    letter-spacing: 0.06em;
+                                    color: #6b7280;
+                                    padding-top: 0.15rem;
+                                }
+                                .cart-line-table tbody td:last-child { justify-items: start; }
+                            }
+                        </style>
+                        <div class="-mx-3 max-md:overflow-visible md:-mx-0 md:overflow-x-auto md:rounded-xl md:border md:border-gray-200">
+                            <table class="cart-line-table w-full border-collapse text-left text-sm md:min-w-[36rem]">
+                                <thead>
+                                    <tr class="border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-600">
+                                        <th class="py-3 pl-3 pr-2 sm:pl-4">{{ __('vendor.item') }}</th>
+                                        <th class="w-[1%] whitespace-nowrap px-2 py-3 text-center">{{ __('vendor.quantity') }}</th>
+                                        <th class="w-[1%] whitespace-nowrap px-2 py-3 text-center">{{ __('vendor.cart_duration') }}</th>
+                                        <th class="w-[1%] whitespace-nowrap px-2 py-3 text-right">{{ __('vendor.total') }}</th>
+                                        <th class="w-12 px-2 py-3 pr-3 text-center sm:pr-4"><span class="sr-only">{{ __('vendor.remove_from_cart') }}</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                             @foreach($cart->items as $cartItem)
-                                <div class="flex items-center justify-between px-4 py-4 md:px-6 bg-white hover:bg-gray-50 transition-colors">
-                                    <!-- Item Info -->
-                                    <div class="flex-1">
-                                        <div class="flex items-start space-x-3">
-                                            <div class="w-12 h-12 flex items-center justify-center bg-white rounded-lg border border-gray-200">
-                                                <i class="fas fa-box text-gray-600"></i>
+                                <tr data-cart-line="1"
+                                    class="border-b border-gray-100 bg-white transition hover:bg-slate-50/80 max-md:border-0 max-md:hover:bg-white md:border-b"
+                                    data-line-price-type="{{ $cartItem->item->price_type }}"
+                                    data-line-qty="{{ $cartItem->quantity }}"
+                                    data-line-billing="{{ (float) ($cartItem->billing_units ?? 1) }}">
+                                    <td class="align-middle py-3 pl-3 pr-2 sm:pl-4" data-col="{{ __('vendor.item') }}">
+                                        <div class="flex min-w-0 max-w-md gap-3">
+                                            <div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-slate-100 to-blue-50 ring-1 ring-gray-200/80 sm:h-16 sm:w-16" aria-hidden="true">
+                                                <i class="fas fa-box-open text-xl text-blue-600/90"></i>
                                             </div>
-                                            <div class="flex-1">
-                                                <h4 class="text-sm font-semibold text-gray-900">{{ $cartItem->item->name }}</h4>
-                                                <p class="text-xs text-gray-600">{{ $cartItem->item->category->name ?? __('vendor.no_category') }}</p>
-                                                <div class="flex items-center space-x-4 mt-2">
-                                                    <span class="text-sm font-bold text-blue-600">₹{{ number_format($cartItem->item->price, 2) }}</span>
-                                                    <span class="text-xs text-gray-500">x</span>
-                                                    
-                                                    <!-- Quantity Display/Edit -->
-                                                    <div x-show="editingItem !== {{ $cartItem->item_id }}" class="flex items-center space-x-2">
-                                                        <span class="text-sm font-medium text-gray-900" data-qty-display="{{ $cartItem->item_id }}">{{ __('vendor.quantity') }}: {{ $cartItem->quantity }}</span>
-                                                        <button @click="editingItem = {{ $cartItem->item_id }}; editQuantity = {{ $cartItem->quantity }}" 
-                                                                class="text-xs text-blue-600 hover:text-blue-700">
-                                                            <i class="fas fa-edit"></i>
-                                                        </button>
-                                                    </div>
-                                                    
-                                                    <!-- Quantity Edit (AJAX) -->
-                                                    <div x-show="editingItem === {{ $cartItem->item_id }}" 
-                                                         class="flex items-center space-x-2"
-                                                         style="display: none;">
-                                                        <input type="number" 
-                                                               x-model="editQuantity"
-                                                               min="1" 
-                                                               class="w-16 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                                                               @keydown.enter.prevent="updateCartItemQty({{ $cart->id }}, {{ $cartItem->item_id }}, editQuantity, $el); editingItem = null">
-                                                        <button type="button" @click="updateCartItemQty({{ $cart->id }}, {{ $cartItem->item_id }}, editQuantity, $el); editingItem = null" class="text-green-600 hover:text-green-700">
-                                                            <i class="fas fa-check"></i>
-                                                        </button>
-                                                        <button type="button" @click="editingItem = null" class="text-red-600 hover:text-red-700">
-                                                            <i class="fas fa-times"></i>
-                                                        </button>
-                                                    </div>
-                                                    
-                                                    <span class="text-xs text-gray-500">=</span>
-                                                    <span class="text-sm font-bold text-gray-900" data-line-total="{{ $cartItem->item_id }}">₹{{ number_format($cartItem->item->price * $cartItem->quantity, 2) }}</span>
-                                                </div>
+                                            <div class="min-w-0">
+                                                <div class="font-bold leading-snug text-gray-900">{{ $cartItem->item->name }}</div>
+                                                <div class="mt-0.5 text-base font-bold tabular-nums text-blue-700">₹{{ number_format($cartItem->item->price, 2) }}</div>
+                                                <div class="text-xs text-gray-500">{{ $cartItem->item->category->name ?? __('vendor.no_category') }}</div>
                                             </div>
                                         </div>
-                                    </div>
-
-                                    <!-- Remove Button -->
-                                    <button type="button" 
-                                            onclick="removeCartItem({{ $cart->id }}, {{ $cartItem->item_id }}, this)"
-                                            class="ml-4 p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
+                                    </td>
+                                    <td class="align-middle px-2 py-3 text-center max-md:text-left" data-col="{{ __('vendor.quantity') }}">
+                                        <div class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50/80 px-1 py-0.5" data-line-qty-stepper="{{ $cartItem->item_id }}">
+                                            <button type="button"
+                                                onclick="nudgeLineQty({{ $cart->id }}, {{ $cartItem->item_id }}, -1, this)"
+                                                class="flex h-9 w-9 items-center justify-center rounded-md bg-white text-gray-700 shadow-sm transition hover:bg-gray-100 active:scale-95"
+                                                title="{{ __('vendor.quantity') }} −1">
+                                                <i class="fas fa-minus text-xs"></i>
+                                            </button>
+                                            <span class="min-w-[2rem] text-center text-sm font-bold tabular-nums text-gray-900" data-qty-display="{{ $cartItem->item_id }}">{{ $cartItem->quantity }}</span>
+                                            <button type="button"
+                                                onclick="nudgeLineQty({{ $cart->id }}, {{ $cartItem->item_id }}, 1, this)"
+                                                class="flex h-9 w-9 items-center justify-center rounded-md bg-white text-gray-700 shadow-sm transition hover:bg-gray-100 active:scale-95"
+                                                title="{{ __('vendor.quantity') }} +1">
+                                                <i class="fas fa-plus text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    <td class="align-middle px-2 py-3 text-center max-md:text-left" data-col="{{ __('vendor.cart_duration') }}">
+                                        @if(\App\Models\Items::priceTypeUsesBillingUnits($cartItem->item->price_type))
+                                            <div class="inline-flex flex-col items-center gap-1">
+                                                <span class="text-[0.65rem] font-semibold uppercase tracking-wide text-gray-500">{{ \App\Models\Items::billingUnitsFieldLabel($cartItem->item->price_type) }}</span>
+                                                <div class="inline-flex items-center gap-1">
+                                                    <button type="button"
+                                                        onclick="nudgeLineBilling({{ $cart->id }}, {{ $cartItem->item_id }}, -1)"
+                                                        class="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95">
+                                                        <i class="fas fa-minus text-xs"></i>
+                                                    </button>
+                                                    <input id="line-billing-{{ $cartItem->item_id }}" type="number" step="0.01" min="0.01" lang="en"
+                                                        class="h-9 w-14 rounded-lg border border-gray-200 bg-white text-center text-sm font-bold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25"
+                                                        value="{{ (float) ($cartItem->billing_units ?? 1) }}"
+                                                        onblur="updateCartBillingUnits({{ $cart->id }}, {{ $cartItem->item_id }}, this)">
+                                                    <button type="button"
+                                                        onclick="nudgeLineBilling({{ $cart->id }}, {{ $cartItem->item_id }}, 1)"
+                                                        class="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95">
+                                                        <i class="fas fa-plus text-xs"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        @else
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="align-middle px-2 py-3 text-right max-md:text-left" data-col="{{ __('vendor.total') }}">
+                                        <span class="text-base font-bold tabular-nums text-gray-900" data-line-total="{{ $cartItem->item_id }}">₹{{ number_format($cartItem->lineSubtotal(), 2) }}</span>
+                                    </td>
+                                    <td class="align-middle px-2 py-3 pr-3 text-center sm:pr-4 max-md:text-left" data-col="{{ __('vendor.remove_from_cart') }}">
+                                        <button type="button"
+                                                data-cart-remove="1"
+                                                onclick="removeCartItem({{ $cart->id }}, {{ $cartItem->item_id }}, this)"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-red-100 bg-red-50 text-red-600 transition hover:bg-red-100 hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                                title="{{ __('vendor.remove_from_cart') }}">
+                                            <i class="fas fa-trash text-sm"></i>
+                                        </button>
+                                    </td>
+                                </tr>
                             @endforeach
+                                </tbody>
+                            </table>
                         </div>
                     @else
-                        <div class="text-center py-12">
-                            <div class="w-20 h-20 mx-auto mb-4 flex items-center justify-center bg-gray-100 rounded-full">
+                        <div class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 px-6 py-14 text-center">
+                            <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-gray-100">
                                 <i class="fas fa-shopping-cart text-3xl text-gray-400"></i>
                             </div>
-                            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('vendor.no_items_yet') }}</h3>
-                            <p class="text-sm text-gray-600 mb-4">{{ __('vendor.add_to_cart') }}</p>
-                            <button @click="showAddItem = true" 
-                                    class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95">
-                                <i class="fas fa-plus mr-2"></i>
-                                {{ __('vendor.add_item') }}
+                            <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.no_items_yet') }}</h3>
+                            <p class="mt-2 max-w-sm text-sm leading-relaxed text-gray-600">{{ __('vendor.add_to_cart') }}</p>
+                            <button type="button" @click="showAddItem = true"
+                                    class="mt-6 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow-md transition hover:bg-blue-700 active:scale-[0.99]">
+                                <i class="fas fa-plus"></i>{{ __('vendor.add_item') }}
                             </button>
                         </div>
                     @endif
                 </div>
-            </div>
+            </section>
         </div>
 
-        <!-- Right Column: Summary -->
         <div class="lg:col-span-1">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden sticky top-6 max-h-[90vh] overflow-y-auto">
-                <!-- Header -->
-                <div class="px-4 py-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-green-50">
-                    <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.summary') }}</h3>
+            <div class="sticky top-4 z-[5] max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100 sm:top-6">
+                <div class="border-b border-gray-100 bg-gradient-to-r from-emerald-50 via-white to-teal-50/80 px-4 py-4 sm:px-5 sm:py-5">
+                    <div class="flex items-start gap-3">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 text-white shadow-md ring-2 ring-white/60">
+                            <i class="fas fa-receipt text-lg"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-lg font-bold tracking-tight text-gray-900">{{ __('vendor.summary') }}</h3>
+                            <p class="mt-0.5 text-xs leading-relaxed text-gray-600">{{ __('vendor.summary_help') }}</p>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Summary Details -->
-                <div class="p-4 space-y-3">
-                    <div class="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span class="text-sm text-gray-600">{{ __('vendor.sub_total') }}</span>
-                        <span data-sub-total class="text-sm font-semibold text-gray-900">₹{{ number_format($cart->sub_total, 2) }}</span>
-                    </div>
-                    <div class="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span class="text-sm text-gray-600">{{ __('vendor.tax') }} (10%)</span>
-                        <span data-tax-total class="text-sm font-semibold text-gray-900">₹{{ number_format($cart->tax_total, 2) }}</span>
-                    </div>
-
-                    <!-- Discount Row -->
-                    <div class="py-2 border-b border-gray-100">
-                        {{-- No discount applied --}}
-                        <div id="discount-add" class="{{ $cart->discount_amount > 0 ? 'hidden' : '' }}">
-                            <button type="button" onclick="openDiscountModal()"
-                                    class="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
-                                <i class="fas fa-plus-circle"></i>
-                                <span>Add Discount</span>
-                            </button>
-                        </div>
-                        {{-- Discount applied --}}
-                        <div id="discount-applied" class="{{ $cart->discount_amount > 0 ? '' : 'hidden' }}">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-2">
-                                    <i class="fas fa-tag text-blue-600 text-xs"></i>
-                                    <span class="text-sm text-gray-700 font-medium" id="discount-label">
-                                        @if($cart->discount_type === 'percent')
-                                            Discount {{ rtrim(rtrim(number_format($cart->discount_value, 2), '0'), '.') }}%
-                                        @elseif($cart->discount_type === 'fixed')
-                                            Discount ₹{{ number_format($cart->discount_value, 2) }}
-                                        @else
-                                            Discount
-                                        @endif
-                                    </span>
-                                </div>
-                                <div class="flex items-center space-x-2">
-                                    <span data-discount-amount class="text-sm font-semibold text-red-600">-₹{{ number_format($cart->discount_amount, 2) }}</span>
-                                    <button type="button" onclick="removeDiscount()"
-                                            class="text-xs text-red-500 hover:text-red-700" title="Remove discount">
-                                        <i class="fas fa-times-circle"></i>
-                                    </button>
-                                </div>
+                <div class="space-y-4 p-4 sm:p-5">
+                    {{-- 1. Rental charges --}}
+                    <div>
+                        <p class="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">{{ __('vendor.summary_section_charges') }}</p>
+                        <div class="space-y-0 rounded-xl border border-gray-100 bg-gray-50/70 p-1">
+                            <div class="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5">
+                                <span class="text-sm text-gray-600">{{ __('vendor.sub_total') }}</span>
+                                <span data-sub-total class="text-sm font-semibold tabular-nums text-gray-900">₹{{ number_format($cart->sub_total, 2) }}</span>
+                            </div>
+                            <div class="flex items-center justify-between gap-3 rounded-lg border-t border-gray-100/80 bg-white/60 px-3 py-2.5">
+                                <span class="text-sm text-gray-600">{{ __('vendor.tax') }} <span class="text-gray-400">(10%)</span></span>
+                                <span data-tax-total class="text-sm font-semibold tabular-nums text-gray-900">₹{{ number_format($cart->tax_total, 2) }}</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Coupon Row -->
-                    <div class="py-2 border-b border-gray-100">
-                        {{-- No coupon applied --}}
-                        <div id="coupon-add" class="{{ $cart->coupon_code ? 'hidden' : '' }}">
-                            <button type="button" onclick="openCouponModal()"
-                                    class="flex items-center space-x-2 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
-                                <i class="fas fa-ticket-alt"></i>
-                                <span>Add Coupon</span>
-                            </button>
-                        </div>
-                        {{-- Coupon applied --}}
-                        <div id="coupon-applied" class="{{ $cart->coupon_code ? '' : 'hidden' }}">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-2">
-                                    <i class="fas fa-ticket-alt text-emerald-600 text-xs"></i>
-                                    <span class="text-sm text-emerald-700 font-medium" data-coupon-code>{{ $cart->coupon_code }}</span>
+                    {{-- 2. Discounts & coupons --}}
+                    <div>
+                        <p class="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">{{ __('vendor.summary_section_savings') }}</p>
+                        <div class="space-y-2 rounded-xl border border-dashed border-gray-200 bg-white p-3">
+                            <div id="discount-add" class="{{ $cart->discount_amount > 0 ? 'hidden' : '' }}">
+                                <button type="button" onclick="openDiscountModal()"
+                                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 py-2.5 text-sm font-semibold text-blue-700 transition hover:border-blue-200 hover:bg-blue-50/80">
+                                    <i class="fas fa-plus-circle text-xs"></i>
+                                    <span>{{ __('vendor.add_discount') }}</span>
+                                </button>
+                            </div>
+                            <div id="discount-applied" class="{{ $cart->discount_amount > 0 ? '' : 'hidden' }}">
+                                <div class="flex items-center justify-between gap-2 rounded-lg bg-blue-50/50 px-3 py-2 ring-1 ring-blue-100/80">
+                                    <div class="flex min-w-0 items-center gap-2">
+                                        <i class="fas fa-tag shrink-0 text-blue-600 text-xs"></i>
+                                        <span class="truncate text-sm font-medium text-gray-800" id="discount-label">
+                                            @if($cart->discount_type === 'percent')
+                                                {{ __('vendor.discount') }} {{ rtrim(rtrim(number_format($cart->discount_value, 2), '0'), '.') }}%
+                                            @elseif($cart->discount_type === 'fixed')
+                                                {{ __('vendor.discount') }} ₹{{ number_format($cart->discount_value, 2) }}
+                                            @else
+                                                {{ __('vendor.discount') }}
+                                            @endif
+                                        </span>
+                                    </div>
+                                    <div class="flex shrink-0 items-center gap-2">
+                                        <span data-discount-amount class="text-sm font-semibold tabular-nums text-red-600">-₹{{ number_format($cart->discount_amount, 2) }}</span>
+                                        <button type="button" onclick="removeDiscount()"
+                                                class="rounded p-1 text-red-500 transition hover:bg-red-100 hover:text-red-700"
+                                                title="{{ __('vendor.remove') }} {{ __('vendor.discount') }}">
+                                            <i class="fas fa-times-circle text-sm"></i>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="flex items-center space-x-2">
-                                    <span data-coupon-discount class="text-sm font-semibold text-red-600">-₹{{ number_format($cart->coupon_discount, 2) }}</span>
-                                    <button type="button" onclick="removeCoupon()"
-                                            class="text-xs text-red-500 hover:text-red-700" title="Remove coupon">
-                                        <i class="fas fa-times-circle"></i>
-                                    </button>
+                            </div>
+
+                            <div id="coupon-add" class="{{ $cart->coupon_code ? 'hidden' : '' }}">
+                                <button type="button" onclick="openCouponModal()"
+                                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 py-2.5 text-sm font-semibold text-emerald-800 transition hover:border-emerald-200 hover:bg-emerald-50/80">
+                                    <i class="fas fa-ticket-alt text-xs"></i>
+                                    <span>{{ __('vendor.add_coupon') }}</span>
+                                </button>
+                            </div>
+                            <div id="coupon-applied" class="{{ $cart->coupon_code ? '' : 'hidden' }}">
+                                <div class="flex items-center justify-between gap-2 rounded-lg bg-emerald-50/50 px-3 py-2 ring-1 ring-emerald-100/80">
+                                    <div class="flex min-w-0 items-center gap-2">
+                                        <i class="fas fa-ticket-alt shrink-0 text-emerald-600 text-xs"></i>
+                                        <span class="truncate text-sm font-semibold text-emerald-900" data-coupon-code>{{ $cart->coupon_code }}</span>
+                                    </div>
+                                    <div class="flex shrink-0 items-center gap-2">
+                                        <span data-coupon-discount class="text-sm font-semibold tabular-nums text-red-600">-₹{{ number_format($cart->coupon_discount, 2) }}</span>
+                                        <button type="button" onclick="removeCoupon()"
+                                                class="rounded p-1 text-red-500 transition hover:bg-red-100 hover:text-red-700"
+                                                title="{{ __('vendor.remove') }} {{ __('vendor.coupon_code') }}">
+                                            <i class="fas fa-times-circle text-sm"></i>
+                                        </button>
+                                    </div>
                                 </div>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2.5">
+                                <span class="text-sm font-semibold text-gray-700">{{ __('vendor.total_savings') }}</span>
+                                <span data-discount-total class="text-sm font-bold tabular-nums text-red-600">-₹{{ number_format($cart->discount_total, 2) }}</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Total Discount -->
-                    <div class="flex items-center justify-between py-2 border-b border-gray-100">
-                        <span class="text-sm font-medium text-gray-700">Total Discount</span>
-                        <span data-discount-total class="text-sm font-semibold text-red-600">-₹{{ number_format($cart->discount_total, 2) }}</span>
+                    @php
+                        $showDeliveryLine = (($cart->fulfillment_type ?? 'pickup') === 'delivery' && (float) ($cart->delivery_charge ?? 0) > 0);
+                    @endphp
+                    <div id="summary-delivery-charge-row"
+                         class="flex items-center justify-between gap-3 rounded-xl border border-orange-100 bg-orange-50/40 px-3.5 py-2.5 {{ $showDeliveryLine ? '' : 'hidden' }}">
+                        <span class="text-sm font-medium text-gray-800">{{ __('vendor.delivery_charge') }}</span>
+                        <span data-delivery-charge-line class="text-sm font-bold tabular-nums text-gray-900">₹{{ number_format((float) ($cart->delivery_charge ?? 0), 2) }}</span>
                     </div>
 
-                    <div class="flex items-center justify-between py-3 border-t-2 border-gray-200 mt-2">
-                        <span class="text-base font-bold text-gray-900">{{ __('vendor.grand_total') }}</span>
-                        <span data-grand-total class="text-lg font-bold text-emerald-600">₹{{ number_format($cart->grand_total, 2) }}</span>
+                    {{-- 3. Order total (before deposit) --}}
+                    <div class="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/90 px-3.5 py-3">
+                        <div class="min-w-0">
+                            <span class="text-sm font-bold text-slate-800">{{ __('vendor.summary_order_total') }}</span>
+                            <span class="mt-0.5 block text-[11px] leading-snug text-slate-500">{{ __('vendor.summary_order_total_hint') }}</span>
+                        </div>
+                        <span data-order-total class="shrink-0 text-base font-bold tabular-nums text-slate-900">₹{{ number_format($cart->grand_total, 2) }}</span>
                     </div>
-                    <!-- Add Payment Button -->
-                    <div class="flex items-center justify-center mt-2 mb-2">
-                        <button type="button" onclick="openAddPaymentModal()" class="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 shadow-sm">
-                            <i class="fas fa-wallet mr-2"></i>Add Payment
+
+                    {{-- 4. Security deposit --}}
+                    <div class="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2.5 shadow-sm">
+                        <button type="button"
+                                onclick="openSecurityDepositModal()"
+                                class="inline-flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-semibold text-blue-700 transition hover:text-blue-900">
+                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100">
+                                <i class="fas fa-shield-alt text-xs"></i>
+                            </span>
+                            <span id="securityDepositLabel" class="truncate">{{ __('vendor.quote_security_deposit') }}</span>
                         </button>
+                        <span data-security-deposit-total class="shrink-0 text-sm font-bold tabular-nums text-gray-900">₹{{ number_format($cart->security_deposit ?? 0, 2) }}</span>
                     </div>
 
-                    <!-- Add Payment Modal -->
+                    {{-- 5. Total due (order + deposit) --}}
+                    <div class="rounded-xl border-2 border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-white to-teal-50/70 p-4 shadow-sm ring-1 ring-emerald-100/60">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <span class="text-sm font-bold text-gray-900">{{ __('vendor.summary_total_due') }}</span>
+                                <span class="mt-0.5 block text-[11px] font-medium leading-snug text-emerald-800/80">{{ __('vendor.summary_total_due_hint') }}</span>
+                            </div>
+                            <span data-grand-total class="shrink-0 text-xl font-bold tabular-nums tracking-tight text-emerald-700">₹{{ number_format((float) $cart->grand_total + (float) ($cart->security_deposit ?? 0), 2) }}</span>
+                        </div>
+                    </div>
+
+                    {{-- 6. Payment status --}}
+                    <div class="space-y-2 border-t border-gray-200 pt-4">
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">{{ __('vendor.summary_section_payment') }}</p>
+                        <div class="flex items-center justify-between rounded-xl bg-gray-50/80 px-3.5 py-2.5 ring-1 ring-gray-100">
+                            <span class="text-sm text-gray-600">{{ __('vendor.paid_amount') }}</span>
+                            <span data-paid-amount class="text-sm font-semibold tabular-nums text-emerald-600">₹{{ number_format($cart->paid_amount, 2) }}</span>
+                        </div>
+                        <div class="flex items-center justify-between rounded-xl border border-amber-200/80 bg-amber-50/70 px-3.5 py-3">
+                            <span class="text-sm font-bold text-gray-900">{{ __('vendor.balance_due') }}</span>
+                            <span data-balance-due class="text-base font-bold tabular-nums text-red-600">₹{{ number_format((float) $cart->grand_total + (float) ($cart->security_deposit ?? 0) - (float) $cart->paid_amount, 2) }}</span>
+                        </div>
+                        <button type="button" onclick="openAddPaymentModal()"
+                                class="mt-1 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 active:scale-[0.99]">
+                            <i class="fas fa-wallet"></i>{{ __('vendor.new_payment') }}
+                        </button>
+
+                        @php
+                            $paymentRows = is_array($cart->payment_detail) ? $cart->payment_detail : [];
+                        @endphp
+                        <div id="payment-history-section" class="mt-4 space-y-2">
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">{{ __('vendor.payment_history_title') }}</p>
+                            <div id="payment-history-empty"
+                                 class="{{ count($paymentRows) ? 'hidden' : '' }} rounded-xl border border-dashed border-gray-200 bg-gray-50/90 px-3 py-3 text-center text-xs leading-relaxed text-gray-500">
+                                {{ __('vendor.payment_history_empty') }}
+                            </div>
+                            <ul id="payment-history-list" class="space-y-2 {{ count($paymentRows) ? '' : 'hidden' }}">
+                                @foreach($paymentRows as $idx => $p)
+                                    <li class="flex items-start gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2.5 shadow-sm ring-1 ring-gray-100/80">
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                                <span class="text-sm font-bold tabular-nums text-gray-900">₹{{ number_format((float) ($p['amount'] ?? 0), 2) }}</span>
+                                                @if(($p['payment_for'] ?? '') === 'security_deposit')
+                                                    <span class="inline-flex rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 ring-1 ring-violet-100">{{ __('vendor.payment_for_deposit_short') }}</span>
+                                                @else
+                                                    <span class="inline-flex rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 ring-1 ring-blue-100">{{ __('vendor.payment_for_order_short') }}</span>
+                                                @endif
+                                            </div>
+                                            <p class="mt-0.5 text-[11px] text-gray-500">
+                                                @php
+                                                    $m = $p['method'] ?? '';
+                                                    $methodLabels = ['card' => 'Card', 'cash' => 'Cash', 'upi' => 'UPI', 'bank_transfer' => 'Bank transfer', 'wallet' => 'Wallet', 'other' => 'Other'];
+                                                    $mLabel = $methodLabels[$m] ?? ucfirst(str_replace('_', ' ', (string) $m));
+                                                    $paidOn = ! empty($p['paid_on']) ? \Carbon\Carbon::parse($p['paid_on'])->format('M j, Y') : null;
+                                                @endphp
+                                                <span class="font-medium text-gray-600">{{ $mLabel }}</span>
+                                                @if($paidOn)<span class="text-gray-400"> · </span><span>{{ $paidOn }}</span>@endif
+                                            </p>
+                                        </div>
+                                        <button type="button"
+                                                onclick="removeCartPayment({{ (int) $idx }})"
+                                                class="shrink-0 rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                                                title="{{ __('vendor.payment_remove') }}">
+                                            <i class="fas fa-times text-sm"></i>
+                                        </button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- New Payment Modal (step 1: select payment for) -->
                     <div id="addPaymentModal" class="fixed inset-0 z-[80] hidden">
                         <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="closeAddPaymentModal()"></div>
                         <div class="fixed inset-0 flex items-center justify-center p-4">
@@ -389,7 +838,8 @@
                                                 <i class="fas fa-wallet text-white"></i>
                                             </div>
                                             <div>
-                                                <h3 class="text-lg font-bold text-gray-900">Add Payment</h3>
+                                                <h3 class="text-lg font-bold text-gray-900">New Payment</h3>
+                                                <p class="text-xs text-gray-600">Select payment for</p>
                                             </div>
                                         </div>
                                         <button type="button" onclick="closeAddPaymentModal()" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors">
@@ -398,90 +848,538 @@
                                     </div>
                                 </div>
                                 <!-- Body -->
-                                <form class="p-6 space-y-5">
-                                    <!-- Payment Type -->
+                                <div class="p-6 space-y-5">
                                     <div>
-                                        <label class="block text-sm font-semibold text-gray-700 mb-3">Payment Type</label>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-3">Payment for</label>
                                         <div class="grid grid-cols-1 gap-3">
-                                            <label class="flex items-center space-x-3 cursor-pointer">
-                                                <input type="radio" name="payment_type" value="security_deposit" class="form-radio text-blue-600" checked>
-                                                <span class="text-sm font-medium text-gray-700">Security Deposit</span>
-                                            </label>
-                                            <label class="flex items-center space-x-3 cursor-pointer">
-                                                <input type="radio" name="payment_type" value="token_amount" class="form-radio text-blue-600">
-                                                <span class="text-sm font-medium text-gray-700">Token Amount</span>
-                                            </label>
-                                            <label class="flex items-center space-x-3 cursor-pointer">
-                                                <input type="radio" name="payment_type" value="full_payment" class="form-radio text-blue-600">
-                                                <span class="text-sm font-medium text-gray-700">Full Payment</span>
-                                            </label>
+                                            <button type="button" onclick="openNewPaymentDueModal('order_amount')"
+                                                    class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-left transition-all hover:border-blue-400 hover:bg-blue-50/60">
+                                                <div class="flex items-start gap-3">
+                                                    <i class="fas fa-file-invoice-dollar mt-0.5 text-blue-600"></i>
+                                                    <div>
+                                                        <p class="text-sm font-semibold text-gray-800">Order amount</p>
+                                                        <p class="text-xs text-gray-500">Collect payment against order total.</p>
+                                                    </div>
+                                                </div>
+                                            </button>
+
+                                            <button type="button" onclick="openNewPaymentDueModal('security_deposit')"
+                                                    class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-left transition-all hover:border-blue-400 hover:bg-blue-50/60">
+                                                <div class="flex items-start gap-3">
+                                                    <i class="fas fa-shield-alt mt-0.5 text-blue-600"></i>
+                                                    <div>
+                                                        <p class="text-sm font-semibold text-gray-800">Security deposit</p>
+                                                        <p class="text-xs text-gray-500">Collect payment for refundable security deposit.</p>
+                                                    </div>
+                                                </div>
+                                            </button>
                                         </div>
                                     </div>
-                                    <!-- Footer -->
                                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
                                         <button type="button" onclick="closeAddPaymentModal()"
                                                 class="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                                             Cancel
                                         </button>
-                                        <button type="submit" class="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 shadow-sm">
-                                            <i class="fas fa-check mr-2"></i>Add Payment
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- New Payment: amount due (step 2) -->
+                    <div id="newPaymentDueModal" class="fixed inset-0 z-[86] hidden">
+                        <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="backNewPaymentDueModal()"></div>
+                        <div class="fixed inset-0 flex items-center justify-center p-4">
+                            <div class="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-2xl" onclick="event.stopPropagation()">
+                                <div class="rounded-t-xl border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-blue-50 px-6 py-4">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div>
+                                            <h3 id="npDueTitle" class="text-lg font-bold text-gray-900"></h3>
+                                            <p id="npDueSubtitle" class="text-xs text-gray-600"></p>
+                                        </div>
+                                        <button type="button" onclick="backNewPaymentDueModal()" class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-white hover:text-gray-600">
+                                            <i class="fas fa-times text-xl"></i>
                                         </button>
                                     </div>
-                                </form>
+                                </div>
+                                <div class="space-y-4 p-6">
+                                    <div id="npSectionOrder" class="hidden rounded-xl border border-gray-100 bg-gray-50/90 p-4">
+                                        <p class="text-center text-xs font-semibold uppercase tracking-wide text-blue-700">Order amount</p>
+                                        <p class="text-center text-sm font-semibold text-gray-800">Rental balance</p>
+                                        <dl class="mt-4 space-y-3 text-sm">
+                                            <div class="flex items-center justify-between gap-3 border-b border-gray-200/80 pb-2">
+                                                <dt class="text-gray-600">Due amount</dt>
+                                                <dd id="npOrderDueAmount" class="font-bold tabular-nums text-gray-900">₹0.00</dd>
+                                            </div>
+                                            <div class="flex items-center justify-between gap-3 border-b border-gray-200/80 pb-2">
+                                                <dt class="text-gray-600">Paid amount</dt>
+                                                <dd id="npOrderPaidAmount" class="font-semibold tabular-nums text-emerald-700">₹0.00</dd>
+                                            </div>
+                                            <div class="flex items-center justify-between gap-2 text-xs text-gray-500">
+                                                <span>Order total</span>
+                                                <span id="npOrderTotal" class="tabular-nums">₹0.00</span>
+                                            </div>
+                                        </dl>
+                                        <div class="mt-4">
+                                            <label for="npOrderPaymentInput" class="mb-1.5 block text-left text-sm font-semibold text-gray-700">Payment amount</label>
+                                            <div class="relative">
+                                                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">₹</span>
+                                                <input type="number" id="npOrderPaymentInput" step="0.01" min="0"
+                                                       oninput="npSyncPayButtonState()"
+                                                       class="w-full rounded-lg border border-gray-300 py-2.5 pl-8 pr-3 text-sm font-semibold tabular-nums focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                                                       placeholder="0.00">
+                                            </div>
+                                            <p class="mt-1 text-left text-xs text-gray-500">Change the amount to collect for this order (max due).</p>
+                                        </div>
+                                        <div class="mt-4">
+                                            <label for="npOrderPaymentDate" class="mb-1.5 block text-left text-sm font-semibold text-gray-700">Payment date</label>
+                                            <input type="date" id="npOrderPaymentDate"
+                                                   onchange="npSyncPayButtonState()"
+                                                   class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-blue-500">
+                                        </div>
+                                    </div>
+                                    <div id="npSectionSecurity" class="hidden rounded-xl border border-gray-100 bg-gray-50/90 p-4">
+                                        <p class="text-center text-xs font-semibold uppercase tracking-wide text-blue-700">Security deposit</p>
+                                        <p class="text-center text-sm font-semibold text-gray-800">Refundable hold</p>
+                                        <dl class="mt-4 space-y-3 text-sm">
+                                            <div class="flex items-center justify-between gap-3 border-b border-gray-200/80 pb-2">
+                                                <dt class="text-gray-600">Due amount</dt>
+                                                <dd id="npSdDueAmount" class="font-bold tabular-nums text-gray-900">₹0.00</dd>
+                                            </div>
+                                            <div class="flex items-center justify-between gap-3 border-b border-gray-200/80 pb-2">
+                                                <dt class="text-gray-600">Paid amount</dt>
+                                                <dd id="npSdPaidAmount" class="font-semibold tabular-nums text-emerald-700">₹0.00</dd>
+                                            </div>
+                                            <div class="flex items-center justify-between gap-2 text-xs text-gray-500">
+                                                <span>Deposit required</span>
+                                                <span id="npSdTotal" class="tabular-nums">₹0.00</span>
+                                            </div>
+                                        </dl>
+                                        <div class="mt-4">
+                                            <label for="npSdPaymentInput" class="mb-1.5 block text-left text-sm font-semibold text-gray-700">Payment amount</label>
+                                            <div class="relative">
+                                                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">₹</span>
+                                                <input type="number" id="npSdPaymentInput" step="0.01" min="0"
+                                                       oninput="npSyncPayButtonState()"
+                                                       class="w-full rounded-lg border border-gray-300 py-2.5 pl-8 pr-3 text-sm font-semibold tabular-nums focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                                                       placeholder="0.00">
+                                            </div>
+                                            <p class="mt-1 text-left text-xs text-gray-500">Change the amount to collect for security deposit (max due).</p>
+                                        </div>
+                                        <div class="mt-4">
+                                            <label for="npSdPaymentDate" class="mb-1.5 block text-left text-sm font-semibold text-gray-700">Payment date</label>
+                                            <input type="date" id="npSdPaymentDate"
+                                                   onchange="npSyncPayButtonState()"
+                                                   class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-blue-500">
+                                        </div>
+                                    </div>
+
+                                    <div id="npPaymentMethodSection" class="mt-8 border-t border-gray-100 pt-6">
+                                        <p class="mb-4 text-sm font-semibold text-gray-800">Payment method</p>
+                                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                            <label class="relative cursor-pointer">
+                                                <input type="radio" name="np_payment_method" value="card" class="peer sr-only" onchange="npOnPaymentMethodPick()">
+                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                                                    Card
+                                                </div>
+                                            </label>
+                                            <label class="relative cursor-pointer">
+                                                <input type="radio" name="np_payment_method" value="cash" class="peer sr-only" onchange="npOnPaymentMethodPick()">
+                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                                                    Cash
+                                                </div>
+                                            </label>
+                                            <label class="relative cursor-pointer">
+                                                <input type="radio" name="np_payment_method" value="upi" class="peer sr-only" onchange="npOnPaymentMethodPick()">
+                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                                                    UPI
+                                                </div>
+                                            </label>
+                                            <label class="relative cursor-pointer">
+                                                <input type="radio" name="np_payment_method" value="bank_transfer" class="peer sr-only" onchange="npOnPaymentMethodPick()">
+                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                                                    Bank Transfer
+                                                </div>
+                                            </label>
+                                            <label class="relative cursor-pointer">
+                                                <input type="radio" name="np_payment_method" value="wallet" class="peer sr-only" onchange="npOnPaymentMethodPick()">
+                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                                                    Wallet
+                                                </div>
+                                            </label>
+                                            <label class="relative cursor-pointer">
+                                                <input type="radio" name="np_payment_method" value="other" class="peer sr-only" onchange="npOnPaymentMethodPick()">
+                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                                                    Other
+                                                </div>
+                                            </label>
+                                        </div>
+                                        <div id="npPayWithAmountWrap" class="mt-4 hidden">
+                                            <button type="button" id="npPayWithAmountBtn" onclick="npSubmitPaymentIntent()"
+                                                    disabled
+                                                    class="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-base font-bold text-white shadow-md transition hover:bg-emerald-700 enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
+                                                <i class="fas fa-lock-open"></i>
+                                                <span id="npPayWithAmountLabel">Pay</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-end border-t border-gray-200 px-6 py-4">
+                                    <button type="button" onclick="backNewPaymentDueModal()"
+                                            class="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                                        Back
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <script>
+                    function npFormatInr(n) {
+                        const x = parseFloat(n) || 0;
+                        return '₹' + x.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    }
+                    function npParseMoney(el) {
+                        if (!el) return 0;
+                        return parseFloat(String(el.textContent).replace(/[₹,]/g, '')) || 0;
+                    }
+                    function npTodayLocal() {
+                        const d = new Date();
+                        const y = d.getFullYear();
+                        const m = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        return y + '-' + m + '-' + day;
+                    }
+                    function npSetPaymentDatesToday() {
+                        const t = npTodayLocal();
+                        const o = document.getElementById('npOrderPaymentDate');
+                        const s = document.getElementById('npSdPaymentDate');
+                        if (o) o.value = t;
+                        if (s) s.value = t;
+                    }
+                    const npRecordPaymentUrl = @json(route('vendor.carts.payment', $cart));
+                    const npMethodLabels = { card: 'Card', cash: 'Cash', upi: 'UPI', bank_transfer: 'Bank transfer', wallet: 'Wallet', other: 'Other' };
+                    function npGetActivePaymentAmount() {
+                        const k = document.getElementById('newPaymentDueModal')?.dataset?.npKind;
+                        const inp = k === 'security_deposit'
+                            ? document.getElementById('npSdPaymentInput')
+                            : document.getElementById('npOrderPaymentInput');
+                        return parseFloat(inp?.value || 0) || 0;
+                    }
+                    function npSyncPayButtonState() {
+                        const btn = document.getElementById('npPayWithAmountBtn');
+                        const label = document.getElementById('npPayWithAmountLabel');
+                        const wrap = document.getElementById('npPayWithAmountWrap');
+                        if (!label || !btn) return;
+                        const amt = npGetActivePaymentAmount();
+                        const method = document.querySelector('#newPaymentDueModal input[name=np_payment_method]:checked');
+                        const k = document.getElementById('newPaymentDueModal')?.dataset?.npKind;
+                        const dateInp = k === 'security_deposit'
+                            ? document.getElementById('npSdPaymentDate')
+                            : document.getElementById('npOrderPaymentDate');
+                        const dateOk = !!(dateInp && dateInp.value);
+                        const canPay = !!(method && amt > 0 && dateOk);
+                        const mKey = method ? method.value : '';
+                        const mLab = mKey ? (npMethodLabels[mKey] || mKey.replace(/_/g, ' ')) : '';
+                        label.textContent = mLab ? ('Pay ' + npFormatInr(amt) + ' · ' + mLab) : ('Pay ' + npFormatInr(amt));
+                        if (wrap && !wrap.classList.contains('hidden')) {
+                            btn.disabled = !canPay;
+                        }
+                    }
+                    function npOnPaymentMethodPick() {
+                        const wrap = document.getElementById('npPayWithAmountWrap');
+                        if (wrap) wrap.classList.remove('hidden');
+                        npSyncPayButtonState();
+                    }
+                    function npSubmitPaymentIntent() {
+                        const method = document.querySelector('#newPaymentDueModal input[name=np_payment_method]:checked');
+                        const amt = npGetActivePaymentAmount();
+                        const k = document.getElementById('newPaymentDueModal')?.dataset?.npKind;
+                        const dateInp = k === 'security_deposit'
+                            ? document.getElementById('npSdPaymentDate')
+                            : document.getElementById('npOrderPaymentDate');
+                        if (!method) {
+                            if (typeof showToast === 'function') showToast('Select a payment method', 'error');
+                            return;
+                        }
+                        if (!amt || amt <= 0) {
+                            if (typeof showToast === 'function') showToast('Enter a valid payment amount', 'error');
+                            return;
+                        }
+                        if (dateInp && !dateInp.value) {
+                            if (typeof showToast === 'function') showToast('Select payment date', 'error');
+                            return;
+                        }
+                        const btn = document.getElementById('npPayWithAmountBtn');
+                        const payLabel = document.getElementById('npPayWithAmountLabel');
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                        let prevLabel = '';
+                        if (btn) btn.disabled = true;
+                        if (payLabel) {
+                            prevLabel = payLabel.textContent;
+                            payLabel.textContent = 'Processing…';
+                        }
+                        fetch(npRecordPaymentUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf || ''
+                            },
+                            body: JSON.stringify({
+                                amount: amt,
+                                payment_for: k === 'security_deposit' ? 'security_deposit' : 'order_amount',
+                                method: method.value,
+                                paid_on: dateInp ? dateInp.value : null
+                            })
+                        })
+                        .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, status: r.status, data: data }; }); })
+                        .then(function (res) {
+                            if (payLabel && prevLabel) payLabel.textContent = prevLabel;
+                            if (btn) btn.disabled = false;
+                            if (res.ok && res.data && res.data.success && res.data.cart) {
+                                if (typeof updateSummary === 'function') {
+                                    updateSummary(res.data.cart);
+                                }
+                                npResetPaymentMethodUi();
+                                refreshNewPaymentDueModalTotals(k);
+                                npSyncPayButtonState();
+                                closeAddPaymentModal();
+                                if (typeof showToast === 'function') showToast(res.data.message || 'Payment saved', 'success');
+                            } else {
+                                let msg = (res.data && res.data.message) ? res.data.message : 'Payment failed';
+                                if (res.data && res.data.errors) {
+                                    const first = Object.values(res.data.errors)[0];
+                                    if (first && first[0]) msg = first[0];
+                                }
+                                if (typeof showToast === 'function') showToast(msg, 'error');
+                                npSyncPayButtonState();
+                            }
+                        })
+                        .catch(function () {
+                            if (payLabel && prevLabel) payLabel.textContent = prevLabel;
+                            if (btn) btn.disabled = false;
+                            if (typeof showToast === 'function') showToast('Network error', 'error');
+                            npSyncPayButtonState();
+                        });
+                    }
+                    function npResetPaymentMethodUi() {
+                        document.querySelectorAll('#newPaymentDueModal input[name=np_payment_method]').forEach(function (r) {
+                            r.checked = false;
+                        });
+                        const wrap = document.getElementById('npPayWithAmountWrap');
+                        if (wrap) wrap.classList.add('hidden');
+                    }
+                    function refreshNewPaymentDueModalTotals(kind) {
+                        const modal = document.getElementById('newPaymentDueModal');
+                        const k = kind || modal?.dataset?.npKind || 'order_amount';
+
+                        const grand = npParseMoney(document.querySelector('[data-grand-total]'));
+                        const depTotal = npParseMoney(document.querySelector('[data-security-deposit-total]'));
+                        const orderTotal = Math.max(0, grand - depTotal);
+                        const paid = npParseMoney(document.querySelector('[data-paid-amount]'));
+
+                        const toOrder = Math.min(paid, orderTotal);
+                        const orderRemaining = Math.max(0, orderTotal - toOrder);
+                        const afterOrder = Math.max(0, paid - orderTotal);
+                        const toDeposit = Math.min(afterOrder, depTotal);
+                        const depRemaining = Math.max(0, depTotal - toDeposit);
+
+                        const od = document.getElementById('npOrderDueAmount');
+                        const op = document.getElementById('npOrderPaidAmount');
+                        const ot = document.getElementById('npOrderTotal');
+                        const sd = document.getElementById('npSdDueAmount');
+                        const sp = document.getElementById('npSdPaidAmount');
+                        const st = document.getElementById('npSdTotal');
+                        if (od) od.textContent = npFormatInr(orderRemaining);
+                        if (op) op.textContent = npFormatInr(toOrder);
+                        if (ot) ot.textContent = npFormatInr(orderTotal);
+                        if (sd) sd.textContent = npFormatInr(depRemaining);
+                        if (sp) sp.textContent = npFormatInr(toDeposit);
+                        if (st) st.textContent = npFormatInr(depTotal);
+
+                        const inpOrder = document.getElementById('npOrderPaymentInput');
+                        const inpSd = document.getElementById('npSdPaymentInput');
+                        if (k === 'security_deposit') {
+                            if (inpSd) {
+                                const maxSd = Math.max(0, depRemaining);
+                                inpSd.max = maxSd;
+                                inpSd.value = maxSd > 0 ? maxSd.toFixed(2) : '';
+                            }
+                        } else {
+                            if (inpOrder) {
+                                const maxOr = Math.max(0, orderRemaining);
+                                inpOrder.max = maxOr;
+                                inpOrder.value = maxOr > 0 ? maxOr.toFixed(2) : '';
+                            }
+                        }
+                        npSetPaymentDatesToday();
+                        npSyncPayButtonState();
+                    }
                     function openAddPaymentModal() {
+                        document.getElementById('newPaymentDueModal').classList.add('hidden');
                         document.getElementById('addPaymentModal').classList.remove('hidden');
                         document.body.style.overflow = 'hidden';
                     }
                     function closeAddPaymentModal() {
                         document.getElementById('addPaymentModal').classList.add('hidden');
+                        document.getElementById('newPaymentDueModal').classList.add('hidden');
                         document.body.style.overflow = '';
+                    }
+                    const npPaymentCartId = @json($cart->id);
+                    function applyNewPaymentDueLayout(kind) {
+                        const modal = document.getElementById('newPaymentDueModal');
+                        const title = document.getElementById('npDueTitle');
+                        const sub = document.getElementById('npDueSubtitle');
+                        const secOrder = document.getElementById('npSectionOrder');
+                        const secSd = document.getElementById('npSectionSecurity');
+                        if (modal) modal.dataset.npKind = kind || '';
+
+                        if (title) {
+                            if (kind === 'security_deposit') {
+                                title.textContent = 'Payment for security deposit #' + npPaymentCartId;
+                            } else {
+                                title.textContent = 'Payment for order #' + npPaymentCartId;
+                            }
+                        }
+
+                        if (kind === 'security_deposit') {
+                            if (sub) sub.textContent = 'You chose security deposit — details below are for the deposit only.';
+                            if (secOrder) {
+                                secOrder.classList.add('hidden');
+                                secOrder.classList.remove('ring-2', 'ring-blue-100');
+                            }
+                            if (secSd) {
+                                secSd.classList.remove('hidden');
+                                secSd.classList.add('ring-2', 'ring-blue-100');
+                            }
+                        } else {
+                            if (sub) sub.textContent = 'You chose order amount — details below are for the rental / order balance only.';
+                            if (secSd) {
+                                secSd.classList.add('hidden');
+                                secSd.classList.remove('ring-2', 'ring-blue-100');
+                            }
+                            if (secOrder) {
+                                secOrder.classList.remove('hidden');
+                                secOrder.classList.add('ring-2', 'ring-blue-100');
+                            }
+                        }
+                    }
+                    function openNewPaymentDueModal(kind) {
+                        document.getElementById('addPaymentModal').classList.add('hidden');
+                        document.getElementById('newPaymentDueModal').classList.remove('hidden');
+                        document.body.style.overflow = 'hidden';
+                        npResetPaymentMethodUi();
+                        applyNewPaymentDueLayout(kind);
+                        refreshNewPaymentDueModalTotals(kind);
+                    }
+                    function backNewPaymentDueModal() {
+                        document.getElementById('newPaymentDueModal').classList.add('hidden');
+                        document.getElementById('addPaymentModal').classList.remove('hidden');
+                        document.body.style.overflow = 'hidden';
+                    }
+                    @php
+                        $_destroyPaymentSample = route('vendor.carts.payments.destroy', [$cart, 0]);
+                        $npDestroyPaymentPrefix = substr($_destroyPaymentSample, 0, strrpos($_destroyPaymentSample, '/') + 1);
+                    @endphp
+                    const npPaymentRemovePrefix = @json($npDestroyPaymentPrefix);
+                    const npPayTagOrder = @json(__('vendor.payment_for_order_short'));
+                    const npPayTagDeposit = @json(__('vendor.payment_for_deposit_short'));
+                    const npPaymentRemoveConfirm = @json(__('vendor.payment_remove_confirm'));
+                    function npPaymentRemoveUrl(index) {
+                        return npPaymentRemovePrefix + String(parseInt(index, 10));
+                    }
+                    function npFormatPaymentListDate(isoOrYmd) {
+                        if (!isoOrYmd) return '';
+                        const d = new Date(isoOrYmd);
+                        if (isNaN(d.getTime())) return '';
+                        return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
+                    }
+                    function refreshPaymentListFromCart(cart) {
+                        const list = document.getElementById('payment-history-list');
+                        const empty = document.getElementById('payment-history-empty');
+                        if (!list) return;
+                        const rows = Array.isArray(cart.payment_detail) ? cart.payment_detail : [];
+                        if (!rows.length) {
+                            list.innerHTML = '';
+                            list.classList.add('hidden');
+                            if (empty) empty.classList.remove('hidden');
+                            return;
+                        }
+                        if (empty) empty.classList.add('hidden');
+                        list.classList.remove('hidden');
+                        list.innerHTML = rows.map(function (p, idx) {
+                            const amt = parseFloat(p.amount || 0).toFixed(2);
+                            const isSd = p.payment_for === 'security_deposit';
+                            const badge = isSd
+                                ? '<span class="inline-flex rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 ring-1 ring-violet-100">' + npPayTagDeposit + '</span>'
+                                : '<span class="inline-flex rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 ring-1 ring-blue-100">' + npPayTagOrder + '</span>';
+                            const m = p.method || '';
+                            const mLabel = npMethodLabels[m] || (m ? m.charAt(0).toUpperCase() + m.slice(1).replace(/_/g, ' ') : '—');
+                            const datePart = p.paid_on
+                                ? ('<span class="text-gray-400"> · </span><span>' + npFormatPaymentListDate(p.paid_on) + '</span>')
+                                : '';
+                            return '<li class="flex items-start gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2.5 shadow-sm ring-1 ring-gray-100/80">'
+                                + '<div class="min-w-0 flex-1">'
+                                + '<div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">'
+                                + '<span class="text-sm font-bold tabular-nums text-gray-900">₹' + amt + '</span>' + badge
+                                + '</div>'
+                                + '<p class="mt-0.5 text-[11px] text-gray-500"><span class="font-medium text-gray-600">' + mLabel + '</span>' + datePart + '</p>'
+                                + '</div>'
+                                + '<button type="button" onclick="removeCartPayment(' + idx + ')" class="shrink-0 rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600" title="@json(__('vendor.payment_remove'))"><i class="fas fa-times text-sm"></i></button>'
+                                + '</li>';
+                        }).join('');
+                    }
+                    function removeCartPayment(index) {
+                        if (!confirm(npPaymentRemoveConfirm)) return;
+                        const csrf = document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                        fetch(npPaymentRemoveUrl(index), {
+                            method: 'DELETE',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrf || ''
+                            }
+                        })
+                            .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+                            .then(function (res) {
+                                if (res.ok && res.data.success && res.data.cart) {
+                                    if (typeof updateSummary === 'function') updateSummary(res.data.cart);
+                                    if (typeof showToast === 'function') showToast(res.data.message || 'Removed', 'success');
+                                } else if (typeof showToast === 'function') {
+                                    showToast((res.data && res.data.message) ? res.data.message : 'Could not remove', 'error');
+                                }
+                            })
+                            .catch(function () {
+                                if (typeof showToast === 'function') showToast('Network error', 'error');
+                            });
                     }
                     </script>
                     
                 </div>
 
-                <!-- Payment Status & Actions (moved up) -->
-                <div class="p-4 border-t border-gray-200 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600">{{ __('vendor.token_amount') }}</span>
-                        <span class="text-sm font-semibold text-gray-900">₹{{ number_format($cart->token_amount, 2) }}</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-gray-600">{{ __('vendor.paid_amount') }}</span>
-                        <span data-paid-amount class="text-sm font-semibold text-emerald-600">₹{{ number_format($cart->paid_amount, 2) }}</span>
-                    </div>
-                    <div class="flex items-center justify-between py-2 border-t border-gray-200">
-                        <span class="text-sm font-bold text-gray-900">{{ __('vendor.balance_due') }}</span>
-                        <span data-balance-due class="text-sm font-bold text-red-600">₹{{ number_format($cart->grand_total - $cart->paid_amount, 2) }}</span>
-                    </div>
-                    <!-- Action Buttons -->
-                    <div class="space-y-2 pt-2">
+                <div class="space-y-3 border-t border-gray-100 bg-gray-50/50 p-4 sm:p-5">
+                   
+                   
+                    <div class="space-y-2.5 pt-1">
                         @if($cart->items->count() > 0)
-                            <form action="{{ route('vendor.carts.place-order', $cart->id) }}" 
-                                  method="POST" 
-                                  onsubmit="return confirm('{{ __('vendor.confirm_place_order') }}')">
-                                @csrf
-                                <button type="submit" 
-                                        class="w-full px-4 py-3 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all active:scale-95 shadow-sm">
-                                    <i class="fas fa-check-circle mr-2"></i>
-                                    {{ __('vendor.place_order') }}
-                                </button>
-                            </form>
+                            <button type="button"
+                                    onclick="openPlaceOrderConfirmModal()"
+                                    class="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.99]">
+                                <i class="fas fa-check-circle"></i>{{ __('vendor.place_order') }}
+                            </button>
                         @else
-                            <button disabled 
-                                    class="w-full px-4 py-3 text-sm font-semibold text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed">
-                                <i class="fas fa-check-circle mr-2"></i>
-                                {{ __('vendor.place_order') }}
+                            <button type="button" disabled
+                                    class="flex min-h-[52px] w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-3.5 text-sm font-semibold text-gray-400">
+                                <i class="fas fa-check-circle"></i>{{ __('vendor.place_order') }}
                             </button>
                         @endif
-                        <button class="w-full px-4 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                            <i class="fas fa-print mr-2"></i>
-                            {{ __('vendor.print') }}
+                        <button type="button"
+                                data-print-url="{{ route('vendor.carts.print', $cart) }}"
+                                onclick="window.open(this.getAttribute('data-print-url') + '?autoprint=1', '_blank', 'noopener,noreferrer')"
+                                class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50">
+                            <i class="fas fa-file-invoice text-gray-600"></i>{{ __('vendor.print_quote') }}
                         </button>
                     </div>
                 </div>
@@ -489,11 +1387,10 @@
         </div>
     </div>
 
-    <!-- Add Item Modal - Full Screen -->
-    <div x-show="showAddItem" 
+    <!-- Add Item Modal -->
+    <div x-show="showAddItem"
          x-cloak
-         class="fixed inset-0 z-50">
-        <!-- Background Overlay -->
+         class="fixed inset-0 z-50 flex flex-col md:items-center md:justify-center md:p-4">
         <div @click="showAddItem = false; searchQuery = ''; selectedCategory = ''"
              x-transition:enter="ease-out duration-300"
              x-transition:enter-start="opacity-0"
@@ -501,303 +1398,300 @@
              x-transition:leave="ease-in duration-200"
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
-             class="fixed inset-0 bg-gray-900/50 transition-opacity"></div>
+             class="fixed inset-0 bg-gray-900/60 backdrop-blur-[2px] transition-opacity"></div>
 
-        <!-- Modal Content - Full Screen -->
         <div x-transition:enter="ease-out duration-300"
-             x-transition:enter-start="opacity-0 translate-y-4"
-             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:enter-start="opacity-0 translate-y-6 md:translate-y-0 md:scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 md:scale-100"
              x-transition:leave="ease-in duration-200"
-             x-transition:leave-start="opacity-100 translate-y-0"
-             x-transition:leave-end="opacity-0 translate-y-4"
-             class="relative bg-white h-full flex flex-col z-10 md:m-4 md:rounded-xl md:shadow-2xl md:h-auto md:max-h-[95vh]">
-            
-            <!-- Modal Header -->
-            <div class="flex-shrink-0 px-4 md:px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h3 class="text-lg md:text-xl font-bold text-gray-900">Add Items to Cart</h3>
-                        <p class="text-xs md:text-sm text-gray-600 mt-1">Select items and set quantities</p>
+             x-transition:leave-start="opacity-100 translate-y-0 md:scale-100"
+             x-transition:leave-end="opacity-0 translate-y-6 md:scale-95"
+             class="relative z-10 flex h-[100dvh] max-h-[100dvh] w-full flex-col overflow-hidden bg-white shadow-2xl ring-1 ring-gray-200/80
+                    md:mt-0 md:h-auto md:max-h-[min(92vh,880px)] md:min-h-[360px] md:max-w-5xl md:rounded-2xl
+                    rounded-t-3xl md:rounded-2xl mt-auto md:mx-auto">
+
+            <header class="flex-shrink-0 border-b border-gray-200 bg-gradient-to-r from-blue-50 via-white to-indigo-50/80 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4 md:rounded-t-2xl md:pt-5">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 pr-2">
+                        <h3 id="add-items-modal-title" class="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">{{ __('vendor.modal_add_items_title') }}</h3>
+                        <p class="mt-1 text-sm leading-relaxed text-gray-600">{{ __('vendor.modal_add_items_subtitle') }}</p>
                     </div>
-                    <button @click="showAddItem = false; searchQuery = ''; selectedCategory = ''" 
-                            class="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors">
-                        <i class="fas fa-times text-xl"></i>
+                    <button type="button"
+                            @click="showAddItem = false; searchQuery = ''; selectedCategory = ''"
+                            class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-white hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            aria-label="{{ __('vendor.modal_close_aria') }}">
+                        <i class="fas fa-times text-lg"></i>
                     </button>
                 </div>
-            </div>
+            </header>
 
-            <!-- Modal Body -->
-            <div class="flex-1 flex flex-col overflow-hidden">
+            <div class="flex min-h-0 flex-1 flex-col">
 
-                <!-- Search and Filter Section -->
-                <div class="flex-shrink-0 px-4 md:px-6 py-4 bg-white border-b border-gray-200 space-y-3">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <!-- Search Input -->
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i class="fas fa-search text-gray-400"></i>
+                <div class="flex-shrink-0 space-y-3 border-b border-gray-100 bg-gray-50/80 px-4 py-4 sm:px-6">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div>
+                            <label for="add-items-search" class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.search_items') }}</label>
+                            <div class="relative">
+                                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input id="add-items-search"
+                                       type="search"
+                                       autocomplete="off"
+                                       x-model="searchQuery"
+                                       placeholder="{{ __('vendor.search_placeholder') }}"
+                                       class="w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-11 pr-11 text-base text-gray-900 shadow-sm transition-shadow placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 md:py-2.5 md:text-sm">
+                                <button type="button"
+                                        x-show="searchQuery"
+                                        x-cloak
+                                        @click="searchQuery = ''"
+                                        class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
+                                    <span class="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100"><i class="fas fa-times"></i></span>
+                                </button>
                             </div>
-                            <input type="text" 
-                                   x-model="searchQuery"
-                                   placeholder="{{ __('vendor.search_placeholder') }}"
-                                   class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <button type="button" 
-                                    x-show="searchQuery"
-                                    @click="searchQuery = ''"
-                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
-                                <i class="fas fa-times"></i>
-                            </button>
                         </div>
-
-                        <!-- Category Filter -->
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <i class="fas fa-filter text-gray-400"></i>
-                            </div>
-                            <select x-model="selectedCategory"
-                                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white">
-                                <option value="">{{ __('vendor.all_categories') }}</option>
-                                @foreach($categories as $category)
-                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
-                                @endforeach
-                            </select>
-                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                        <div>
+                            <label for="add-items-category" class="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.filter_by_category') }}</label>
+                            <div class="relative">
+                                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-400">
+                                    <i class="fas fa-layer-group text-sm"></i>
+                                </span>
+                                <select id="add-items-category"
+                                        x-model="selectedCategory"
+                                        class="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3.5 pl-11 pr-10 text-base text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 md:py-2.5 md:text-sm">
+                                    <option value="">{{ __('vendor.all_categories') }}</option>
+                                    @foreach($categories as $category)
+                                        <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                    @endforeach
+                                </select>
+                                <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400">
+                                    <i class="fas fa-chevron-down text-xs"></i>
+                                </span>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Filter Results Info -->
-                    <div class="flex items-center justify-between text-sm">
-                        <p class="text-gray-600">
-                            <span x-text="filteredItems.length"></span> {{ __('vendor.items') }}
-                        </p>
-                    </div>
+                    <p class="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+                        <span class="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-blue-100 px-2 text-xs font-bold text-blue-800 tabular-nums" x-text="filteredItems.length"></span>
+                        <span>{{ __('vendor.items') }}</span>
+                    </p>
                 </div>
 
-                <!-- Items Table Container -->
-                <div class="flex-1 overflow-y-auto">
-                    <!-- No Items State -->
-                    <div x-show="items.length === 0" class="flex items-center justify-center h-full p-8">
-                        <div class="text-center">
-                            <div class="w-20 h-20 mx-auto mb-4 bg-yellow-100 rounded-full flex items-center justify-center">
-                                <i class="fas fa-box-open text-3xl text-yellow-600"></i>
-                            </div>
-                            <h3 class="text-lg font-semibold text-gray-900 mb-2">No Available Items</h3>
-                            <p class="text-sm text-gray-600 mb-4">You don't have any active items yet</p>
-                            <a href="{{ route('vendor.items.create') }}" class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all">
-                                <i class="fas fa-plus mr-2"></i>
-                                Create Your First Item
-                            </a>
+                <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-white">
+                    <div x-show="items.length === 0" class="flex min-h-[12rem] flex-col items-center justify-center px-6 py-12 text-center">
+                        <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-amber-50 ring-1 ring-amber-100">
+                            <i class="fas fa-box-open text-3xl text-amber-600"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.modal_no_inventory_title') }}</h3>
+                        <p class="mt-2 max-w-sm text-sm leading-relaxed text-gray-600">{{ __('vendor.modal_no_inventory_body') }}</p>
+                        <a href="{{ route('vendor.items.create') }}"
+                           class="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                            <i class="fas fa-plus mr-2"></i>{{ __('vendor.modal_create_item_cta') }}
+                        </a>
+                    </div>
+
+                    <div x-show="items.length > 0 && filteredItems.length === 0" class="flex min-h-[12rem] flex-col items-center justify-center px-6 py-12 text-center">
+                        <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gray-100">
+                            <i class="fas fa-search text-3xl text-gray-400"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.no_items_found') }}</h3>
+                        <p class="mt-2 max-w-sm text-sm text-gray-600">{{ __('vendor.adjust_search') }}</p>
+                        <button type="button"
+                                @click="searchQuery = ''; selectedCategory = ''"
+                                class="mt-5 inline-flex min-h-[48px] items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-gray-50">
+                            <i class="fas fa-redo mr-2"></i>{{ __('vendor.clear_filters') }}
+                        </button>
+                    </div>
+
+                    <div class="hidden md:block" x-show="filteredItems.length > 0">
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[640px] text-left">
+                                <thead class="sticky top-0 z-10 border-b border-gray-200 bg-gray-50/95 backdrop-blur supports-[backdrop-filter]:bg-gray-50/80">
+                                    <tr>
+                                        <th class="px-5 py-3.5 text-xs font-bold uppercase tracking-wide text-gray-600">{{ __('vendor.item') }}</th>
+                                        <th class="px-5 py-3.5 text-xs font-bold uppercase tracking-wide text-gray-600">{{ __('vendor.price') }}</th>
+                                        <th class="px-5 py-3.5 text-center text-xs font-bold uppercase tracking-wide text-gray-600">{{ __('vendor.quantity') }}</th>
+                                        <th class="min-w-[10rem] px-5 py-3.5 text-xs font-bold uppercase tracking-wide text-gray-600">{{ __('vendor.billing_units') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <template x-for="item in filteredItems" :key="item.id">
+                                        <tr class="transition-colors hover:bg-blue-50/40">
+                                            <td class="px-5 py-4 align-middle">
+                                                <div class="flex items-center gap-3">
+                                                    <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 ring-1 ring-blue-100">
+                                                        <i class="fas fa-box text-blue-600"></i>
+                                                    </div>
+                                                    <div class="min-w-0 flex-1">
+                                                        <p class="truncate font-semibold text-gray-900" x-text="item.name"></p>
+                                                        <p class="truncate text-xs text-gray-500" x-text="item.category ? item.category.name : '{{ __('vendor.no_category') }}'"></p>
+                                                        <p class="text-xs text-gray-500" x-show="item.manage_stock">
+                                                            {{ __('vendor.stock') }}: <span x-text="item.stock"></span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-5 py-4 align-middle">
+                                                <span class="inline-flex rounded-lg bg-blue-50 px-2.5 py-1 text-sm font-bold text-blue-800 tabular-nums">₹<span x-text="parseFloat(item.price).toFixed(2)"></span></span>
+                                            </td>
+                                            <td class="px-5 py-4 align-middle">
+                                                <div class="flex flex-col items-center justify-center gap-2">
+                                                    <button type="button" @click="addItemToCart(item.id)"
+                                                            x-show="!isAdded(item.id)"
+                                                            :disabled="addingItem === item.id"
+                                                            class="inline-flex min-h-[40px] min-w-[5.5rem] items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50">
+                                                        <span x-show="addingItem !== item.id" class="flex items-center gap-1.5"><i class="fas fa-plus"></i>{{ __('vendor.add') }}</span>
+                                                        <span x-show="addingItem === item.id"><i class="fas fa-spinner fa-spin"></i></span>
+                                                    </button>
+                                                    <div x-show="isAdded(item.id)" class="flex items-center justify-center gap-1.5" x-cloak>
+                                                        <button type="button" @click="decrementCartQty(item.id)"
+                                                                :disabled="updatingItem === item.id"
+                                                                class="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">
+                                                            <i class="fas fa-minus text-sm"></i>
+                                                        </button>
+                                                        <input type="number" min="1"
+                                                               class="h-10 w-16 rounded-xl border border-gray-200 text-center text-sm font-bold text-gray-900 shadow-inner focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                                               :value="getAddedQty(item.id)"
+                                                               :disabled="updatingItem === item.id"
+                                                               @input="let v = parseInt($event.target.value) || 1; if (v < 1) v = 1; addedItems[item.id] = v;"
+                                                               @blur="let v = parseInt($event.target.value) || 1; if (v < 1) v = 1; updatingItem = item.id; updateModalItemQty(item.id, v, $root);"
+                                                               @keydown.enter.prevent="let v = parseInt($event.target.value) || 1; if (v < 1) v = 1; updatingItem = item.id; updateModalItemQty(item.id, v, $root); $event.target.blur();">
+                                                        <button type="button" @click="incrementCartQty(item.id)"
+                                                                :disabled="updatingItem === item.id"
+                                                                class="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">
+                                                            <i class="fas fa-plus text-sm"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-5 py-4 align-middle">
+                                                <div x-show="!isAdded(item.id)" class="text-center text-sm text-gray-400">—</div>
+                                                <div x-show="isAdded(item.id) && !lineUsesBillingUnits(item)" class="text-center text-sm text-gray-400">—</div>
+                                                <div x-show="isAdded(item.id) && lineUsesBillingUnits(item)" class="mx-auto max-w-[12rem]">
+                                                    <p class="mb-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-500" x-text="billingUnitsLabelForLine(item)"></p>
+                                                    <div class="flex items-center justify-center gap-1.5">
+                                                        <button type="button" @click="decrementBillingUnits(item.id, item)"
+                                                                :disabled="updatingItem === item.id || getLineBillingUnits(item.id) <= 0.01"
+                                                                class="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">
+                                                            <i class="fas fa-minus text-sm"></i>
+                                                        </button>
+                                                        <input type="number" step="0.01" min="0.01" lang="en"
+                                                               class="h-10 w-16 rounded-xl border border-gray-200 text-center text-sm font-bold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                                               :value="getLineBillingUnits(item.id)"
+                                                               :disabled="updatingItem === item.id"
+                                                               @input="addedItemBillingUnits = { ...addedItemBillingUnits, [item.id]: parseFloat($event.target.value) || 1 }"
+                                                               @blur="onBillingUnitsBlur(item.id, item, $event)">
+                                                        <button type="button" @click="incrementBillingUnits(item.id, item)"
+                                                                :disabled="updatingItem === item.id"
+                                                                class="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">
+                                                            <i class="fas fa-plus text-sm"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
-                    <!-- No Search Results State -->
-                    <div x-show="items.length > 0 && filteredItems.length === 0" class="flex items-center justify-center h-full p-8">
-                        <div class="text-center">
-                            <div class="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                                <i class="fas fa-search text-3xl text-gray-400"></i>
-                            </div>
-                            <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('vendor.no_items_found') }}</h3>
-                            <p class="text-sm text-gray-600 mb-3">{{ __('vendor.adjust_search') }}</p>
-                            <button type="button" 
-                                    @click="searchQuery = ''; selectedCategory = ''"
-                                    class="text-sm text-blue-600 hover:text-blue-700 font-semibold">
-                                <i class="fas fa-redo mr-1"></i>
-                                {{ __('vendor.clear_filters') }}
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Desktop Table View -->
-                    <table class="hidden md:table w-full" x-show="filteredItems.length > 0">
-                        <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">{{ __('vendor.item') }}</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">{{ __('vendor.price') }}</th>
-                                <th class="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase w-44" colspan="2"></th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
+                    <div class="md:hidden" x-show="filteredItems.length > 0">
+                        <div class="space-y-3 px-3 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
                             <template x-for="item in filteredItems" :key="item.id">
-                                <tr class="hover:bg-gray-50 transition-colors">
-                                    <!-- Item Info -->
-                                    <td class="px-4 py-3">
-                                        <div class="flex items-center space-x-3">
-                                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                <i class="fas fa-box text-blue-600 text-sm"></i>
+                                <article class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
+                                    <div class="p-4">
+                                        <div class="flex gap-3">
+                                            <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 ring-1 ring-blue-100">
+                                                <i class="fas fa-box text-lg text-blue-600"></i>
                                             </div>
-                                            <div class="flex-1 min-w-0">
-                                                <p class="text-sm font-semibold text-gray-900 truncate" x-text="item.name"></p>
-                                                <p class="text-xs text-gray-500 truncate" x-text="item.category ? item.category.name : '{{ __('vendor.no_category') }}'"></p>
-                                                <p class="text-xs text-gray-500" x-show="item.manage_stock">
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex items-start justify-between gap-2">
+                                                    <h4 class="text-base font-bold leading-snug text-gray-900" x-text="item.name"></h4>
+                                                    <span class="flex-shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-sm font-bold tabular-nums text-blue-800">₹<span x-text="parseFloat(item.price).toFixed(2)"></span></span>
+                                                </div>
+                                                <p class="mt-1 text-sm text-gray-500" x-text="item.category ? item.category.name : '{{ __('vendor.no_category') }}'"></p>
+                                                <p class="mt-1 text-xs text-gray-500" x-show="item.manage_stock">
                                                     {{ __('vendor.stock') }}: <span x-text="item.stock"></span>
                                                 </p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    
-                                    <!-- Price -->
-                                    <td class="px-4 py-3">
-                                        <p class="text-sm font-bold text-gray-900">₹<span x-text="parseFloat(item.price).toFixed(2)"></span></p>
-                                    </td>
-                                    
-                                    <!-- Add / Quantity -->
-                                    <td class="px-4 py-3 text-center" colspan="2">
-                                        <!-- Add Button (shown when not added) -->
-                                        <button type="button" @click="addItemToCart(item.id)"
-                                                x-show="!isAdded(item.id)"
-                                                :disabled="addingItem === item.id"
-                                                class="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                                            <span x-show="addingItem !== item.id">
-                                                <i class="fas fa-plus mr-1"></i>{{ __('vendor.add') }}
-                                            </span>
-                                            <span x-show="addingItem === item.id">
-                                                <i class="fas fa-spinner fa-spin"></i>
-                                            </span>
-                                        </button>
-                                        <!-- Quantity Stepper (shown after adding) -->
-                                        <div x-show="isAdded(item.id)" class="flex items-center justify-center space-x-1">
-                                            <button type="button" @click="decrementCartQty(item.id)"
-                                                    :disabled="updatingItem === item.id"
-                                                    class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                <i class="fas fa-minus text-xs"></i>
-                                            </button>
-                                            <input type="number"
-                                                class="w-14 h-10 text-center text-sm font-semibold text-gray-900 border border-gray-200 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                min="1"
-                                                :value="getAddedQty(item.id)"
-                                                :disabled="updatingItem === item.id"
-                                                @input="
-                                                    let val = parseInt($event.target.value) || 1;
-                                                    if (val < 1) val = 1;
-                                                    addedItems[item.id] = val;
-                                                "
-                                                @blur="
-                                                    let val = parseInt($event.target.value) || 1;
-                                                    if (val < 1) val = 1;
-                                                    updatingItem = item.id;
-                                                    updateModalItemQty(item.id, val, $root);
-                                                "
-                                                @keydown.enter.prevent="
-                                                    let val = parseInt($event.target.value) || 1;
-                                                    if (val < 1) val = 1;
-                                                    updatingItem = item.id;
-                                                    updateModalItemQty(item.id, val, $root);
-                                                    $event.target.blur();
-                                                "
-                                            >
-                                            <button type="button" @click="incrementCartQty(item.id)"
-                                                    :disabled="updatingItem === item.id"
-                                                    class="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 hover:border-gray-400 transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                <i class="fas fa-plus text-xs"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-
-                    <!-- Mobile Card View -->
-                    <div class="md:hidden divide-y divide-gray-200" x-show="filteredItems.length > 0">
-                        <template x-for="item in filteredItems" :key="item.id">
-                            <div class="p-4 hover:bg-gray-50 transition-colors">
-                                <div class="flex items-start space-x-3">
-                                    <!-- Item Info -->
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-start">
-                                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                <i class="fas fa-box text-blue-600"></i>
-                                            </div>
-                                            <div class="ml-3 flex-1 min-w-0">
-                                                <h4 class="text-sm font-semibold text-gray-900 mb-1" x-text="item.name"></h4>
-                                                <p class="text-xs text-gray-500 mb-1" x-text="item.category ? item.category.name : '{{ __('vendor.no_category') }}'"></p>
-                                                <p class="text-sm font-bold text-blue-600">₹<span x-text="parseFloat(item.price).toFixed(2)"></span></p>
-                                                <p class="text-xs text-gray-500 mt-1" x-show="item.manage_stock">
-                                                    {{ __('vendor.stock') }}: <span x-text="item.stock"></span>
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <!-- Add / Quantity Stepper -->
-                                        <div class="mt-3 flex items-center justify-end">
-                                            <!-- Add Button (shown when not added) -->
-                                            <button type="button" @click="addItemToCart(item.id)"
-                                                    x-show="!isAdded(item.id)"
-                                                    :disabled="addingItem === item.id"
-                                                    class="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                <span x-show="addingItem !== item.id">
-                                                    <i class="fas fa-plus mr-1"></i>{{ __('vendor.add') }}
-                                                </span>
-                                                <span x-show="addingItem === item.id">
-                                                    <i class="fas fa-spinner fa-spin"></i>
-                                                </span>
-                                            </button>
-                                            <!-- Quantity Stepper (shown after adding) -->
-                                            <div x-show="isAdded(item.id)" class="flex items-center space-x-2">
-                                                <button type="button" @click="decrementCartQty(item.id)"
-                                                        :disabled="updatingItem === item.id"
-                                                        class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                    <i class="fas fa-minus text-xs"></i>
-                                                </button>
-                                                <input type="number"
-                                                    class="w-14 h-10 text-center text-sm font-semibold text-gray-900 border border-gray-200 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    min="1"
-                                                    :value="getAddedQty(item.id)"
-                                                    :disabled="updatingItem === item.id"
-                                                    @input="
-                                                        let val = parseInt($event.target.value) || 1;
-                                                        if (val < 1) val = 1;
-                                                        addedItems[item.id] = val;
-                                                    "
-                                                    @blur="
-                                                        let val = parseInt($event.target.value) || 1;
-                                                        if (val < 1) val = 1;
-                                                        updatingItem = item.id;
-                                                        updateModalItemQty(item.id, val, $root);
-                                                    "
-                                                    @keydown.enter.prevent="
-                                                        let val = parseInt($event.target.value) || 1;
-                                                        if (val < 1) val = 1;
-                                                        updatingItem = item.id;
-                                                        updateModalItemQty(item.id, val, $root);
-                                                        $event.target.blur();
-                                                    "
-                                                >
-                                                <button type="button" @click="incrementCartQty(item.id)"
-                                                        :disabled="updatingItem === item.id"
-                                                        class="w-9 h-9 flex items-center justify-center rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                                                    <i class="fas fa-plus text-xs"></i>
-                                                </button>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </template>
+                                    <div class="border-t border-gray-100 bg-gray-50/90 px-4 py-4">
+                                        <button type="button" @click="addItemToCart(item.id)"
+                                                x-show="!isAdded(item.id)"
+                                                :disabled="addingItem === item.id"
+                                                class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-base font-semibold text-white shadow-md transition hover:bg-blue-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
+                                            <span x-show="addingItem !== item.id"><i class="fas fa-plus"></i>{{ __('vendor.add_to_cart') }}</span>
+                                            <span x-show="addingItem === item.id"><i class="fas fa-spinner fa-spin"></i></span>
+                                        </button>
+                                        <div x-show="isAdded(item.id)" class="space-y-4" x-cloak>
+                                            <div>
+                                                <p class="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{{ __('vendor.quantity') }}</p>
+                                                <div class="flex items-center justify-center gap-3">
+                                                    <button type="button" @click="decrementCartQty(item.id)"
+                                                            :disabled="updatingItem === item.id"
+                                                            class="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-gray-200 bg-white text-lg text-gray-800 shadow-sm active:scale-95 disabled:opacity-50">
+                                                        <i class="fas fa-minus"></i>
+                                                    </button>
+                                                    <input type="number" min="1"
+                                                           class="h-12 w-20 rounded-xl border-2 border-gray-200 bg-white text-center text-lg font-bold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25"
+                                                           :value="getAddedQty(item.id)"
+                                                           :disabled="updatingItem === item.id"
+                                                           @input="let v = parseInt($event.target.value) || 1; if (v < 1) v = 1; addedItems[item.id] = v;"
+                                                           @blur="let v = parseInt($event.target.value) || 1; if (v < 1) v = 1; updatingItem = item.id; updateModalItemQty(item.id, v, $root);"
+                                                           @keydown.enter.prevent="let v = parseInt($event.target.value) || 1; if (v < 1) v = 1; updatingItem = item.id; updateModalItemQty(item.id, v, $root); $event.target.blur();">
+                                                    <button type="button" @click="incrementCartQty(item.id)"
+                                                            :disabled="updatingItem === item.id"
+                                                            class="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-gray-200 bg-white text-lg text-gray-800 shadow-sm active:scale-95 disabled:opacity-50">
+                                                        <i class="fas fa-plus"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div x-show="lineUsesBillingUnits(item)">
+                                                <p class="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500" x-text="billingUnitsLabelForLine(item)"></p>
+                                                <div class="flex items-center justify-center gap-3">
+                                                    <button type="button" @click="decrementBillingUnits(item.id, item)"
+                                                            :disabled="updatingItem === item.id || getLineBillingUnits(item.id) <= 0.01"
+                                                            class="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-gray-200 bg-white text-lg text-gray-800 shadow-sm active:scale-95 disabled:opacity-50">
+                                                        <i class="fas fa-minus"></i>
+                                                    </button>
+                                                    <input type="number" step="0.01" min="0.01" lang="en"
+                                                           class="h-12 w-20 rounded-xl border-2 border-gray-200 bg-white text-center text-lg font-bold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25"
+                                                           :value="getLineBillingUnits(item.id)"
+                                                           :disabled="updatingItem === item.id"
+                                                           @input="addedItemBillingUnits = { ...addedItemBillingUnits, [item.id]: parseFloat($event.target.value) || 1 }"
+                                                           @blur="onBillingUnitsBlur(item.id, item, $event)">
+                                                    <button type="button" @click="incrementBillingUnits(item.id, item)"
+                                                            :disabled="updatingItem === item.id"
+                                                            class="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-gray-200 bg-white text-lg text-gray-800 shadow-sm active:scale-95 disabled:opacity-50">
+                                                        <i class="fas fa-plus"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </article>
+                            </template>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Validation Errors -->
                 @if($errors->any())
-                    <div class="flex-shrink-0 px-4 md:px-6 py-3 bg-red-50 border-t border-red-100">
+                    <div class="flex-shrink-0 border-t border-red-100 bg-red-50 px-4 py-3 sm:px-6">
                         <p class="text-sm text-red-800">
-                            <i class="fas fa-exclamation-circle mr-1"></i>
-                            {{ $errors->first() }}
+                            <i class="fas fa-exclamation-circle mr-1"></i>{{ $errors->first() }}
                         </p>
                     </div>
                 @endif
 
-                <!-- Modal Footer -->
-                <div class="flex-shrink-0 flex items-center justify-end px-4 md:px-6 py-4 border-t border-gray-200 bg-gray-50">
-                    <button type="button" 
+                <footer class="flex flex-shrink-0 flex-col gap-2 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/80 sm:flex-row sm:items-center sm:justify-end sm:px-6 sm:py-4"
+                        style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
+                    <button type="button"
                             @click="showAddItem = false; searchQuery = ''; selectedCategory = ''"
-                            class="px-6 py-3 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-colors">
-                        <i class="fas fa-times mr-2"></i>
-                        Close
+                            class="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 py-3.5 text-base font-semibold text-gray-800 shadow-sm transition hover:bg-gray-100 sm:w-auto sm:px-8 sm:py-3 sm:text-sm">
+                        <i class="fas fa-check text-blue-600"></i>{{ __('vendor.modal_done') }}
                     </button>
-                </div>
+                </footer>
             </div>
         </div>
     </div>
@@ -884,6 +1778,96 @@
                     <button type="submit" id="discountSubmitBtn"
                             class="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 shadow-sm">
                         <i class="fas fa-check mr-2"></i>Apply Discount
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Security Deposit Modal -->
+<div id="securityDepositModal" class="fixed inset-0 z-[70] hidden">
+    <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="closeSecurityDepositModal()"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+        <div class="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-2xl" onclick="event.stopPropagation()">
+            <div class="rounded-t-xl border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
+                            <i class="fas fa-shield-alt text-white"></i>
+                        </div>
+                        <div>
+                            <h3 id="securityDepositModalTitle" class="text-lg font-bold text-gray-900">Security Deposit</h3>
+                            <p id="securityDepositModalSubtitle" class="text-xs text-gray-600">Choose how to charge security deposit</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="closeSecurityDepositModal()" class="rounded-lg p-2 text-gray-400 transition-colors hover:bg-white hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <form id="securityDepositForm" onsubmit="submitSecurityDeposit(event)" class="space-y-5 p-6">
+                <div class="space-y-3">
+                    <label class="block text-sm font-semibold text-gray-700">Deposit Rule</label>
+
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50">
+                        <input type="radio" name="security_deposit_type" value="none" class="mt-1 h-4 w-4 text-blue-600" @checked(($cart->security_deposit_type ?? 'none') === 'none')>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">None</p>
+                            <p class="text-xs text-gray-600">Do not charge a security deposit by default.</p>
+                        </div>
+                    </label>
+
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50">
+                        <input type="radio" name="security_deposit_type" value="order_amount" class="mt-1 h-4 w-4 text-blue-600" @checked(($cart->security_deposit_type ?? 'none') === 'order_amount')>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">Order amount</p>
+                            <p class="text-xs text-gray-600">Add a percentage of the total order amount.</p>
+                        </div>
+                    </label>
+
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50">
+                        <input type="radio" name="security_deposit_type" value="product_security_deposit" class="mt-1 h-4 w-4 text-blue-600" @checked(($cart->security_deposit_type ?? 'none') === 'product_security_deposit')>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">Product security deposit value</p>
+                            <p class="text-xs text-gray-600">Charge a percentage of the security deposit value of all products on an order.</p>
+                        </div>
+                    </label>
+
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50">
+                        <input type="radio" name="security_deposit_type" value="fixed_amount" class="mt-1 h-4 w-4 text-blue-600" @checked(($cart->security_deposit_type ?? 'none') === 'fixed_amount')>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">Fixed amount</p>
+                            <p class="text-xs text-gray-600">Charge a fixed amount, regardless of the products on an order.</p>
+                        </div>
+                    </label>
+                </div>
+
+                <div id="securityDepositValueWrap" class="hidden">
+                    <label for="security_deposit_value" id="securityDepositValueLabel" class="mb-2 block text-sm font-semibold text-gray-700">Value</label>
+                    <div class="relative">
+                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                            <span id="securityDepositValueSymbol" class="font-medium text-gray-500">%</span>
+                        </div>
+                        <input type="number"
+                               id="security_deposit_value"
+                               step="0.01"
+                               min="0"
+                               class="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                               placeholder="Enter value">
+                    </div>
+                    <p id="securityDepositValueHelp" class="mt-1.5 text-xs text-gray-500"></p>
+                </div>
+
+                <p id="securityDepositError" class="hidden text-sm text-red-600"></p>
+
+                <div class="flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
+                    <button type="button" onclick="closeSecurityDepositModal()" class="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50">
+                        {{ __('vendor.cancel') }}
+                    </button>
+                    <button type="submit" class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95">
+                        <i class="fas fa-check mr-2"></i>Apply
                     </button>
                 </div>
             </form>
@@ -1098,6 +2082,36 @@
     </div>
 </div>
 
+<!-- Place order confirmation modal -->
+<div id="placeOrderConfirmModal"
+     class="fixed inset-0 z-[75] hidden items-center justify-center p-4 bg-gray-900/50 transition-opacity"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="placeOrderConfirmTitle"
+     onclick="if (event.target === this) closePlaceOrderConfirmModal()">
+    <div class="relative bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all" onclick="event.stopPropagation()">
+        <div class="p-6 text-center">
+            <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center bg-emerald-100 rounded-full">
+                <i class="fas fa-check-circle text-2xl text-emerald-600"></i>
+            </div>
+            <h3 id="placeOrderConfirmTitle" class="text-lg font-bold text-gray-900 mb-2">{{ __('vendor.modal_place_order_title') }}</h3>
+            <p class="text-sm text-gray-600">{{ __('vendor.confirm_place_order') }}</p>
+        </div>
+        <div class="flex items-center justify-center gap-3 px-6 pb-6">
+            <button type="button"
+                    id="placeOrderModalCancel"
+                    class="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                <i class="fas fa-times mr-2"></i>{{ __('vendor.cancel') }}
+            </button>
+            <button type="button"
+                    id="placeOrderModalConfirm"
+                    class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors">
+                <i class="fas fa-check-circle mr-2"></i>{{ __('vendor.place_order') }}
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Empty Cart Confirm Modal -->
 <div id="emptyCartModal" class="fixed inset-0 z-50 hidden" onclick="if(event.target===this)closeEmptyCartModal()">
     <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
@@ -1154,6 +2168,9 @@ let pendingDelete = null;
 // --- Add Item to Cart (AJAX) ---
 function addItemToCartAjax(itemId, qty, component) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const item = component.items.find(i => i.id === itemId);
+    const priceType = item?.price_type ?? 'per_day';
+    const billingUnits = priceType === 'fixed' ? 1 : Math.max(parseFloat(component.addedItemBillingUnits[itemId]) || 1, 0.01);
 
     fetch('{{ route("vendor.carts.items.add", $cart->id) }}', {
         method: 'POST',
@@ -1164,13 +2181,14 @@ function addItemToCartAjax(itemId, qty, component) {
             'X-CSRF-TOKEN': csrfToken
         },
         body: JSON.stringify({
-            items: [{ item_id: itemId, quantity: qty }]
+            items: [{ item_id: itemId, quantity: qty, billing_units: billingUnits }]
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             component.addedItems = { ...component.addedItems, [itemId]: qty };
+            component.addedItemBillingUnits = { ...component.addedItemBillingUnits, [itemId]: billingUnits };
             updateSummary(data.cart);
             refreshCartItems();
             showToast(data.message || 'Item added to cart', 'success');
@@ -1190,6 +2208,12 @@ function addItemToCartAjax(itemId, qty, component) {
 // --- Update item qty from modal ---
 function updateModalItemQty(itemId, newQty, component) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const item = component.items.find(i => i.id === itemId);
+    const priceType = item?.price_type ?? 'per_day';
+    let billingUnits = 1;
+    if (priceType !== 'fixed') {
+        billingUnits = Math.max(parseFloat(component.addedItemBillingUnits[itemId]) || 1, 0.01);
+    }
 
     fetch(`{{ url('vendor/carts') }}/{{ $cart->id }}/items/${itemId}`, {
         method: 'PUT',
@@ -1199,11 +2223,14 @@ function updateModalItemQty(itemId, newQty, component) {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken
         },
-        body: JSON.stringify({ quantity: newQty })
+        body: JSON.stringify({ quantity: newQty, billing_units: billingUnits })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            if (data.item && data.item.billing_units != null) {
+                component.addedItemBillingUnits = { ...component.addedItemBillingUnits, [itemId]: parseFloat(data.item.billing_units) };
+            }
             updateSummary(data.cart);
             refreshCartItems();
         } else {
@@ -1234,9 +2261,7 @@ function removeModalItem(itemId, component) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            const updated = { ...component.addedItems };
-            delete updated[itemId];
-            component.addedItems = updated;
+            window.dispatchEvent(new CustomEvent('cart-item-removed', { detail: { itemId } }));
             updateSummary(data.cart);
             refreshCartItems();
             showToast(data.message || 'Item removed', 'success');
@@ -1269,7 +2294,7 @@ function refreshCartItems() {
         if (newList && currentList) currentList.innerHTML = newList.innerHTML;
         const newCount = doc.querySelector('[data-items-count]');
         const currentCount = document.querySelector('[data-items-count]');
-        if (newCount && currentCount) currentCount.textContent = newCount.textContent;
+        if (newCount && currentCount) currentCount.innerHTML = newCount.innerHTML;
     })
     .catch(() => {});
 }
@@ -1489,6 +2514,228 @@ function removeDiscount() {
         showToast('Error removing discount', 'error');
     });
 }
+
+// --- Security Deposit Modal ---
+const securityDepositState = {
+    type: @json($cart->security_deposit_type ?? 'none'),
+    value: parseFloat(@json($cart->security_deposit_value ?? 0)) || 0,
+    amount: parseFloat(@json((float) ($cart->security_deposit ?? 0))),
+    /** Order total from server (sub + tax − discounts), excludes security deposit */
+    orderGrandTotal: parseFloat(@json((float) $cart->grand_total)),
+    subTotal: parseFloat(@json((float) $cart->sub_total)),
+};
+
+function openSecurityDepositModal() {
+    document.getElementById('securityDepositModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    document.getElementById('securityDepositError').classList.add('hidden');
+
+    const radio = document.querySelector(`input[name="security_deposit_type"][value="${securityDepositState.type}"]`)
+        || document.querySelector('input[name="security_deposit_type"][value="none"]');
+    if (radio) radio.checked = true;
+    document.getElementById('security_deposit_value').value = securityDepositState.value > 0 ? securityDepositState.value : '';
+    updateSecurityDepositValueInput();
+    updateSecurityDepositModalCopy();
+}
+
+function updateSecurityDepositModalCopy() {
+    const subtitle = document.getElementById('securityDepositModalSubtitle');
+    const title = document.getElementById('securityDepositModalTitle');
+    if (!subtitle || !title) return;
+
+    const t = document.querySelector('input[name="security_deposit_type"]:checked')?.value
+        || securityDepositState.type
+        || 'none';
+
+    const copy = {
+        none: ['Security Deposit', 'Choose how to charge security deposit — currently no deposit.'],
+        order_amount: ['Security deposit (order %)', 'Charge a percentage of the order total (after tax and discounts).'],
+        product_security_deposit: ['Security deposit (product %)', 'Charge a percentage of the order subtotal (product value).'],
+        fixed_amount: ['Security deposit (fixed)', 'Charge a fixed amount regardless of order size.'],
+    };
+    const pair = copy[t] || copy.none;
+    title.textContent = pair[0];
+    subtitle.textContent = pair[1];
+}
+
+function closeSecurityDepositModal() {
+    document.getElementById('securityDepositModal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function updateSecurityDepositValueInput() {
+    const selectedType = document.querySelector('input[name="security_deposit_type"]:checked')?.value || 'none';
+    const wrap = document.getElementById('securityDepositValueWrap');
+    const symbol = document.getElementById('securityDepositValueSymbol');
+    const label = document.getElementById('securityDepositValueLabel');
+    const help = document.getElementById('securityDepositValueHelp');
+    const input = document.getElementById('security_deposit_value');
+
+    if (selectedType === 'none') {
+        wrap.classList.add('hidden');
+        input.required = false;
+        return;
+    }
+
+    wrap.classList.remove('hidden');
+    input.required = true;
+
+    if (selectedType === 'fixed_amount') {
+        symbol.textContent = '₹';
+        label.textContent = 'Fixed Amount';
+        help.textContent = 'Enter exact amount to charge as security deposit.';
+        input.placeholder = 'Enter fixed amount';
+    } else if (selectedType === 'order_amount') {
+        symbol.textContent = '%';
+        label.textContent = 'Order Amount Percentage';
+        help.textContent = 'Applied on the current order total.';
+        input.placeholder = 'Enter percentage';
+    } else {
+        symbol.textContent = '%';
+        label.textContent = 'Product Deposit Percentage';
+        help.textContent = 'Applied on the total product value of this order.';
+        input.placeholder = 'Enter percentage';
+    }
+}
+
+function calculateSecurityDepositAmount(cartTotals) {
+    const type = securityDepositState.type;
+    const value = parseFloat(securityDepositState.value || 0);
+    if (type === 'none' || value <= 0) return 0;
+
+    if (type === 'fixed_amount') {
+        return value;
+    }
+
+    if (type === 'order_amount') {
+        const base = parseFloat(cartTotals.grand_total || 0);
+        return (base * value) / 100;
+    }
+
+    const base = parseFloat(cartTotals.sub_total || 0);
+    return (base * value) / 100;
+}
+
+function applySecurityDepositDisplay(cartTotals) {
+    const securityDepositEl = document.querySelector('[data-security-deposit-total]');
+    const securityDepositLabel = document.getElementById('securityDepositLabel');
+    const grandTotalEl = document.querySelector('[data-grand-total]');
+    const orderTotalEl = document.querySelector('[data-order-total]');
+    const balanceDueEl = document.querySelector('[data-balance-due]');
+    if (!securityDepositEl || !securityDepositLabel) return;
+
+    const orderTotal = parseFloat(cartTotals.grand_total ?? securityDepositState.orderGrandTotal ?? 0);
+    if (orderTotalEl) {
+        orderTotalEl.textContent = '₹' + orderTotal.toFixed(2);
+    }
+    const amount = (cartTotals.security_deposit !== undefined && cartTotals.security_deposit !== null)
+        ? parseFloat(cartTotals.security_deposit)
+        : calculateSecurityDepositAmount(cartTotals);
+    securityDepositState.amount = amount;
+    securityDepositEl.textContent = '₹' + amount.toFixed(2);
+
+    const totalWithDeposit = orderTotal + amount;
+    if (grandTotalEl) {
+        grandTotalEl.textContent = '₹' + totalWithDeposit.toFixed(2);
+    }
+    if (balanceDueEl) {
+        const paidAmount = parseFloat(document.querySelector('[data-paid-amount]')?.textContent?.replace(/[₹,]/g, '') || 0);
+        balanceDueEl.textContent = '₹' + (totalWithDeposit - paidAmount).toFixed(2);
+    }
+
+    const typeLabelMap = {
+        none: 'Security Deposit',
+        order_amount: 'Security Deposit (Order %)',
+        product_security_deposit: 'Security Deposit (Product %)',
+        fixed_amount: 'Security Deposit (Fixed)',
+    };
+    securityDepositLabel.textContent = typeLabelMap[securityDepositState.type] || 'Security Deposit';
+}
+
+function submitSecurityDeposit(e) {
+    e.preventDefault();
+
+    const errorEl = document.getElementById('securityDepositError');
+    errorEl.classList.add('hidden');
+
+    const selectedType = document.querySelector('input[name="security_deposit_type"]:checked')?.value || 'none';
+    const valueInput = document.getElementById('security_deposit_value').value;
+    const numericValue = parseFloat(valueInput || 0);
+
+    if (selectedType !== 'none') {
+        if (!numericValue || numericValue <= 0) {
+            errorEl.textContent = 'Please enter a valid value.';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+
+        if ((selectedType === 'order_amount' || selectedType === 'product_security_deposit') && numericValue > 100) {
+            errorEl.textContent = 'Percentage cannot be more than 100.';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Apply';
+    }
+
+    fetch(`{{ route('vendor.carts.security-deposit', $cart->id) }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+        },
+        body: JSON.stringify({
+            security_deposit_type: selectedType,
+            security_deposit_value: selectedType === 'none' ? null : numericValue,
+        }),
+    })
+        .then(async (r) => {
+            const data = await r.json().catch(() => ({}));
+            return { ok: r.ok, data };
+        })
+        .then(({ ok, data }) => {
+            if (ok && data.success && data.cart) {
+                securityDepositState.type = data.cart.security_deposit_type || selectedType;
+                securityDepositState.value = parseFloat(data.cart.security_deposit_value ?? 0) || 0;
+                updateSummary(data.cart);
+                closeSecurityDepositModal();
+                showToast(data.message || 'Security deposit updated', 'success');
+            } else {
+                errorEl.textContent = data.message || 'Could not update security deposit.';
+                errorEl.classList.remove('hidden');
+            }
+        })
+        .catch(() => {
+            errorEl.textContent = 'Could not update security deposit.';
+            errorEl.classList.remove('hidden');
+        })
+        .finally(() => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check mr-2"></i>Apply';
+            }
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('input[name="security_deposit_type"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            updateSecurityDepositValueInput();
+            updateSecurityDepositModalCopy();
+        });
+    });
+    applySecurityDepositDisplay({
+        sub_total: securityDepositState.subTotal,
+        grand_total: securityDepositState.orderGrandTotal,
+    });
+});
 
 // --- Coupon Modal ---
 function openCouponModal() {
@@ -1752,6 +2999,24 @@ function submitEditCart(e) {
     });
 }
 
+function nudgeLineQty(cartId, itemId, delta, buttonEl) {
+    const row = buttonEl.closest('[data-line-price-type]');
+    let current = row ? parseInt(row.getAttribute('data-line-qty'), 10) : NaN;
+    if (!Number.isFinite(current)) {
+        const qtyEl = document.querySelector(`[data-qty-display="${itemId}"]`);
+        current = qtyEl ? parseInt(qtyEl.textContent, 10) : 1;
+    }
+    if (!Number.isFinite(current) || current < 1) current = 1;
+    const next = current + delta;
+    if (delta < 0 && current <= 1) {
+        const removeBtn = row ? row.querySelector('[data-cart-remove]') : null;
+        removeCartItem(cartId, itemId, removeBtn || buttonEl);
+        return;
+    }
+    if (next < 1) return;
+    updateCartItemQty(cartId, itemId, next, buttonEl);
+}
+
 function updateCartItemQty(cartId, itemId, quantity, el) {
     quantity = parseInt(quantity);
     if (!quantity || quantity < 1) {
@@ -1760,6 +3025,13 @@ function updateCartItemQty(cartId, itemId, quantity, el) {
     }
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const row = el && el.closest ? el.closest('[data-line-price-type]') : null;
+    const priceType = row ? row.getAttribute('data-line-price-type') : null;
+    let billingUnits = 1;
+    if (priceType && priceType !== 'fixed' && row) {
+        const b = parseFloat(row.getAttribute('data-line-billing'));
+        billingUnits = Number.isFinite(b) && b >= 0.01 ? b : 1;
+    }
 
     fetch(`{{ url('vendor/carts') }}/${cartId}/items/${itemId}`, {
         method: 'PUT',
@@ -1769,21 +3041,39 @@ function updateCartItemQty(cartId, itemId, quantity, el) {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken
         },
-        body: JSON.stringify({ quantity: quantity })
+        body: JSON.stringify({ quantity: quantity, billing_units: billingUnits })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             // Sync Alpine state via event
-            window.dispatchEvent(new CustomEvent('cart-item-updated', { detail: { itemId: itemId, quantity: data.item.quantity } }));
+            window.dispatchEvent(new CustomEvent('cart-item-updated', {
+                detail: {
+                    itemId: itemId,
+                    quantity: data.item.quantity,
+                    billing_units: data.item.billing_units,
+                },
+            }));
 
             // Update quantity display
             const qtyDisplay = document.querySelector(`[data-qty-display="${itemId}"]`);
-            if (qtyDisplay) qtyDisplay.textContent = '{{ __("vendor.quantity") }}: ' + data.item.quantity;
+            if (qtyDisplay) qtyDisplay.textContent = String(data.item.quantity);
 
             // Update line total
             const lineTotalEl = document.querySelector(`[data-line-total="${itemId}"]`);
             if (lineTotalEl) lineTotalEl.textContent = '₹' + parseFloat(data.item.line_total).toFixed(2);
+
+            if (row) {
+                if (data.item.price_type) {
+                    row.setAttribute('data-line-price-type', data.item.price_type);
+                }
+                row.setAttribute('data-line-qty', data.item.quantity);
+                if (data.item.billing_units != null) {
+                    row.setAttribute('data-line-billing', data.item.billing_units);
+                    const bin = row.querySelector('input[id^="line-billing-"]');
+                    if (bin) bin.value = parseFloat(data.item.billing_units);
+                }
+            }
 
             // Update summary totals
             updateSummary(data.cart);
@@ -1796,6 +3086,70 @@ function updateCartItemQty(cartId, itemId, quantity, el) {
     .catch(error => {
         console.error('Error:', error);
         showToast('Error updating quantity', 'error');
+    });
+}
+
+function nudgeLineBilling(cartId, itemId, delta) {
+    const input = document.getElementById('line-billing-' + itemId);
+    if (!input) return;
+    let v = parseFloat(input.value);
+    if (!Number.isFinite(v)) v = 1;
+    if (delta < 0 && v <= 0.011) return;
+    v = Math.round((v + delta) * 100) / 100;
+    if (v < 0.01) v = 0.01;
+    input.value = v;
+    updateCartBillingUnits(cartId, itemId, input);
+}
+
+function updateCartBillingUnits(cartId, itemId, inputEl) {
+    const row = inputEl.closest('[data-line-price-type]');
+    if (!row) return;
+    let billing = parseFloat(inputEl.value);
+    if (!Number.isFinite(billing) || billing < 0.01) {
+        billing = 1;
+        inputEl.value = '1';
+    }
+    const qty = parseInt(row.getAttribute('data-line-qty'), 10) || 1;
+    const priceType = row.getAttribute('data-line-price-type');
+    const billingToSend = priceType === 'fixed' ? 1 : billing;
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    fetch(`{{ url('vendor/carts') }}/${cartId}/items/${itemId}`, {
+        method: 'PUT',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken
+        },
+        body: JSON.stringify({ quantity: qty, billing_units: billingToSend })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            row.setAttribute('data-line-qty', data.item.quantity);
+            if (data.item.billing_units != null) {
+                row.setAttribute('data-line-billing', data.item.billing_units);
+                inputEl.value = parseFloat(data.item.billing_units);
+            }
+            window.dispatchEvent(new CustomEvent('cart-item-updated', {
+                detail: {
+                    itemId: itemId,
+                    quantity: data.item.quantity,
+                    billing_units: data.item.billing_units,
+                },
+            }));
+            const lineTotalEl = document.querySelector(`[data-line-total="${itemId}"]`);
+            if (lineTotalEl) lineTotalEl.textContent = '₹' + parseFloat(data.item.line_total).toFixed(2);
+            updateSummary(data.cart);
+            showToast(data.message, 'success');
+        } else {
+            showToast(data.message || 'Could not update line', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating line', 'error');
     });
 }
 
@@ -1820,7 +3174,7 @@ function confirmDelete() {
     const { cartId, itemId, button } = pendingDelete;
     closeDeleteModal();
 
-    const row = button.closest('.flex.items-center.justify-between');
+    const row = button.closest('[data-cart-line]');
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
     // Disable button while processing
@@ -1851,26 +3205,14 @@ function confirmDelete() {
                 // Update summary totals
                 updateSummary(data.cart);
 
-                // Update items count in header
                 const itemsCountEl = document.querySelector('[data-items-count]');
                 if (itemsCountEl) {
-                    itemsCountEl.textContent = data.cart.items_count + ' {{ __("vendor.items") }}';
+                    const c = data.cart.items_count;
+                    itemsCountEl.innerHTML = '<span class="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-blue-100 px-2 text-xs font-bold text-blue-800 tabular-nums">' + c + '</span> <span class="font-medium text-gray-800">{{ __("vendor.items") }}</span>';
                 }
 
-                // Show empty state if no items left
                 if (data.cart.items_count === 0) {
-                    const itemsList = document.querySelector('[data-items-list]');
-                    if (itemsList) {
-                        itemsList.innerHTML = `
-                            <div class="text-center py-12">
-                                <div class="w-20 h-20 mx-auto mb-4 flex items-center justify-center bg-gray-100 rounded-full">
-                                    <i class="fas fa-shopping-cart text-3xl text-gray-400"></i>
-                                </div>
-                                <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('vendor.no_items_yet') }}</h3>
-                                <p class="text-sm text-gray-600 mb-4">{{ __('vendor.add_to_cart') }}</p>
-                            </div>
-                        `;
-                    }
+                    refreshCartItems();
                 }
             }, 300);
 
@@ -1889,10 +3231,36 @@ function confirmDelete() {
     });
 }
 
+function openPlaceOrderConfirmModal() {
+    const modal = document.getElementById('placeOrderConfirmModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.body.style.overflow = 'hidden';
+}
+
+function closePlaceOrderConfirmModal() {
+    const modal = document.getElementById('placeOrderConfirmModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.body.style.overflow = '';
+}
+
+function submitVendorPlaceOrder() {
+    const form = document.getElementById('vendorPlaceOrderForm');
+    if (form) form.submit();
+}
+
 // Modal event listeners
 document.getElementById('deleteModalCancel').addEventListener('click', closeDeleteModal);
 document.getElementById('deleteModalOverlay').addEventListener('click', closeDeleteModal);
 document.getElementById('deleteModalConfirm').addEventListener('click', confirmDelete);
+
+const placeOrderModalCancel = document.getElementById('placeOrderModalCancel');
+const placeOrderModalConfirm = document.getElementById('placeOrderModalConfirm');
+if (placeOrderModalCancel) placeOrderModalCancel.addEventListener('click', closePlaceOrderConfirmModal);
+if (placeOrderModalConfirm) placeOrderModalConfirm.addEventListener('click', submitVendorPlaceOrder);
 
 function updateSummary(cart) {
     const subTotalEl = document.querySelector('[data-sub-total]');
@@ -1900,18 +3268,44 @@ function updateSummary(cart) {
     const discountAmountEl = document.querySelector('[data-discount-amount]');
     const couponDiscountEl = document.querySelector('[data-coupon-discount]');
     const discountTotalEl = document.querySelector('[data-discount-total]');
-    const grandTotalEl = document.querySelector('[data-grand-total]');
-    const balanceDueEl = document.querySelector('[data-balance-due]');
+    const orderTotalEl = document.querySelector('[data-order-total]');
 
     if (subTotalEl) subTotalEl.textContent = '₹' + parseFloat(cart.sub_total).toFixed(2);
     if (taxTotalEl) taxTotalEl.textContent = '₹' + parseFloat(cart.tax_total).toFixed(2);
     if (discountAmountEl) discountAmountEl.textContent = '-₹' + parseFloat(cart.discount_amount).toFixed(2);
     if (couponDiscountEl) couponDiscountEl.textContent = '-₹' + parseFloat(cart.coupon_discount).toFixed(2);
     if (discountTotalEl) discountTotalEl.textContent = '-₹' + parseFloat(cart.discount_total).toFixed(2);
-    if (grandTotalEl) grandTotalEl.textContent = '₹' + parseFloat(cart.grand_total).toFixed(2);
-    if (balanceDueEl) {
-        const paidAmount = parseFloat(document.querySelector('[data-paid-amount]')?.textContent?.replace(/[₹,]/g, '') || 0);
-        balanceDueEl.textContent = '₹' + (parseFloat(cart.grand_total) - paidAmount).toFixed(2);
+    if (orderTotalEl) orderTotalEl.textContent = '₹' + parseFloat(cart.grand_total).toFixed(2);
+
+    const delRow = document.getElementById('summary-delivery-charge-row');
+    const delLine = document.querySelector('[data-delivery-charge-line]');
+    if (delRow && delLine && cart.fulfillment_type !== undefined) {
+        const ch = parseFloat(cart.delivery_charge ?? 0) || 0;
+        if (cart.fulfillment_type === 'delivery' && ch > 0) {
+            delRow.classList.remove('hidden');
+            delLine.textContent = '₹' + ch.toFixed(2);
+        } else {
+            delRow.classList.add('hidden');
+        }
+    }
+
+    securityDepositState.orderGrandTotal = parseFloat(cart.grand_total);
+    securityDepositState.subTotal = parseFloat(cart.sub_total);
+    if (cart.security_deposit_type !== undefined) {
+        securityDepositState.type = cart.security_deposit_type || 'none';
+    }
+    if (cart.security_deposit_value !== undefined && cart.security_deposit_value !== null && cart.security_deposit_value !== '') {
+        securityDepositState.value = parseFloat(cart.security_deposit_value);
+    } else if (cart.security_deposit_type === 'none' || !cart.security_deposit_type) {
+        securityDepositState.value = 0;
+    }
+    if (cart.paid_amount !== undefined && cart.paid_amount !== null) {
+        const paidEl = document.querySelector('[data-paid-amount]');
+        if (paidEl) paidEl.textContent = '₹' + parseFloat(cart.paid_amount).toFixed(2);
+    }
+    applySecurityDepositDisplay(cart);
+    if (typeof refreshPaymentListFromCart === 'function') {
+        refreshPaymentListFromCart(cart);
     }
 }
 

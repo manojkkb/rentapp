@@ -64,6 +64,40 @@
                 </a>
             </li>
 
+              <!-- Cart -->
+              <li>
+                <a href="{{ route('vendor.carts.index') }}"
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
+                   class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+                          {{ request()->routeIs('vendor.carts.*')
+                              ? 'bg-emerald-500 text-white shadow-sm'
+                              : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-700' }}">
+                    <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[15px] leading-none
+                          {{ request()->routeIs('vendor.carts.*') ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-emerald-700' }}">
+                        <i class="fas fa-shopping-cart" aria-hidden="true"></i>
+                    </span>
+                    <span class="truncate">{{ __('vendor.cart') }}</span>
+                </a>
+            </li>
+
+            <!-- Orders -->
+            <li>
+                <a href="{{ route('vendor.orders.index') }}"
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
+                   class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
+                          {{ request()->routeIs('vendor.orders.*')
+                              ? 'bg-emerald-500 text-white shadow-sm'
+                              : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-700' }}">
+                    <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[15px] leading-none
+                          {{ request()->routeIs('vendor.orders.*') ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-emerald-700' }}">
+                        <i class="fas fa-receipt" aria-hidden="true"></i>
+                    </span>
+                    <span class="truncate">{{ __('vendor.orders') }}</span>
+                </a>
+            </li>
+
+          
+
             <!-- Items -->
             <li>
                 <a href="{{ route('vendor.items.index') }}"
@@ -92,39 +126,7 @@
                     </span>
                     <span class="truncate">{{ __('vendor.categories') }}</span>
                 </a>
-            </li>
-
-            <!-- Orders -->
-            <li>
-                <a href="{{ route('vendor.orders.index') }}"
-                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
-                   class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
-                          {{ request()->routeIs('vendor.orders.*')
-                              ? 'bg-emerald-500 text-white shadow-sm'
-                              : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-700' }}">
-                    <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[15px] leading-none
-                          {{ request()->routeIs('vendor.orders.*') ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-emerald-700' }}">
-                        <i class="fas fa-receipt" aria-hidden="true"></i>
-                    </span>
-                    <span class="truncate">{{ __('vendor.orders') }}</span>
-                </a>
-            </li>
-
-            <!-- Cart -->
-            <li>
-                <a href="{{ route('vendor.carts.index') }}"
-                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
-                   class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors
-                          {{ request()->routeIs('vendor.carts.*')
-                              ? 'bg-emerald-500 text-white shadow-sm'
-                              : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-700' }}">
-                    <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[15px] leading-none
-                          {{ request()->routeIs('vendor.carts.*') ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-emerald-700' }}">
-                        <i class="fas fa-shopping-cart" aria-hidden="true"></i>
-                    </span>
-                    <span class="truncate">{{ __('vendor.cart') }}</span>
-                </a>
-            </li>
+            </li>            
 
             <!-- Reviews -->
             <li>

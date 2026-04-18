@@ -4,7 +4,7 @@
 @section('page-title', 'Subcategories')
 
 @section('content')
-<div class="space-y-6">
+<div class="space-y-6" x-data="subcategoryModal()">
     
     <!-- Back Button -->
     <div>
@@ -27,16 +27,17 @@
                     <h1 class="text-2xl font-bold text-gray-900">{{ $category->name }}</h1>
                     <p class="text-sm text-gray-600">
                         <i class="fas fa-layer-group text-emerald-600 mr-1"></i>
-                        <span class="font-medium">{{ $subcategories->total() }}</span> subcategories
+                        <span class="font-medium">{{ __('vendor.subcategories_count', ['count' => $subcategories->total()]) }}</span>
                     </p>
                 </div>
             </div>
         </div>
-        <a href="{{ route('vendor.categories.create', ['parent_id' => $category->id]) }}" 
-           class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold rounded-lg transition-all shadow-sm hover:shadow active:scale-95 whitespace-nowrap">
+        <button type="button"
+                @click="openModal()"
+                class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold rounded-lg transition-all shadow-sm hover:shadow active:scale-95 whitespace-nowrap">
             <i class="fas fa-plus mr-2"></i>
-            Add<span class="hidden sm:inline ml-1">Subcategory</span>
-        </a>
+            {{ __('vendor.add_subcategory') }}
+        </button>
     </div>
 
     <!-- Messages -->
@@ -253,19 +254,174 @@
                 <i class="fas fa-layer-group text-gray-300 text-5xl mb-4"></i>
                 <h3 class="text-lg font-semibold text-gray-900 mb-2">No Subcategories Yet</h3>
                 <p class="text-sm text-gray-500 mb-6">Start organizing items under "{{ $category->name }}" by creating subcategories</p>
-                <a href="{{ route('vendor.categories.create', ['parent_id' => $category->id]) }}" 
-                   class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors">
+                <button type="button"
+                        @click="openModal()"
+                        class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors">
                     <i class="fas fa-plus mr-2"></i>
-                    Create Your First Subcategory
-                </a>
+                    {{ __('vendor.add_subcategory') }}
+                </button>
             </div>
         @endif
+    </div>
+
+    <!-- Add subcategory modal -->
+    <div x-show="open"
+         x-cloak
+         class="fixed inset-0 z-[60] flex items-end justify-center sm:items-center p-4"
+         @keydown.escape.window="open && closeModal()"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="add-subcategory-title">
+        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-[1px]" @click="closeModal()" aria-hidden="true"></div>
+        <div class="relative w-full max-w-lg bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden"
+             @click.stop>
+            <div class="px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-emerald-100/80 flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <h2 id="add-subcategory-title" class="text-lg font-bold text-gray-900">{{ __('vendor.add_subcategory') }}</h2>
+                    <p class="text-sm text-gray-600 mt-0.5">
+                        <i class="fas fa-layer-group text-emerald-600 mr-1"></i>
+                        {{ __('vendor.category') }}: <span class="font-semibold text-gray-900">{{ $category->name }}</span>
+                    </p>
+                </div>
+                <button type="button"
+                        @click="closeModal()"
+                        class="p-2 rounded-lg text-gray-500 hover:bg-white/80 hover:text-gray-800 transition-colors shrink-0"
+                        aria-label="{{ __('vendor.cancel') }}">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+            <form class="p-5 space-y-4" @submit.prevent="submitForm()">
+                <div>
+                    <label for="modal_sub_name" class="block text-sm font-semibold text-gray-700 mb-1.5">
+                        {{ __('vendor.category_name') }} <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text"
+                           id="modal_sub_name"
+                           x-model="name"
+                           class="w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                           :class="errors.name ? 'border-red-500' : 'border-gray-300'"
+                           placeholder="{{ __('vendor.category_name_placeholder') }}"
+                           autocomplete="off"
+                           required>
+                    <template x-if="errors.name">
+                        <p class="mt-1.5 text-sm text-red-600" x-text="errors.name[0]"></p>
+                    </template>
+                </div>
+                <div>
+                    <label for="modal_sub_icon" class="block text-sm font-semibold text-gray-700 mb-1.5">
+                        Icon <span class="text-gray-500 font-normal text-xs">(Font Awesome)</span>
+                    </label>
+                    <input type="text"
+                           id="modal_sub_icon"
+                           x-model="icon"
+                           class="w-full px-4 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                           :class="errors.icon ? 'border-red-500' : 'border-gray-300'"
+                           placeholder="fa-tag">
+                    <template x-if="errors.icon">
+                        <p class="mt-1.5 text-sm text-red-600" x-text="errors.icon[0]"></p>
+                    </template>
+                </div>
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <label class="flex items-start cursor-pointer gap-3">
+                        <input type="checkbox"
+                               x-model="isActive"
+                               class="mt-1 w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                        <span>
+                            <span class="text-sm font-medium text-gray-900">{{ __('vendor.active') }}</span>
+                            <span class="block text-xs text-gray-600 mt-0.5">{{ __('vendor.category') }} {{ __('vendor.available') }}</span>
+                        </span>
+                    </label>
+                </div>
+                <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+                    <button type="button"
+                            @click="closeModal()"
+                            class="w-full sm:w-auto px-4 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        {{ __('vendor.cancel') }}
+                    </button>
+                    <button type="submit"
+                            class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors disabled:opacity-60 disabled:pointer-events-none"
+                            :disabled="submitting">
+                        <span class="inline-flex items-center" x-show="submitting" x-cloak>
+                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                            Saving…
+                        </span>
+                        <span class="inline-flex items-center" x-show="!submitting">
+                            <i class="fas fa-plus mr-2"></i>
+                            {{ __('vendor.add_category') }}
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 @endsection
 
 @section('scripts')
 <script>
+function subcategoryModal() {
+    return {
+        open: false,
+        submitting: false,
+        errors: {},
+        name: '',
+        icon: 'fa-folder',
+        isActive: true,
+        parentId: {{ (int) $category->id }},
+        storeUrl: @json(route('vendor.categories.store')),
+        resetForm() {
+            this.errors = {};
+            this.name = '';
+            this.icon = 'fa-folder';
+            this.isActive = true;
+        },
+        openModal() {
+            this.resetForm();
+            this.open = true;
+        },
+        closeModal() {
+            this.open = false;
+        },
+        async submitForm() {
+            this.errors = {};
+            this.submitting = true;
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const fd = new FormData();
+            fd.append('_token', token);
+            fd.append('name', this.name.trim());
+            fd.append('parent_id', String(this.parentId));
+            fd.append('icon', this.icon || '');
+            fd.append('is_active', this.isActive ? '1' : '0');
+            try {
+                const res = await fetch(this.storeUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                    },
+                    body: fd,
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success) {
+                    window.location.reload();
+                    return;
+                }
+                if (res.status === 422 && data.errors) {
+                    this.errors = data.errors;
+                    return;
+                }
+                alert(data.message || 'Could not create subcategory.');
+            } catch (e) {
+                console.error(e);
+                alert('A network error occurred. Please try again.');
+            } finally {
+                this.submitting = false;
+            }
+        },
+    };
+}
+
 // AJAX toggle function for category status
 function toggleStatus(url, element, alpineData) {
     // Get CSRF token from meta tag

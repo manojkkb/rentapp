@@ -8,9 +8,20 @@ use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ItemController extends Controller
 {
+    /**
+     * Price billing periods + fixed (labels are translated for the current locale).
+     *
+     * @return array<string, string>
+     */
+    private function priceTypeOptions(): array
+    {
+        return Items::priceTypeSelectOptions();
+    }
+
     /**
      * Display a listing of items
      */
@@ -29,13 +40,8 @@ class ItemController extends Controller
             ->orderBy('name')
             ->get();
         
-        // Price types for modals
-        $priceTypes = [
-            'per_day' => 'Per Day',
-            'per_hour' => 'Per Hour',
-            'fixed' => 'Fixed Price',
-        ];
-        
+        $priceTypes = $this->priceTypeOptions();
+
         $items = Items::where('vendor_id', $vendor->id)
             ->with('category')
             ->orderBy('created_at', 'desc')
@@ -58,14 +64,14 @@ class ItemController extends Controller
         $query = Items::where('vendor_id', $vendor->id)
             ->with('category');
         
-        // Filter by category
+        // Filter by category (include direct subcategories so parent selection matches their items)
         if ($request->filled('category_id') && $request->category_id != '') {
-            $query->where('category_id', $request->category_id);
-        }
-        
-        // Filter by subcategory
-        if ($request->filled('subcategory_id') && $request->subcategory_id != '') {
-            $query->where('category_id', $request->subcategory_id);
+            $categoryId = (int) $request->category_id;
+            $childIds = Category::where('vendor_id', $vendor->id)
+                ->where('parent_id', $categoryId)
+                ->pluck('id');
+            $categoryIds = $childIds->push($categoryId)->unique()->values()->all();
+            $query->whereIn('category_id', $categoryIds);
         }
         
         // Search filter
@@ -100,31 +106,6 @@ class ItemController extends Controller
     }
     
     /**
-     * Get subcategories by category ID
-     */
-    public function getSubcategories(Request $request)
-    {
-        $vendor = Auth::user()->currentVendor();
-        
-        if (!$vendor) {
-            return response()->json(['error' => 'Please select a vendor'], 403);
-        }
-        
-        $categoryId = $request->get('category_id');
-        
-        $subcategories = Category::where('vendor_id', $vendor->id)
-            ->where('parent_id', $categoryId)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name']);
-        
-        return response()->json([
-            'success' => true,
-            'subcategories' => $subcategories
-        ]);
-    }
-    
-    /**
      * Show the form for creating a new item
      */
     public function create()
@@ -141,13 +122,8 @@ class ItemController extends Controller
             ->orderBy('name')
             ->get();
         
-        // Price types
-        $priceTypes = [
-            'per_day' => 'Per Day',
-            'per_hour' => 'Per Hour',
-            'fixed' => 'Fixed Price',
-        ];
-        
+        $priceTypes = $this->priceTypeOptions();
+
         return view('vendor.items.create', compact('vendor', 'categories', 'priceTypes'));
     }
     
@@ -167,7 +143,7 @@ class ItemController extends Controller
             'category_id' => 'required|numeric|exists:categories,id',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'price_type' => 'required|in:per_day,per_hour,fixed',
+            'price_type' => ['required', Rule::in(Items::priceTypeKeys())],
             'stock' => 'required|integer|min:0',
             'manage_stock' => 'nullable',
             'is_available' => 'nullable',
@@ -273,13 +249,8 @@ class ItemController extends Controller
             ->orderBy('name')
             ->get();
         
-        // Price types
-        $priceTypes = [
-            'per_day' => 'Per Day',
-            'per_hour' => 'Per Hour',
-            'fixed' => 'Fixed Price',
-        ];
-        
+        $priceTypes = $this->priceTypeOptions();
+
         return view('vendor.items.edit', compact('vendor', 'item', 'categories', 'priceTypes'));
     }
     
@@ -304,7 +275,7 @@ class ItemController extends Controller
             'category_id' => 'required|numeric|exists:categories,id',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'price_type' => 'required|in:per_day,per_hour,fixed',
+            'price_type' => ['required', Rule::in(Items::priceTypeKeys())],
             'stock' => 'required|integer|min:0',
             'manage_stock' => 'nullable',
             'is_available' => 'nullable',

@@ -87,7 +87,6 @@ Route::prefix('vendor')->name('vendor.')->group(function ()
 
         // Items
         Route::get('items/fetch', [ItemController::class, 'fetchItems'])->name('items.fetch');
-        Route::get('items/subcategories', [ItemController::class, 'getSubcategories'])->name('items.subcategories');
         Route::resource('items', ItemController::class)->except(['show']);
         Route::post('items/{item}/toggle', [ItemController::class, 'toggleStatus'])->name('items.toggle');
         Route::post('items/{item}/availability', [ItemController::class, 'toggleAvailability'])->name('items.availability');
@@ -117,7 +116,16 @@ Route::prefix('vendor')->name('vendor.')->group(function ()
         Route::get('carts/{cart}/coupons', [VendorCartController::class, 'listCoupons'])->name('carts.coupons.list');
         
         // Place Order from Cart
+        Route::patch('carts/{cart}/fulfillment', [VendorCartController::class, 'updateFulfillment'])->name('carts.fulfillment');
+        Route::post('carts/{cart}/payment', [VendorCartController::class, 'recordPayment'])->name('carts.payment');
+        Route::delete('carts/{cart}/payments/{paymentIndex}', [VendorCartController::class, 'removePayment'])
+            ->name('carts.payments.destroy')
+            ->whereNumber('paymentIndex');
+        Route::post('carts/{cart}/security-deposit', [VendorCartController::class, 'applySecurityDeposit'])->name('carts.security-deposit');
         Route::post('carts/{cart}/place-order', [VendorCartController::class, 'placeOrder'])->name('carts.place-order');
+        Route::get('carts/{cart}/quote', [VendorCartController::class, 'quote'])->name('carts.quote');
+        Route::get('carts/{cart}/quote/download', [VendorCartController::class, 'downloadQuote'])->name('carts.quote.download');
+        Route::get('carts/{cart}/print', [VendorCartController::class, 'printCart'])->name('carts.print');
         
         // Orders
         Route::get('orders', [VendorOrderController::class, 'index'])->name('orders.index');

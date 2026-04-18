@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
+use App\Models\Items;
 use App\Models\VendorCart;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class VendorCartController extends Controller
 {
@@ -85,6 +87,9 @@ class VendorCartController extends Controller
             'token_amount' => 0,
             'paid_amount' => 0,
             'grand_total' => 0,
+            'security_deposit' => 0,
+            'security_deposit_type' => 'none',
+            'security_deposit_value' => null,
             'start_time' => $request->start_time,
             'end_time' => $request->end_time,
         ]);
@@ -128,7 +133,123 @@ class VendorCartController extends Controller
             ->orderBy('name')
             ->get();
         
-        return view('vendor.carts.show', compact('cart', 'availableItems', 'categories'));
+        $cartBillingUnitsLabels = collect(Items::priceTypeKeys())
+            ->filter(fn ($k) => Items::priceTypeUsesBillingUnits($k))
+            ->mapWithKeys(fn ($k) => [$k => Items::billingUnitsFieldLabel($k)])
+            ->all();
+
+        return view('vendor.carts.show', compact('cart', 'availableItems', 'categories', 'cartBillingUnitsLabels'));
+    }
+
+    /**
+     * Printable / shareable quote for the cart (HTML).
+     */
+    public function quote(VendorCart $cart)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor || $cart->vendor_id !== $vendor->id) {
+            abort(403);
+        }
+
+        $cart->load(['customer', 'items.item.category', 'vendor']);
+
+        return view('vendor.carts.quote', compact('cart'));
+    }
+
+    /**
+     * Download quote as an HTML file (opens in browser or saves, depending on client).
+     */
+    public function downloadQuote(VendorCart $cart)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor || $cart->vendor_id !== $vendor->id) {
+            abort(403);
+        }
+
+        $cart->load(['customer', 'items.item.category', 'vendor']);
+
+        $filename = 'quote-cart-'.$cart->id.'.html';
+
+        return response()->view('vendor.carts.quote', compact('cart'), 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * Printable cart sheet (opens in browser; use ?autoprint=1 to trigger print dialog).
+     */
+    public function printCart(Request $request, VendorCart $cart)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor || $cart->vendor_id !== $vendor->id) {
+            abort(403);
+        }
+
+        $cart->load(['customer', 'items.item.category', 'vendor']);
+
+        return view('vendor.carts.print', [
+            'cart' => $cart,
+            'autoprint' => $request->boolean('autoprint'),
+        ]);
+    }
+
+    /**
+     * Update pickup / delivery and optional delivery address.
+     */
+    public function updateFulfillment(Request $request, VendorCart $cart)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (!$vendor || $cart->vendor_id !== $vendor->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized access'], 403);
+        }
+
+        $validated = $request->validate([
+            'fulfillment_type' => 'required|in:pickup,delivery',
+            'delivery_address' => [
+                Rule::requiredIf($request->input('fulfillment_type') === 'delivery'),
+                'nullable',
+                'string',
+                'max:5000',
+            ],
+            'pickup_at' => 'nullable|date',
+            'delivery_charge' => 'nullable|numeric|min:0|max:999999',
+        ]);
+
+        $type = $validated['fulfillment_type'];
+
+        if ($type === 'pickup') {
+            $cart->update([
+                'fulfillment_type' => 'pickup',
+                'delivery_address' => null,
+                'delivery_charge' => 0,
+                'pickup_at' => ! empty($validated['pickup_at']) ? $validated['pickup_at'] : null,
+            ]);
+        } else {
+            $cart->update([
+                'fulfillment_type' => 'delivery',
+                'delivery_address' => trim((string) ($validated['delivery_address'] ?? '')),
+                'pickup_at' => null,
+                'delivery_charge' => round((float) ($validated['delivery_charge'] ?? 0), 2),
+            ]);
+        }
+
+        $this->updateCartTotals($cart);
+        $cart->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('vendor.fulfillment_saved'),
+            'fulfillment_type' => $cart->fulfillment_type,
+            'delivery_address' => $cart->delivery_address,
+            'pickup_at' => $cart->pickup_at?->toIso8601String(),
+            'delivery_charge' => $cart->delivery_charge,
+            'cart' => $this->cartJsonPayload($cart),
+        ]);
     }
     
     /**
@@ -146,6 +267,7 @@ class VendorCartController extends Controller
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'required|exists:items,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.billing_units' => 'nullable|numeric|min:0.01|max:999999',
         ], [
             'items.required' => 'Please select at least one item',
             'items.min' => 'Please select at least one item',
@@ -170,17 +292,29 @@ class VendorCartController extends Controller
                 ->where('item_id', $itemData['item_id'])
                 ->first();
             
+            $linePriceType = $item->price_type;
+            if (! in_array($linePriceType, Items::priceTypeKeys(), true)) {
+                $linePriceType = 'per_day';
+            }
+
+            $billingUnits = $this->normalizedBillingUnits(
+                isset($itemData['billing_units']) ? (float) $itemData['billing_units'] : null,
+                $linePriceType
+            );
+
             if ($existingItem) {
-                // Update quantity
                 $existingItem->update([
-                    'quantity' => $existingItem->quantity + $itemData['quantity']
+                    'quantity' => $existingItem->quantity + $itemData['quantity'],
+                    'price_type' => $linePriceType,
+                    'billing_units' => $billingUnits,
                 ]);
             } else {
-                // Add new item
                 \App\Models\VendorCartItem::create([
                     'vendor_cart_id' => $cart->id,
                     'item_id' => $itemData['item_id'],
                     'quantity' => $itemData['quantity'],
+                    'price_type' => $linePriceType,
+                    'billing_units' => $billingUnits,
                 ]);
             }
             
@@ -204,15 +338,7 @@ class VendorCartController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'cart' => [
-                    'sub_total' => $cart->sub_total,
-                    'tax_total' => $cart->tax_total,
-                    'discount_amount' => $cart->discount_amount,
-                    'coupon_discount' => $cart->coupon_discount,
-                    'discount_total' => $cart->discount_total,
-                    'grand_total' => $cart->grand_total,
-                    'items_count' => $cart->items()->count(),
-                ],
+                'cart' => $this->cartJsonPayload($cart),
             ]);
         }
         
@@ -235,6 +361,7 @@ class VendorCartController extends Controller
         
         $request->validate([
             'quantity' => 'required|integer|min:1',
+            'billing_units' => 'nullable|numeric|min:0.01|max:999999',
         ]);
         
         $cartItem = \App\Models\VendorCartItem::where('vendor_cart_id', $cart->id)
@@ -247,10 +374,25 @@ class VendorCartController extends Controller
             }
             return back()->withErrors(['error' => 'Item not found in cart']);
         }
-        
-        $cartItem->update([
-            'quantity' => $request->quantity
-        ]);
+
+        $cartItem->load('item');
+        $nextPriceType = $cartItem->item?->price_type ?? $cartItem->price_type;
+        if (! in_array($nextPriceType, Items::priceTypeKeys(), true)) {
+            $nextPriceType = 'per_day';
+        }
+
+        $updates = [
+            'quantity' => $request->quantity,
+            'price_type' => $nextPriceType,
+        ];
+
+        if ($nextPriceType === 'fixed') {
+            $updates['billing_units'] = 1;
+        } elseif ($request->exists('billing_units') && $request->input('billing_units') !== null && $request->input('billing_units') !== '') {
+            $updates['billing_units'] = $this->normalizedBillingUnits((float) $request->billing_units, $nextPriceType);
+        }
+
+        $cartItem->update($updates);
         
         // Update cart totals
         $this->updateCartTotals($cart);
@@ -267,17 +409,11 @@ class VendorCartController extends Controller
                     'item_id' => $cartItem->item_id,
                     'quantity' => $cartItem->quantity,
                     'price' => $cartItem->item->price,
-                    'line_total' => $cartItem->item->price * $cartItem->quantity,
+                    'price_type' => $cartItem->item->price_type,
+                    'billing_units' => (float) $cartItem->billing_units,
+                    'line_total' => $cartItem->lineSubtotal(),
                 ],
-                'cart' => [
-                    'sub_total' => $cart->sub_total,
-                    'tax_total' => $cart->tax_total,
-                    'discount_amount' => $cart->discount_amount,
-                    'coupon_discount' => $cart->coupon_discount,
-                    'discount_total' => $cart->discount_total,
-                    'grand_total' => $cart->grand_total,
-                    'items_count' => $cart->items()->count(),
-                ],
+                'cart' => $this->cartJsonPayload($cart),
             ]);
         }
         
@@ -321,15 +457,7 @@ class VendorCartController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Item removed from cart successfully!',
-                'cart' => [
-                    'sub_total' => $cart->sub_total,
-                    'tax_total' => $cart->tax_total,
-                    'discount_amount' => $cart->discount_amount,
-                    'coupon_discount' => $cart->coupon_discount,
-                    'discount_total' => $cart->discount_total,
-                    'grand_total' => $cart->grand_total,
-                    'items_count' => $cart->items()->count(),
-                ],
+                'cart' => $this->cartJsonPayload($cart),
             ]);
         }
         
@@ -396,15 +524,7 @@ class VendorCartController extends Controller
                     'value' => $discountValue,
                     'amount' => $discountAmount,
                 ],
-                'cart' => [
-                    'sub_total' => $cart->sub_total,
-                    'tax_total' => $cart->tax_total,
-                    'discount_total' => $cart->discount_total,
-                    'discount_amount' => $cart->discount_amount,
-                    'coupon_discount' => $cart->coupon_discount,
-                    'grand_total' => $cart->grand_total,
-                    'items_count' => $cart->items()->count(),
-                ],
+                'cart' => $this->cartJsonPayload($cart),
             ]);
         }
 
@@ -438,15 +558,7 @@ class VendorCartController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Discount removed successfully!',
-                'cart' => [
-                    'sub_total' => $cart->sub_total,
-                    'tax_total' => $cart->tax_total,
-                    'discount_total' => $cart->discount_total,
-                    'discount_amount' => $cart->discount_amount,
-                    'coupon_discount' => $cart->coupon_discount,
-                    'grand_total' => $cart->grand_total,
-                    'items_count' => $cart->items()->count(),
-                ],
+                'cart' => $this->cartJsonPayload($cart),
             ]);
         }
 
@@ -509,15 +621,7 @@ class VendorCartController extends Controller
                 'value' => $coupon->value,
                 'discount_amount' => $discountAmount,
             ],
-            'cart' => [
-                'sub_total' => $cart->sub_total,
-                'tax_total' => $cart->tax_total,
-                'discount_total' => $cart->discount_total,
-                'discount_amount' => $cart->discount_amount,
-                'coupon_discount' => $cart->coupon_discount,
-                'grand_total' => $cart->grand_total,
-                'items_count' => $cart->items()->count(),
-            ],
+            'cart' => $this->cartJsonPayload($cart),
         ]);
     }
 
@@ -544,15 +648,7 @@ class VendorCartController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Coupon removed successfully!',
-            'cart' => [
-                'sub_total' => $cart->sub_total,
-                'tax_total' => $cart->tax_total,
-                'discount_total' => $cart->discount_total,
-                'discount_amount' => $cart->discount_amount,
-                'coupon_discount' => $cart->coupon_discount,
-                'grand_total' => $cart->grand_total,
-                'items_count' => $cart->items()->count(),
-            ],
+            'cart' => $this->cartJsonPayload($cart),
         ]);
     }
 
@@ -598,6 +694,65 @@ class VendorCartController extends Controller
     }
     
     /**
+     * Compute security deposit from stored rule and current subtotal / order total.
+     */
+    private function computeSecurityDepositFromState(VendorCart $cart, float $subTotal, float $grandTotal): float
+    {
+        $type = $cart->security_deposit_type ?? 'none';
+        $value = (float) ($cart->security_deposit_value ?? 0);
+
+        if ($type === 'none' || $value <= 0) {
+            return 0.0;
+        }
+
+        if ($type === 'fixed_amount') {
+            return round($value, 2);
+        }
+
+        if ($type === 'order_amount') {
+            return round($grandTotal * $value / 100, 2);
+        }
+
+        if ($type === 'product_security_deposit') {
+            return round($subTotal * $value / 100, 2);
+        }
+
+        return 0.0;
+    }
+
+    /**
+     * Cart totals payload for JSON responses (AJAX summary updates).
+     *
+     * @return array<string, mixed>
+     */
+    private function cartJsonPayload(VendorCart $cart): array
+    {
+        $detail = $cart->payment_detail ?? [];
+        if (! is_array($detail)) {
+            $detail = [];
+        }
+
+        return [
+            'sub_total' => $cart->sub_total,
+            'tax_total' => $cart->tax_total,
+            'discount_amount' => $cart->discount_amount,
+            'coupon_discount' => $cart->coupon_discount,
+            'discount_total' => $cart->discount_total,
+            'grand_total' => $cart->grand_total,
+            'security_deposit' => $cart->security_deposit,
+            'security_deposit_type' => $cart->security_deposit_type ?? 'none',
+            'security_deposit_value' => $cart->security_deposit_value,
+            'paid_amount' => $cart->paid_amount,
+            'payment_detail' => array_values($detail),
+            'fulfillment_type' => $cart->fulfillment_type ?? 'pickup',
+            'delivery_address' => $cart->delivery_address,
+            'pickup_at' => $cart->pickup_at?->toIso8601String(),
+            'delivery_charge' => $cart->delivery_charge,
+            'items_count' => $cart->items()->count(),
+        ];
+    }
+
+    /**
      * Update cart totals based on items
      */
     private function updateCartTotals(VendorCart $cart)
@@ -605,24 +760,90 @@ class VendorCartController extends Controller
         $cartItems = \App\Models\VendorCartItem::where('vendor_cart_id', $cart->id)
             ->with('item')
             ->get();
-        
+
         $subTotal = 0;
-        
+
         foreach ($cartItems as $cartItem) {
             if ($cartItem->item) {
-                $subTotal += $cartItem->item->price * $cartItem->quantity;
+                $subTotal += $cartItem->lineSubtotal();
             }
         }
-        
+
         $taxTotal = $subTotal * 0.10; // 10% tax (adjust as needed)
         $discountTotal = $cart->discount_amount + $cart->coupon_discount;
-        $grandTotal = $subTotal + $taxTotal - $discountTotal;
-        
+
+        $deliveryCharge = 0.0;
+        if (($cart->fulfillment_type ?? 'pickup') === 'delivery') {
+            $deliveryCharge = round((float) ($cart->delivery_charge ?? 0), 2);
+        }
+
+        $grandTotal = $subTotal + $taxTotal - $discountTotal + $deliveryCharge;
+
+        $securityDeposit = $this->computeSecurityDepositFromState($cart, $subTotal, $grandTotal);
+
         $cart->update([
             'sub_total' => $subTotal,
             'tax_total' => $taxTotal,
             'discount_total' => $discountTotal,
             'grand_total' => $grandTotal,
+            'security_deposit' => $securityDeposit,
+        ]);
+    }
+
+    /**
+     * Persist security deposit rule and recalculate stored security_deposit.
+     */
+    public function applySecurityDeposit(Request $request, VendorCart $cart)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor || $cart->vendor_id !== $vendor->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized access'], 403);
+        }
+
+        $validated = $request->validate([
+            'security_deposit_type' => 'required|in:none,order_amount,product_security_deposit,fixed_amount',
+            'security_deposit_value' => 'nullable|numeric|min:0',
+        ]);
+
+        $type = $validated['security_deposit_type'];
+
+        if ($type === 'none') {
+            $cart->update([
+                'security_deposit_type' => 'none',
+                'security_deposit_value' => null,
+            ]);
+        } else {
+            $raw = $validated['security_deposit_value'];
+            $num = round((float) $raw, 2);
+
+            if ($num <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please enter a valid value.',
+                ], 422);
+            }
+
+            if (in_array($type, ['order_amount', 'product_security_deposit'], true) && $num > 100) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Percentage cannot be more than 100.',
+                ], 422);
+            }
+
+            $cart->update([
+                'security_deposit_type' => $type,
+                'security_deposit_value' => $num,
+            ]);
+        }
+
+        $this->updateCartTotals($cart);
+        $cart->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Security deposit updated.',
+            'cart' => $this->cartJsonPayload($cart),
         ]);
     }
     
@@ -713,22 +934,114 @@ class VendorCartController extends Controller
 
         $cart->items()->delete();
 
-        // Reset totals
         $cart->update([
-            'sub_total' => 0,
-            'tax_total' => 0,
-            'discount_total' => 0,
             'discount_type' => null,
             'discount_value' => null,
             'discount_amount' => 0,
             'coupon_discount' => 0,
             'coupon_code' => null,
-            'grand_total' => 0,
         ]);
+
+        $this->updateCartTotals($cart);
 
         return response()->json([
             'success' => true,
             'message' => 'Cart emptied successfully!',
+        ]);
+    }
+
+    /**
+     * Record a payment against the cart (updates paid_amount and appends payment_detail).
+     */
+    public function recordPayment(Request $request, VendorCart $cart)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor || $cart->vendor_id !== $vendor->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized access'], 403);
+        }
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'payment_for' => 'required|in:order_amount,security_deposit',
+            'method' => 'required|string|max:50',
+            'paid_on' => 'nullable|date',
+        ]);
+
+        $amount = round((float) $validated['amount'], 2);
+
+        try {
+            DB::transaction(function () use ($cart, $amount, $validated) {
+                $cart->refresh();
+                $detail = $cart->payment_detail ?? [];
+                if (! is_array($detail)) {
+                    $detail = [];
+                }
+                $detail[] = [
+                    'payment_for' => $validated['payment_for'],
+                    'method' => $validated['method'],
+                    'amount' => $amount,
+                    'paid_on' => $validated['paid_on'] ?? null,
+                    'recorded_at' => now()->toIso8601String(),
+                ];
+
+                $cart->payment_detail = $detail;
+                $cart->paid_amount = round((float) $cart->paid_amount + $amount, 2);
+                $cart->save();
+            });
+
+            $cart->refresh();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment recorded successfully.',
+                'cart' => $this->cartJsonPayload($cart),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Record payment failed: '.$e->getMessage(), ['cart_id' => $cart->id]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not record payment.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove a recorded payment by index (payment_detail array position).
+     */
+    public function removePayment(Request $request, VendorCart $cart, int $paymentIndex)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor || $cart->vendor_id !== $vendor->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized access'], 403);
+        }
+
+        $cart->refresh();
+        $detail = $cart->payment_detail ?? [];
+        if (! is_array($detail)) {
+            $detail = [];
+        }
+
+        if (! array_key_exists($paymentIndex, $detail)) {
+            return response()->json(['success' => false, 'message' => 'Payment not found.'], 404);
+        }
+
+        $removed = $detail[$paymentIndex];
+        $amount = round((float) ($removed['amount'] ?? 0), 2);
+
+        array_splice($detail, $paymentIndex, 1);
+        $cart->payment_detail = array_values($detail);
+        $cart->paid_amount = max(0, round((float) $cart->paid_amount - $amount, 2));
+        $cart->save();
+
+        $cart->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment removed.',
+            'cart' => $this->cartJsonPayload($cart),
         ]);
     }
 
@@ -753,6 +1066,10 @@ class VendorCartController extends Controller
         // Validate booking dates
         if (!$cart->start_time || !$cart->end_time) {
             return back()->withErrors(['error' => 'Please set booking start and end dates before placing order.']);
+        }
+
+        if ($cart->fulfillment_type === 'delivery' && trim((string) ($cart->delivery_address ?? '')) === '') {
+            return back()->withErrors(['error' => __('vendor.delivery_address_required')]);
         }
 
         try {
@@ -782,7 +1099,7 @@ class VendorCartController extends Controller
             // Create order items from cart items
             foreach ($cart->items as $cartItem) {
                 if ($cartItem->item) {
-                    $itemTotal = $cartItem->item->price * $cartItem->quantity * $rentDays;
+                    $itemTotal = $cartItem->lineSubtotal();
 
                     OrderItem::create([
                         'order_id' => $order->id,
@@ -814,5 +1131,22 @@ class VendorCartController extends Controller
             ]);
             return back()->withErrors(['error' => 'Failed to place order: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Billing duration count (days, hours, …). Fixed price always uses 1.
+     */
+    private function normalizedBillingUnits(?float $value, string $linePriceType): float
+    {
+        if (! Items::priceTypeUsesBillingUnits($linePriceType)) {
+            return 1.0;
+        }
+
+        $v = $value !== null ? (float) $value : 1.0;
+        if ($v < 0.01) {
+            $v = 1.0;
+        }
+
+        return round($v, 2);
     }
 }

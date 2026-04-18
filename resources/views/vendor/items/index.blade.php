@@ -8,14 +8,12 @@
 <div class="mb-6 flex items-start justify-between gap-3">
     <div class="flex-1">
         <div class="flex items-center space-x-3 mb-2">
-            <div class="w-12 h-12 flex items-center justify-center bg-emerald-100 rounded-xl">
-                <i class="fas fa-box text-emerald-600 text-xl"></i>
-            </div>
+           
             <div>
                 <h2 class="text-2xl font-bold text-gray-900">{{ __('vendor.items') }}</h2>
                 <p class="text-sm text-gray-600">
                     <i class="fas fa-layer-group text-emerald-600 mr-1"></i>
-                    <span class="font-medium" id="items-total-count">{{ $items->total() }}</span> {{ __('vendor.total_items_count', ['count' => $items->total()]) }}
+                    <span class="font-medium" id="items-total-count">{{ __('vendor.total_items_count', ['count' => $items->total()]) }}</span>
                 </p>
             </div>
         </div>
@@ -30,7 +28,7 @@
 
 <!-- Filters Section -->
 <div class="mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Search -->
         <div class="md:col-span-2">
             <label for="search" class="block text-xs font-medium text-gray-700 mb-2">
@@ -53,18 +51,6 @@
                 @foreach($categories as $category)
                     <option value="{{ $category->id }}">{{ $category->name }}</option>
                 @endforeach
-            </select>
-        </div>
-        
-        <!-- Subcategory Filter -->
-        <div>
-            <label for="subcategory_filter" class="block text-xs font-medium text-gray-700 mb-2">
-                <i class="fas fa-folder mr-1"></i>{{ __('vendor.subcategory') }}
-            </label>
-            <select id="subcategory_filter" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-                    disabled>
-                <option value="">Select Subcategory</option>
             </select>
         </div>
     </div>
@@ -319,10 +305,7 @@
                         <td class="px-6 py-4">
                             <p class="text-sm font-semibold text-gray-900">₹{{ number_format($item->price, 2) }}</p>
                             <p class="text-xs text-gray-500">
-                                @if($item->price_type == 'per_day') {{ __('vendor.per_day') }}
-                                @elseif($item->price_type == 'per_hour') {{ __('vendor.per_hour') }}
-                                @else {{ __('vendor.fixed') }}
-                                @endif
+                                {{ $priceTypes[$item->price_type] ?? $item->price_type }}
                             </p>
                         </td>
 
@@ -487,10 +470,7 @@
                         <div>
                             <p class="text-lg font-bold text-gray-900">₹{{ number_format($item->price, 2) }}</p>
                             <p class="text-xs text-gray-500">
-                                @if($item->price_type == 'per_day') {{ __('vendor.per_day') }}
-                                @elseif($item->price_type == 'per_hour') {{ __('vendor.per_hour') }}
-                                @else {{ __('vendor.fixed') }}
-                                @endif
+                                {{ $priceTypes[$item->price_type] ?? $item->price_type }}
                             </p>
                         </div>
                         @if($item->is_available)
@@ -848,17 +828,18 @@
 
 @section('scripts')
 <script>
+const itemsTotalCountTemplate = @json(__('vendor.total_items_count', ['count' => '__COUNT__']));
 document.addEventListener('DOMContentLoaded', function() {
     let debounceTimer;
     const searchInput = document.getElementById('search');
     const categoryFilter = document.getElementById('category_filter');
-    const subcategoryFilter = document.getElementById('subcategory_filter');
     const clearFiltersBtn = document.getElementById('clear-filters');
     const itemsContainer = document.getElementById('items-container');
     const loadingIndicator = document.getElementById('loading-indicator');
     const itemsTotalCount = document.getElementById('items-total-count');
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    
+    const itemPriceTypeLabels = @json($priceTypes);
+
     console.log('Filter script loaded');
     
     // Fetch items function (global scope for access from form handlers)
@@ -866,14 +847,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function fetchItems(page = 1) {
         console.log('Fetching items...', {
             search: searchInput.value,
-            category: categoryFilter.value,
-            subcategory: subcategoryFilter.value
+            category: categoryFilter.value
         });
         
         const params = new URLSearchParams({
             search: searchInput.value || '',
             category_id: categoryFilter.value || '',
-            subcategory_id: subcategoryFilter.value || '',
             page: page
         });
         
@@ -903,7 +882,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 renderItems(data.items);
                 if (itemsTotalCount) {
-                    itemsTotalCount.textContent = data.pagination.total;
+                    itemsTotalCount.textContent = itemsTotalCountTemplate.replace('__COUNT__', String(data.pagination.total));
                 }
             } else {
                 console.error('API returned success: false', data);
@@ -961,8 +940,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         items.forEach(item => {
-            const priceType = item.price_type === 'per_day' ? '{{ __("vendor.per_day") }}' : 
-                            (item.price_type === 'per_hour' ? '{{ __("vendor.per_hour") }}' : '{{ __("vendor.fixed") }}');
+            const priceType = itemPriceTypeLabels[item.price_type] || item.price_type;
             const categoryName = item.category ? item.category.name : 'N/A';
             const itemPrice = parseFloat(item.price).toFixed(2);
             
@@ -1030,8 +1008,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         items.forEach(item => {
-            const priceType = item.price_type === 'per_day' ? '{{ __("vendor.per_day") }}' : 
-                            (item.price_type === 'per_hour' ? '{{ __("vendor.per_hour") }}' : '{{ __("vendor.fixed") }}');
+            const priceType = itemPriceTypeLabels[item.price_type] || item.price_type;
             const categoryName = item.category ? item.category.name : 'N/A';
             const itemPrice = parseFloat(item.price).toFixed(2);
             
@@ -1070,39 +1047,9 @@ document.addEventListener('DOMContentLoaded', function() {
         itemsContent.innerHTML = desktopTableHtml + mobileCardsHtml;
     }
     
-    // Load subcategories when category changes
     if (categoryFilter) {
         categoryFilter.addEventListener('change', function() {
-            const categoryId = this.value;
-            console.log('Category changed:', categoryId);
-            
-            if (categoryId) {
-                fetch(`{{ route('vendor.items.subcategories') }}?category_id=${categoryId}`, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Subcategories received:', data);
-                    if (data.success) {
-                        subcategoryFilter.innerHTML = '<option value="">All Subcategories</option>';
-                        data.subcategories.forEach(sub => {
-                            subcategoryFilter.innerHTML += `<option value="${sub.id}">${sub.name}</option>`;
-                        });
-                        subcategoryFilter.disabled = data.subcategories.length === 0;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading subcategories:', error);
-                });
-            } else {
-                subcategoryFilter.innerHTML = '<option value="">Select Subcategory</option>';
-                subcategoryFilter.disabled = true;
-            }
-            
+            console.log('Category changed:', this.value);
             fetchItems();
         });
     }
@@ -1118,23 +1065,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Subcategory filter
-    if (subcategoryFilter) {
-        subcategoryFilter.addEventListener('change', () => {
-            console.log('Subcategory changed:', subcategoryFilter.value);
-            fetchItems();
-        });
-    }
-    
     // Clear filters
     if (clearFiltersBtn) {
         clearFiltersBtn.addEventListener('click', function() {
             console.log('Clearing filters');
             searchInput.value = '';
             categoryFilter.value = '';
-            subcategoryFilter.value = '';
-            subcategoryFilter.innerHTML = '<option value="">Select Subcategory</option>';
-            subcategoryFilter.disabled = true;
             fetchItems();
         });
     }
