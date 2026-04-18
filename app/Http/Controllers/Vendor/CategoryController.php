@@ -132,10 +132,7 @@ class CategoryController extends Controller
             if ($request->hasFile('image')) {
                 $path = $this->storeCategoryImageOnS3($request->file('image'), $vendor->id, $category->id);
                 $category->update(['image' => $path]);
-                
             }
-
-            dd($_FILES);
 
             // Handle AJAX requests
             if ($request->ajax()) {
