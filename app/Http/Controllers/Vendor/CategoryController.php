@@ -404,18 +404,30 @@ class CategoryController extends Controller
         return view('vendor.categories.subcategories', compact('category', 'subcategories'));
     }
 
+    /**
+     * Store category image on S3 without a public-read ACL. Many buckets have ACLs disabled
+     * (Object Ownership: Bucket owner enforced); setting visibility would make uploads fail silently.
+     * Use a bucket policy or CloudFront if objects should be publicly readable.
+     */
     private function storeCategoryImageOnS3(UploadedFile $file, int $vendorId, int $categoryId): string
     {
         $filename = 'cat_'.$categoryId.'_'.time().'_'.Str::random(8).'.'.$file->extension();
 
-        return $file->storeAs(
+        $path = $file->storeAs(
             'vendors/'.$vendorId.'/categories',
             $filename,
             [
                 'disk' => 's3',
-                'visibility' => 'public',
             ]
         );
+
+        if (! is_string($path) || $path === '') {
+            throw new \RuntimeException(
+                'Could not upload the image to storage. Check S3 credentials, bucket name, region, and IAM permissions (s3:PutObject).'
+            );
+        }
+
+        return $path;
     }
 
     private function deleteCategoryImageFromS3(?string $path): void
