@@ -6,16 +6,24 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Items extends Model
 {
     use SoftDeletes;
-    
+
+    protected $appends = ['photo_url'];
+
+    protected $hidden = [
+        'photo',
+    ];
+
     protected $fillable = [
         'vendor_id',
         'category_id',
         'name',
         'slug',
+        'photo',
         'description',
         'price',
         'price_type',
@@ -26,14 +34,14 @@ class Items extends Model
         'meta_title',
         'meta_description',
     ];
-    
+
     protected $casts = [
         'is_active' => 'boolean',
         'is_available' => 'boolean',
         'manage_stock' => 'boolean',
         'price' => 'decimal:2',
     ];
-    
+
     /**
      * Get the vendor that owns the item
      */
@@ -41,7 +49,7 @@ class Items extends Model
     {
         return $this->belongsTo(Vendor::class);
     }
-    
+
     /**
      * Get the category of the item
      */
@@ -49,7 +57,7 @@ class Items extends Model
     {
         return $this->belongsTo(Category::class);
     }
-    
+
     /**
      * Get all order items for this item
      */
@@ -57,7 +65,7 @@ class Items extends Model
     {
         return $this->hasMany(OrderItem::class, 'item_id');
     }
-    
+
     /**
      * Get all cart items for this item
      */
@@ -65,7 +73,7 @@ class Items extends Model
     {
         return $this->hasMany(VendorCartItem::class, 'item_id');
     }
-    
+
     /**
      * Get all activities for this item
      */
@@ -73,7 +81,7 @@ class Items extends Model
     {
         return $this->hasMany(ItemActivity::class, 'item_id');
     }
-    
+
     /**
      * Scope a query to only include active items
      */
@@ -81,7 +89,7 @@ class Items extends Model
     {
         return $query->where('is_active', true);
     }
-    
+
     /**
      * Scope a query to only include available items
      */
@@ -125,6 +133,18 @@ class Items extends Model
     /**
      * Short label for the "how many units" field (days, hours, …).
      */
+    /**
+     * Public URL for the item photo on S3, or null.
+     */
+    public function getPhotoUrlAttribute(): ?string
+    {
+        if (! $this->photo) {
+            return null;
+        }
+
+        return Storage::disk('s3')->url($this->photo);
+    }
+
     public static function billingUnitsFieldLabel(string $priceType): string
     {
         return match ($priceType) {

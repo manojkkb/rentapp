@@ -23,7 +23,7 @@
         </div>
 
         <!-- Form -->
-        <form action="{{ route('vendor.items.update', $item->id) }}" method="POST" class="p-6">
+        <form action="{{ route('vendor.items.update', $item->id) }}" method="POST" enctype="multipart/form-data" class="p-6">
             @csrf
             @method('PUT')
 
@@ -71,6 +71,30 @@
                     @endforeach
                 </select>
                 @error('category_id')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <!-- Photo -->
+            <div class="mb-5">
+                <label for="photo" class="block text-sm font-semibold text-gray-700 mb-2">
+                    {{ __('vendor.item_photo') }} <span class="text-gray-400 font-normal">({{ __('vendor.optional') }})</span>
+                </label>
+                @if($item->photo_url)
+                    <div class="mb-3 flex items-center gap-3">
+                        <img src="{{ $item->photo_url }}" alt="" class="h-20 w-20 rounded-lg object-cover border border-gray-200">
+                        <p class="text-xs text-gray-500">{{ __('vendor.item_photo_crop_hint') }}</p>
+                    </div>
+                @endif
+                <input type="file"
+                       id="photo"
+                       name="photo"
+                       accept="image/*"
+                       class="js-item-image-input block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg cursor-pointer @error('photo') border-red-500 @enderror">
+                @unless($item->photo_url)
+                    <p class="mt-2 text-xs text-gray-500">{{ __('vendor.item_photo_crop_hint') }}</p>
+                @endunless
+                @error('photo')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
             </div>
@@ -234,4 +258,6 @@
         </form>
     </div>
 </div>
+
+@include('vendor.items.partials.item-image-crop-modal')
 @endsection

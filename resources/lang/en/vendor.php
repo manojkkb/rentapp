@@ -16,7 +16,7 @@ return [
     'settings_menu' => 'Settings',
     'help_support' => 'Help & Support',
     'logout' => 'Logout',
-    
+
     // Menu Items
     'items' => 'Items',
     'categories' => 'Categories',
@@ -551,4 +551,9 @@ return [
     // Coupon placeholders
     'coupon_code_placeholder' => 'e.g. SUMMER25',
     'coupon_name_placeholder' => 'e.g. Summer Sale',
+
+    // Item images
+    'item_photo' => 'Item photo',
+    'item_photo_crop_hint' => 'Choose a photo—you will crop it to a square (1024×1024 WebP) before upload. Max 2 MB.',
+    'current_image' => 'Current image',
 ];

@@ -292,12 +292,21 @@
                     <tr class="hover:bg-gray-50 transition-colors">
                         <!-- Item Info -->
                         <td class="px-6 py-4">
-                            <div>
-                                <p class="text-sm font-semibold text-gray-900">{{ $item->name }}</p>
-                                <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
-                                <i class="fas fa-tag mr-1.5"></i>
-                                    {{ $item->category->name ?? 'N/A' }}
-                                </span>
+                            <div class="flex items-start gap-3">
+                                @if($item->photo_url)
+                                    <img src="{{ $item->photo_url }}" alt="" class="w-10 h-10 rounded-lg object-cover border border-gray-200 flex-shrink-0" loading="lazy">
+                                @else
+                                    <div class="w-10 h-10 flex items-center justify-center bg-emerald-100 rounded-lg flex-shrink-0">
+                                        <i class="fas fa-box text-emerald-600 text-sm"></i>
+                                    </div>
+                                @endif
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-gray-900">{{ $item->name }}</p>
+                                    <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full mt-1">
+                                    <i class="fas fa-tag mr-1.5"></i>
+                                        {{ $item->category->name ?? 'N/A' }}
+                                    </span>
+                                </div>
                             </div>
                         </td>
 
@@ -409,9 +418,13 @@
                     <!-- Header -->
                     <div class="flex items-start justify-between">
                         <div class="flex items-center space-x-3 flex-1 min-w-0">
-                            <div class="w-12 h-12 flex items-center justify-center bg-emerald-100 rounded-xl flex-shrink-0">
-                                <i class="fas fa-box text-emerald-600 text-lg"></i>
-                            </div>
+                            @if($item->photo_url)
+                                <img src="{{ $item->photo_url }}" alt="" class="w-12 h-12 rounded-xl object-cover border border-gray-200 flex-shrink-0" loading="lazy">
+                            @else
+                                <div class="w-12 h-12 flex items-center justify-center bg-emerald-100 rounded-xl flex-shrink-0">
+                                    <i class="fas fa-box text-emerald-600 text-lg"></i>
+                                </div>
+                            @endif
                             <div class="flex-1 min-w-0">
                                 <h3 class="text-base font-semibold text-gray-900 truncate">
                                     {{ $item->name }}
@@ -562,7 +575,7 @@
              class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full z-10"
              @click.stop>
             
-            <form id="createItemForm" method="POST" action="{{ route('vendor.items.store') }}">
+            <form id="createItemForm" method="POST" action="{{ route('vendor.items.store') }}" enctype="multipart/form-data">
                 @csrf
                 <!-- Modal Header -->
                 <div class="bg-gradient-to-r from-emerald-50 to-green-50 px-6 py-4 border-b border-gray-200">
@@ -597,6 +610,14 @@
                                 <option value="{{ $category->id }}">{{ $category->name }}</option>
                             @endforeach
                         </select>
+                    </div>
+
+                    <!-- Photo -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">{{ __('vendor.item_photo') }} <span class="text-gray-400 font-normal">({{ __('vendor.optional') }})</span></label>
+                        <input type="file" name="photo" accept="image/*"
+                               class="js-item-image-input block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 border border-gray-300 rounded-lg cursor-pointer">
+                        <p class="mt-1 text-xs text-gray-500">{{ __('vendor.item_photo_crop_hint') }}</p>
                     </div>
 
                     <!-- Description -->
@@ -708,7 +729,7 @@
              class="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full z-10"
              @click.stop>
             
-            <form id="editItemForm" :action="`{{ url('vendor/items') }}/${editItem.id}`" method="POST">
+            <form id="editItemForm" :action="`{{ url('vendor/items') }}/${editItem.id}`" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <!-- Modal Header -->
@@ -744,6 +765,18 @@
                                 <option value="{{ $category->id }}" :selected="editItem.category_id == {{ $category->id }}">{{ $category->name }}</option>
                             @endforeach
                         </select>
+                    </div>
+
+                    <!-- Photo -->
+                    <div class="mb-4" x-show="editItem.photo_url">
+                        <p class="text-xs text-gray-500 mb-2">{{ __('vendor.current_image') }}</p>
+                        <img :src="editItem.photo_url" alt="" class="h-16 w-16 rounded-lg object-cover border border-gray-200">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">{{ __('vendor.item_photo') }} <span class="text-gray-400 font-normal">({{ __('vendor.optional') }})</span></label>
+                        <input type="file" name="photo" accept="image/*"
+                               class="js-item-image-input block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 border border-gray-300 rounded-lg cursor-pointer">
+                        <p class="mt-1 text-xs text-gray-500">{{ __('vendor.item_photo_crop_hint') }}</p>
                     </div>
 
                     <!-- Description -->
@@ -823,6 +856,8 @@
         </div>
     </div>
 </div>
+
+@include('vendor.items.partials.item-image-crop-modal')
 
 @endsection
 
@@ -943,15 +978,22 @@ document.addEventListener('DOMContentLoaded', function() {
             const priceType = itemPriceTypeLabels[item.price_type] || item.price_type;
             const categoryName = item.category ? item.category.name : 'N/A';
             const itemPrice = parseFloat(item.price).toFixed(2);
+            const safePhotoUrl = item.photo_url ? String(item.photo_url).replace(/"/g, '&quot;') : '';
+            const thumbDesktop = item.photo_url
+                ? `<img src="${safePhotoUrl}" alt="" class="w-10 h-10 rounded-lg object-cover border border-gray-200 flex-shrink-0" loading="lazy">`
+                : `<div class="w-10 h-10 flex items-center justify-center bg-emerald-100 rounded-lg flex-shrink-0"><i class="fas fa-box text-emerald-600 text-sm"></i></div>`;
             
             desktopTableHtml += `
                 <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-6 py-4">
-                        <div>
+                        <div class="flex items-start gap-3">
+                            ${thumbDesktop}
+                            <div class="min-w-0">
                             <p class="text-sm font-semibold text-gray-900">${item.name}</p>
                             <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full mt-1">
                                 <i class="fas fa-tag mr-1.5"></i>${categoryName}
                             </span>
+                            </div>
                         </div>
                     </td>
                     <td class="px-6 py-4">
@@ -1011,15 +1053,22 @@ document.addEventListener('DOMContentLoaded', function() {
             const priceType = itemPriceTypeLabels[item.price_type] || item.price_type;
             const categoryName = item.category ? item.category.name : 'N/A';
             const itemPrice = parseFloat(item.price).toFixed(2);
+            const safePhotoUrlM = item.photo_url ? String(item.photo_url).replace(/"/g, '&quot;') : '';
+            const thumbMobile = item.photo_url
+                ? `<img src="${safePhotoUrlM}" alt="" class="w-12 h-12 rounded-xl object-cover border border-gray-200 flex-shrink-0" loading="lazy">`
+                : `<div class="w-12 h-12 flex items-center justify-center bg-emerald-100 rounded-xl flex-shrink-0"><i class="fas fa-box text-emerald-600 text-lg"></i></div>`;
             
             mobileCardsHtml += `
                 <div class="p-4 hover:bg-gray-50 transition-colors">
                     <div class="flex items-start justify-between mb-3">
-                        <div class="flex-1">
+                        <div class="flex items-start gap-3 flex-1 min-w-0">
+                            ${thumbMobile}
+                            <div class="flex-1 min-w-0">
                             <h3 class="text-sm font-semibold text-gray-900 mb-1">${item.name}</h3>
                             <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
                                 <i class="fas fa-tag mr-1"></i>${categoryName}
                             </span>
+                            </div>
                         </div>
                         <button type="button" onclick="openEditModal(${item.id})" class="text-emerald-600 hover:text-emerald-900 ml-2">
                             <i class="fas fa-edit"></i>

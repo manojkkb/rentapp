@@ -23,7 +23,7 @@
         </div>
 
         <!-- Form -->
-        <form action="{{ route('vendor.items.store') }}" method="POST" class="p-6">
+        <form action="{{ route('vendor.items.store') }}" method="POST" enctype="multipart/form-data" class="p-6">
             @csrf
 
             <!-- Item Name -->
@@ -68,6 +68,22 @@
                         {{ __('vendor.no_categories_found') }} <a href="{{ route('vendor.categories.create') }}" class="underline">{{ __('vendor.create_category_first') }}</a>
                     </p>
                 @endif
+            </div>
+
+            <!-- Photo (square crop before upload) -->
+            <div class="mb-5">
+                <label for="photo" class="block text-sm font-semibold text-gray-700 mb-2">
+                    {{ __('vendor.item_photo') }} <span class="text-gray-400 font-normal">({{ __('vendor.optional') }})</span>
+                </label>
+                <input type="file"
+                       id="photo"
+                       name="photo"
+                       accept="image/*"
+                       class="js-item-image-input block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 border border-gray-300 rounded-lg cursor-pointer @error('photo') border-red-500 @enderror">
+                <p class="mt-2 text-xs text-gray-500">{{ __('vendor.item_photo_crop_hint') }}</p>
+                @error('photo')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Description -->
@@ -209,4 +225,6 @@
         </form>
     </div>
 </div>
+
+@include('vendor.items.partials.item-image-crop-modal')
 @endsection
