@@ -418,6 +418,7 @@ class CategoryController extends Controller
             $filename,
             [
                 'disk' => 's3',
+                'visibility' => 'public'
             ]
         );
 
