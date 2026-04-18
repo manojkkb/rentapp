@@ -67,6 +67,7 @@ export function initSquareImageCrop(cfg) {
     const stage = document.getElementById(stageId);
     const btnApply = document.getElementById(applyId);
     const applyLabel = applyLabelId ? document.getElementById(applyLabelId) : null;
+    const applyLabelDefault = applyLabel ? applyLabel.textContent.trim() : 'Use this image';
 
     if (! modal || ! stage || ! btnApply) {
         return;
@@ -105,7 +106,7 @@ export function initSquareImageCrop(cfg) {
         stage.style.maxWidth = '';
         btnApply.disabled = false;
         if (applyLabel) {
-            applyLabel.textContent = 'Use this image';
+            applyLabel.textContent = applyLabelDefault;
         }
         modal.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
@@ -246,7 +247,7 @@ export function initSquareImageCrop(cfg) {
                 console.error(logTag, 'result', err);
                 btnApply.disabled = false;
                 if (applyLabel) {
-                    applyLabel.textContent = 'Use this image';
+                    applyLabel.textContent = applyLabelDefault;
                 }
             });
     });
@@ -312,6 +313,36 @@ export function bootSquareImageCrops() {
         filePrefix: 'item',
         logTag: '[item-image-crop]',
         outputSize: 1024,
+    });
+
+    initSquareImageCrop({
+        bootKey: '__vendorLogoCropBooted',
+        modalId: 'vendorLogoCropModal',
+        stageId: 'vendorLogoCropStage',
+        applyId: 'vendorLogoCropApply',
+        applyLabelId: 'vendorLogoCropApplyLabel',
+        inputClass: 'js-vendor-logo-input',
+        cancelClass: 'js-vendor-logo-crop-cancel',
+        backdropClass: 'js-vendor-logo-crop-backdrop',
+        croppieRootClass: 'vendor-logo-croppie-root',
+        filePrefix: 'vendor-logo',
+        logTag: '[vendor-logo-crop]',
+        outputSize: 512,
+    });
+
+    initSquareImageCrop({
+        bootKey: '__userAvatarCropBooted',
+        modalId: 'userAvatarCropModal',
+        stageId: 'userAvatarCropStage',
+        applyId: 'userAvatarCropApply',
+        applyLabelId: 'userAvatarCropApplyLabel',
+        inputClass: 'js-user-avatar-input',
+        cancelClass: 'js-user-avatar-crop-cancel',
+        backdropClass: 'js-user-avatar-crop-backdrop',
+        croppieRootClass: 'user-avatar-croppie-root',
+        filePrefix: 'user-avatar',
+        logTag: '[user-avatar-crop]',
+        outputSize: 512,
     });
 }
 

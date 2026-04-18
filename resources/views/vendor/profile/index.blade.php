@@ -64,11 +64,17 @@
                     </div>
                     <div class="p-6 text-center">
                         <div class="mb-6">
-                            <div class="w-32 h-32 rounded-full mx-auto bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center border-4 border-blue-100 shadow-lg">
-                                <span class="text-white text-4xl font-bold">
-                                    {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
-                                </span>
-                            </div>
+                            @if(Auth::user()->avatar_url)
+                                <img src="{{ Auth::user()->avatar_url }}"
+                                     alt=""
+                                     class="w-32 h-32 rounded-full mx-auto object-cover border-4 border-blue-100 shadow-lg">
+                            @else
+                                <div class="w-32 h-32 rounded-full mx-auto bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center border-4 border-blue-100 shadow-lg">
+                                    <span class="text-white text-4xl font-bold">
+                                        {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
+                                    </span>
+                                </div>
+                            @endif
                         </div>
                         <h2 class="text-2xl font-bold text-gray-900 mb-2">{{ Auth::user()->name }}</h2>
                         <p class="text-gray-600 mb-4">
@@ -89,9 +95,24 @@
                     <div class="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
                         <h3 class="text-lg font-bold text-gray-900">Edit Personal Information</h3>
                     </div>
-                    <form action="{{ route('vendor.profile.update.personal') }}" method="POST" class="p-6">
+                    <form action="{{ route('vendor.profile.update.personal') }}" method="POST" enctype="multipart/form-data" class="p-6">
                         @csrf
                         @method('PUT')
+
+                        <div class="mb-6">
+                            <label for="avatar" class="block text-sm font-semibold text-gray-700 mb-2">
+                                {{ __('vendor.profile_photo') }} <span class="text-gray-400 font-normal">({{ __('vendor.optional') }})</span>
+                            </label>
+                            <input type="file"
+                                   id="avatar"
+                                   name="avatar"
+                                   accept="image/*"
+                                   class="js-user-avatar-input block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 border border-gray-300 rounded-lg cursor-pointer @error('avatar') border-red-500 @enderror">
+                            <p class="mt-1 text-xs text-gray-500">{{ __('vendor.profile_photo_crop_hint') }}</p>
+                            @error('avatar')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
 
                         <div class="mb-6">
                             <label for="user_name" class="block text-sm font-semibold text-gray-700 mb-2">
@@ -159,9 +180,9 @@
                 <!-- Logo and Basic Info -->
                 <div class="p-6 text-center">
                     <div class="mb-6">
-                        @if($vendor->logo)
-                            <img src="{{ asset('storage/' . $vendor->logo) }}" 
-                                 alt="{{ $vendor->name }}" 
+                        @if($vendor->logo_url)
+                            <img src="{{ $vendor->logo_url }}"
+                                 alt="{{ $vendor->name }}"
                                  class="w-32 h-32 rounded-full mx-auto object-cover border-4 border-emerald-100 shadow-lg">
                         @else
                             <div class="w-32 h-32 rounded-full mx-auto bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center border-4 border-emerald-100 shadow-lg">
@@ -302,9 +323,9 @@
                         </label>
                         <div class="flex items-center space-x-4">
                             <div class="flex-shrink-0">
-                                @if($vendor->logo)
-                                    <img src="{{ asset('storage/' . $vendor->logo) }}" 
-                                         alt="{{ __('vendor.current_logo') }}" 
+                                @if($vendor->logo_url)
+                                    <img src="{{ $vendor->logo_url }}"
+                                         alt="{{ __('vendor.current_logo') }}"
                                          class="w-16 h-16 rounded-lg object-cover border-2 border-gray-200">
                                 @else
                                     <div class="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
@@ -313,12 +334,15 @@
                                 @endif
                             </div>
                             <div class="flex-1">
-                                <input type="file" 
-                                       id="logo" 
-                                       name="logo" 
+                                <input type="file"
+                                       id="logo"
+                                       name="logo"
                                        accept="image/*"
-                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                                <p class="text-xs text-gray-500 mt-1">{{ __('vendor.max_file_info') }}</p>
+                                       class="js-vendor-logo-input w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent @error('logo') border-red-500 @enderror">
+                                <p class="text-xs text-gray-500 mt-1">{{ __('vendor.business_logo_crop_hint') }}</p>
+                                @error('logo')
+                                    <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -440,4 +464,7 @@
         </div>
     </div>
 </div>
+
+@include('vendor.profile.partials.vendor-logo-crop-modal')
+@include('vendor.profile.partials.user-avatar-crop-modal')
 @endsection

@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
@@ -48,7 +49,7 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
-    
+
     /**
      * Get all vendors the user has access to (many-to-many)
      */
@@ -58,7 +59,7 @@ class User extends Authenticatable
             ->withPivot('is_owner', 'role', 'is_active', 'last_login_at', 'permissions')
             ->withTimestamps();
     }
-    
+
     /**
      * Get all reviews written by this user
      */
@@ -66,7 +67,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(CustomerReview::class);
     }
-    
+
     /**
      * Get the current active vendor for this user
      */
@@ -76,9 +77,22 @@ class User extends Authenticatable
         if ($vendorId) {
             return $this->vendors()->where('vendors.id', $vendorId)->first();
         }
+
         return null;
     }
-    
+
+    /**
+     * Public URL for profile image on S3, or null.
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (! $this->avatar) {
+            return null;
+        }
+
+        return Storage::disk('s3')->url($this->avatar);
+    }
+
     /**
      * Check if user has access to a vendor
      */

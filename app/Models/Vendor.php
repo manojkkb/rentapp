@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 class Vendor extends Model
 {
     use SoftDeletes;
-    
+
     /**
      * The attributes that are mass assignable.
      *
@@ -39,7 +39,7 @@ class Vendor extends Model
         'total_reviews',
         'is_active',
     ];
-    
+
     /**
      * The attributes that should be cast.
      *
@@ -52,7 +52,7 @@ class Vendor extends Model
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
     ];
-    
+
     /**
      * Get the user that owns the vendor (primary owner).
      */
@@ -60,7 +60,7 @@ class Vendor extends Model
     {
         return $this->belongsTo(User::class);
     }
-    
+
     /**
      * Get the business category for the vendor.
      */
@@ -68,7 +68,7 @@ class Vendor extends Model
     {
         return $this->belongsTo(BusinessCategory::class, 'business_category_id');
     }
-    
+
     /**
      * Get all users who have access to this vendor (many-to-many)
      */
@@ -78,7 +78,7 @@ class Vendor extends Model
             ->withPivot('is_owner', 'role', 'is_active', 'last_login_at', 'permissions')
             ->withTimestamps();
     }
-    
+
     /**
      * Get active users for this vendor
      */
@@ -86,7 +86,7 @@ class Vendor extends Model
     {
         return $this->users()->wherePivot('is_active', true);
     }
-    
+
     /**
      * Get all items for the vendor.
      */
@@ -94,7 +94,7 @@ class Vendor extends Model
     {
         return $this->hasMany(Items::class);
     }
-    
+
     /**
      * Get all categories for the vendor.
      */
@@ -102,7 +102,7 @@ class Vendor extends Model
     {
         return $this->hasMany(Category::class);
     }
-    
+
     /**
      * Get all reviews for the vendor.
      */
@@ -110,7 +110,7 @@ class Vendor extends Model
     {
         return $this->hasMany(CustomerReview::class);
     }
-    
+
     /**
      * Get approved reviews for the vendor.
      */
@@ -118,7 +118,7 @@ class Vendor extends Model
     {
         return $this->hasMany(CustomerReview::class)->where('is_approved', true);
     }
-    
+
     /**
      * Update vendor rating based on approved reviews.
      */
@@ -126,7 +126,7 @@ class Vendor extends Model
     {
         $approvedReviews = $this->reviews()->where('is_approved', true)->get();
         $totalReviews = $approvedReviews->count();
-        
+
         if ($totalReviews > 0) {
             $averageRating = $approvedReviews->avg('rating');
             $this->update([
@@ -140,7 +140,7 @@ class Vendor extends Model
             ]);
         }
     }
-    
+
     /**
      * Scope a query to only include verified vendors.
      */
@@ -148,7 +148,7 @@ class Vendor extends Model
     {
         return $query->where('is_verified', true);
     }
-    
+
     /**
      * Scope a query to only include active vendors.
      */
@@ -156,9 +156,9 @@ class Vendor extends Model
     {
         return $query->where('is_active', true);
     }
-    
+
     /**
-     * Public URL for the business logo, or null if missing / not on disk.
+     * Public URL for the business logo (S3 or legacy public disk), or null.
      */
     public function getLogoUrlAttribute(): ?string
     {
@@ -166,11 +166,15 @@ class Vendor extends Model
             return null;
         }
 
-        if (! Storage::disk('public')->exists($this->logo)) {
-            return null;
+        if (Storage::disk('s3')->exists($this->logo)) {
+            return Storage::disk('s3')->url($this->logo);
         }
 
-        return Storage::disk('public')->url($this->logo);
+        if (Storage::disk('public')->exists($this->logo)) {
+            return Storage::disk('public')->url($this->logo);
+        }
+
+        return null;
     }
 
     /**
@@ -186,8 +190,7 @@ class Vendor extends Model
             $this->postal_code,
             $this->country,
         ]);
-        
+
         return implode(', ', $parts);
     }
 }
-

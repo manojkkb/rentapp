@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Vendor;
 use App\Http\Controllers\Controller;
 use App\Models\Vendor;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -25,11 +26,11 @@ class VendorController extends Controller
     public function getDashboardStats(Request $request)
     {
         $vendor = Auth::user()->currentVendor();
-        
-        if (!$vendor) {
+
+        if (! $vendor) {
             return response()->json([
                 'success' => false,
-                'message' => 'Vendor not found'
+                'message' => 'Vendor not found',
             ], 404);
         }
 
@@ -55,7 +56,7 @@ class VendorController extends Controller
             ->latest()
             ->take(5)
             ->get()
-            ->map(function($order) {
+            ->map(function ($order) {
                 return [
                     'id' => $order->id,
                     'customer_name' => $order->customer->name ?? 'N/A',
@@ -72,7 +73,7 @@ class VendorController extends Controller
             ->orderBy('orders_count', 'desc')
             ->take(5)
             ->get()
-            ->map(function($item) {
+            ->map(function ($item) {
                 return [
                     'id' => $item->id,
                     'name' => $item->name,
@@ -97,7 +98,7 @@ class VendorController extends Controller
                 ],
                 'recent_activities' => $recentActivities,
                 'popular_items' => $popularItems,
-            ]
+            ],
         ]);
     }
 
@@ -107,8 +108,8 @@ class VendorController extends Controller
     public function profile()
     {
         $vendor = Auth::user()->currentVendor();
-        
-        if (!$vendor) {
+
+        if (! $vendor) {
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
@@ -127,8 +128,8 @@ class VendorController extends Controller
     public function updateProfile(Request $request)
     {
         $vendor = Auth::user()->currentVendor();
-        
-        if (!$vendor) {
+
+        if (! $vendor) {
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
@@ -142,30 +143,22 @@ class VendorController extends Controller
             'postal_code' => 'nullable|string|max:20',
             'country' => 'nullable|string|max:100',
             'gst_number' => 'nullable|string|max:50',
-            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
 
         $data = $request->only([
-            'name', 'business_category_id', 'address_line1', 'address_line2', 
-            'city', 'state', 'postal_code', 'country', 'gst_number'
+            'name', 'business_category_id', 'address_line1', 'address_line2',
+            'city', 'state', 'postal_code', 'country', 'gst_number',
         ]);
 
-        // Handle logo upload
         if ($request->hasFile('logo')) {
-            // Delete old logo if exists
-            if ($vendor->logo && Storage::disk('public')->exists($vendor->logo)) {
-                Storage::disk('public')->delete($vendor->logo);
-            }
-
-            $logo = $request->file('logo');
-            $logoName = 'vendor_logo_' . $vendor->id . '_' . time() . '.' . $logo->getClientOriginalExtension();
-            $logoPath = $logo->storeAs('vendors/logos', $logoName, 'public');
-            $data['logo'] = $logoPath;
+            $this->deleteVendorLogoFromStorage($vendor->logo);
+            $data['logo'] = $this->storeVendorLogoOnS3($request->file('logo'), $vendor->id);
         }
 
         // Update slug if name changed
         if ($vendor->name !== $data['name']) {
-            $data['slug'] = Str::slug($data['name']) . '-' . $vendor->id;
+            $data['slug'] = Str::slug($data['name']).'-'.$vendor->id;
         }
 
         $vendor->update($data);
@@ -182,13 +175,21 @@ class VendorController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'nullable|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'nullable|email|max:255|unique:users,email,'.$user->id,
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
 
-        $user->update([
+        $data = [
             'name' => $request->name,
             'email' => $request->email,
-        ]);
+        ];
+
+        if ($request->hasFile('avatar')) {
+            $this->deleteUserAvatarFromS3($user->avatar);
+            $data['avatar'] = $this->storeUserAvatarOnS3($request->file('avatar'), $user->id);
+        }
+
+        $user->update($data);
 
         return back()->with('success', 'Personal profile updated successfully!');
     }
@@ -200,14 +201,14 @@ class VendorController extends Controller
     {
         $user = Auth::user();
         $vendor = $user->currentVendor();
-        
-        if (!$vendor) {
+
+        if (! $vendor) {
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
         // Check if user is owner
         $vendorUser = $user->vendors()->where('vendors.id', $vendor->id)->first();
-        if (!$vendorUser || !$vendorUser->pivot->is_owner) {
+        if (! $vendorUser || ! $vendorUser->pivot->is_owner) {
             return back()->withErrors(['error' => 'Only the business owner can update the business profile.']);
         }
 
@@ -221,30 +222,22 @@ class VendorController extends Controller
             'postal_code' => 'nullable|string|max:20',
             'country' => 'nullable|string|max:100',
             'gst_number' => 'nullable|string|max:50',
-            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
 
         $data = $request->only([
-            'name', 'business_category_id', 'address_line1', 'address_line2', 
-            'city', 'state', 'postal_code', 'country', 'gst_number'
+            'name', 'business_category_id', 'address_line1', 'address_line2',
+            'city', 'state', 'postal_code', 'country', 'gst_number',
         ]);
 
-        // Handle logo upload
         if ($request->hasFile('logo')) {
-            // Delete old logo if exists
-            if ($vendor->logo && Storage::disk('public')->exists($vendor->logo)) {
-                Storage::disk('public')->delete($vendor->logo);
-            }
-
-            $logo = $request->file('logo');
-            $logoName = 'vendor_logo_' . $vendor->id . '_' . time() . '.' . $logo->getClientOriginalExtension();
-            $logoPath = $logo->storeAs('vendors/logos', $logoName, 'public');
-            $data['logo'] = $logoPath;
+            $this->deleteVendorLogoFromStorage($vendor->logo);
+            $data['logo'] = $this->storeVendorLogoOnS3($request->file('logo'), $vendor->id);
         }
 
         // Update slug if name changed
         if ($vendor->name !== $data['name']) {
-            $data['slug'] = Str::slug($data['name']) . '-' . $vendor->id;
+            $data['slug'] = Str::slug($data['name']).'-'.$vendor->id;
         }
 
         $vendor->update($data);
@@ -277,5 +270,75 @@ class VendorController extends Controller
         }
 
         return back()->with('success', 'Language changed successfully!');
+    }
+
+    private function storeVendorLogoOnS3(UploadedFile $file, int $vendorId): string
+    {
+        $filename = 'logo_'.time().'_'.Str::random(8).'.'.$file->extension();
+
+        $path = $file->storeAs(
+            'vendors/'.$vendorId.'/brand',
+            $filename,
+            [
+                'disk' => 's3',
+                'visibility' => 'public',
+            ]
+        );
+
+        if (! is_string($path) || $path === '') {
+            throw new \RuntimeException(
+                'Could not upload the logo. Check S3 credentials and permissions (s3:PutObject).'
+            );
+        }
+
+        return $path;
+    }
+
+    private function deleteVendorLogoFromStorage(?string $path): void
+    {
+        if (! $path) {
+            return;
+        }
+
+        if (Storage::disk('s3')->exists($path)) {
+            Storage::disk('s3')->delete($path);
+        }
+
+        if (Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
+    }
+
+    private function storeUserAvatarOnS3(UploadedFile $file, int $userId): string
+    {
+        $filename = 'avatar_'.time().'_'.Str::random(8).'.'.$file->extension();
+
+        $path = $file->storeAs(
+            'users/'.$userId.'/avatar',
+            $filename,
+            [
+                'disk' => 's3',
+                'visibility' => 'public',
+            ]
+        );
+
+        if (! is_string($path) || $path === '') {
+            throw new \RuntimeException(
+                'Could not upload the profile image. Check S3 credentials and permissions (s3:PutObject).'
+            );
+        }
+
+        return $path;
+    }
+
+    private function deleteUserAvatarFromS3(?string $path): void
+    {
+        if (! $path) {
+            return;
+        }
+
+        if (Storage::disk('s3')->exists($path)) {
+            Storage::disk('s3')->delete($path);
+        }
     }
 }

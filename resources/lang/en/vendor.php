@@ -556,4 +556,13 @@ return [
     'item_photo' => 'Item photo',
     'item_photo_crop_hint' => 'Choose a photo—you will crop it to a square (1024×1024 WebP) before upload. Max 2 MB.',
     'current_image' => 'Current image',
+
+    // Profile images (crop modals)
+    'crop_business_logo' => 'Square logo for your business',
+    'crop_profile_photo' => 'Square profile photo',
+    'crop_saved_hint' => 'saved. Drag to move the photo, use the slider to zoom in or out.',
+    'use_this_image' => 'Use this image',
+    'profile_photo' => 'Profile photo',
+    'profile_photo_crop_hint' => 'Choose a photo—you will crop it to a square (512×512 WebP) before upload. Max 2 MB.',
+    'business_logo_crop_hint' => 'Choose an image—you will crop it to a square (512×512 WebP) before upload. Max 2 MB.',
 ];
