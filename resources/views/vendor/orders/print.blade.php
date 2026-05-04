@@ -1,12 +1,17 @@
+@php
+    $forPdf = (bool) ($forPdf ?? false);
+@endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @if($forPdf) class="pdf-invoice"@endif>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ __('vendor.print_quote') }} — {{ $cart->cart_name }}</title>
+    <title>{{ __('vendor.print_quote') }} — {{ $order->order_number }}</title>
+    @unless($forPdf)
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@400;500;600;700&display=swap" rel="stylesheet">
+    @endunless
     <style>
         :root {
             --q-ink: #0f172a;
@@ -218,6 +223,18 @@
         .quote-paycard__row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; font-variant-numeric: tabular-nums; }
         .quote-paycard__row strong { font-weight: 700; }
         .muted { color: var(--q-muted); font-style: italic; }
+        html.pdf-invoice body {
+            font-family: 'DejaVu Sans', 'Noto Sans', ui-sans-serif, system-ui, sans-serif;
+            background: #fff;
+        }
+        html.pdf-invoice .no-print {
+            display: none !important;
+        }
+        html.pdf-invoice .quote-shell {
+            padding: 0;
+            max-width: none;
+            margin: 0;
+        }
         .quote-doc__footer {
             margin-top: 28px;
             padding-top: 20px;
@@ -226,14 +243,14 @@
             color: var(--q-muted);
             line-height: 1.6;
         }
-        @media print {
+        @@media print {
             body { background: #fff; }
             .no-print { display: none !important; }
             .quote-shell { padding: 0; max-width: none; }
             .quote-doc { box-shadow: none; border: none; border-radius: 0; }
             .quote-doc__hero { break-inside: avoid; }
             .quote-table-wrap, .quote-panel, .quote-totals__box { break-inside: avoid; }
-            @page { margin: 14mm; size: A4 portrait; }
+            @@page { margin: 14mm; size: A4 portrait; }
             a { color: inherit; text-decoration: none; }
         }
     </style>
@@ -245,31 +262,36 @@
     </div>
 
     @php
-        $orderGrand = (float) $cart->grand_total;
-        $deposit = (float) ($cart->security_deposit ?? 0);
-        $withDeposit = $orderGrand + $deposit;
-        $paid = (float) ($cart->paid_amount ?? 0);
-        $balance = max(0, $withDeposit - $paid);
-        $paymentRows = is_array($cart->payment_detail) ? $cart->payment_detail : [];
+        $paymentRows = is_array($order->payment_detail) ? $order->payment_detail : [];
         $methodLabels = ['card' => 'Card', 'cash' => 'Cash', 'upi' => 'UPI', 'bank_transfer' => 'Bank transfer', 'wallet' => 'Wallet', 'other' => 'Other'];
+        $bookingDurationHuman = null;
+        if ($order->start_at && $order->end_at) {
+            $startTs = $order->start_at->getTimestamp();
+            $endTs = $order->end_at->getTimestamp();
+            if ($endTs > $startTs) {
+                $bookingDurationHuman = \Carbon\CarbonInterval::seconds($endTs - $startTs)
+                    ->cascade()
+                    ->forHumans(['parts' => 4, 'join' => true]);
+            }
+        }
     @endphp
 
     <div class="quote-shell">
         <article class="quote-doc">
             <header class="quote-doc__hero">
                 <div class="quote-doc__brand">
-                    <p class="quote-doc__eyebrow">{{ __('vendor.quote_document_title') }}</p>
-                    <h1 class="quote-doc__title">{{ $cart->cart_name }}</h1>
-                    <p class="quote-doc__subtitle">{{ __('vendor.quotation_for') }} {{ $cart->customer?->name ?? '—' }}</p>
-                    @if($cart->vendor)
-                        <p class="quote-doc__vendor">{{ __('vendor.quotation_from') }} <strong>{{ $cart->vendor->name }}</strong></p>
+                    <p class="quote-doc__eyebrow">{{ __('vendor.order_details') }}</p>
+                    <h1 class="quote-doc__title">{{ $order->order_number }}</h1>
+                    <p class="quote-doc__subtitle">{{ __('vendor.quotation_for') }} {{ $order->customer?->name ?? '—' }}</p>
+                    @if($order->vendor)
+                        <p class="quote-doc__vendor">{{ __('vendor.quotation_from') }} <strong>{{ $order->vendor->name }}</strong></p>
                     @endif
                 </div>
                 <div class="quote-doc__badge">
                     <div class="quote-doc__badge-inner">
                         <p class="quote-doc__badge-label">{{ __('vendor.quotation_ref') }}</p>
-                        <p class="quote-doc__badge-num">#{{ $cart->id }}</p>
-                        <p class="quote-doc__badge-date">{{ __('vendor.created') }} {{ $cart->created_at->format('M d, Y') }}</p>
+                        <p class="quote-doc__badge-num">{{ $order->order_number }}</p>
+                        <p class="quote-doc__badge-date">{{ __('vendor.created') }} {{ $order->created_at->format('M d, Y') }}</p>
                     </div>
                 </div>
             </header>
@@ -280,34 +302,39 @@
                     <div class="quote-panel">
                         <div class="quote-panel__row">
                             <span class="quote-panel__label">{{ __('vendor.customer') }}</span>
-                            {{ $cart->customer?->name ?? '—' }}@if($cart->customer?->mobile) · {{ $cart->customer->mobile }}@endif
+                            {{ $order->customer?->name ?? '—' }}@if($order->customer?->mobile) · {{ $order->customer->mobile }}@endif
                         </div>
                         <div class="quote-panel__row">
                             <span class="quote-panel__label">{{ __('vendor.booking_period') }}</span>
-                            @if($cart->start_time && $cart->end_time)
-                                {{ $cart->start_time->format('M d, Y h:i A') }} — {{ $cart->end_time->format('M d, Y h:i A') }}
+                            @if($order->start_at && $order->end_at)
+                                {{ $order->start_at->timezone(config('app.timezone'))->format('M d, Y h:i A') }} — {{ $order->end_at->timezone(config('app.timezone'))->format('M d, Y h:i A') }}
                             @else
                                 <span class="muted">{{ __('vendor.not_specified') }}</span>
                             @endif
                         </div>
-                        @include('vendor.carts.partials.quote-booking-duration', ['cart' => $cart])
-                        <div class="quote-panel__row">
-                            <span class="quote-panel__label">{{ __('vendor.fulfillment_method') }}</span>
-                            {{ $cart->fulfillment_type === 'delivery' ? __('vendor.delivery') : __('vendor.pickup') }}
-                            @if(filled($cart->delivery_address))
-                                <br><span style="font-weight:500;color:var(--q-ink);margin-top:6px;display:inline-block;">{{ $cart->delivery_address }}</span>
-                            @endif
-                        </div>
-                        @if(($cart->fulfillment_type ?? 'pickup') === 'pickup' && $cart->pickup_at)
+                        @if(!empty($bookingDurationHuman))
                             <div class="quote-panel__row">
-                                <span class="quote-panel__label">{{ __('vendor.pickup_datetime') }}</span>
-                                {{ $cart->pickup_at->timezone(config('app.timezone'))->format('M d, Y h:i A') }}
+                                <span class="quote-panel__label">{{ __('vendor.quote_duration') }}</span>
+                                {{ $bookingDurationHuman ?? '' }}
                             </div>
                         @endif
-                        @if(($cart->fulfillment_type ?? 'pickup') === 'delivery' && (float) ($cart->delivery_charge ?? 0) > 0)
+                        <div class="quote-panel__row">
+                            <span class="quote-panel__label">{{ __('vendor.fulfillment_method') }}</span>
+                            {{ $order->fulfillment_type === 'delivery' ? __('vendor.delivery') : __('vendor.pickup') }}
+                            @if(filled($order->delivery_address))
+                                <br><span style="font-weight:500;color:var(--q-ink);margin-top:6px;display:inline-block;">{{ $order->delivery_address }}</span>
+                            @endif
+                        </div>
+                        @if(($order->fulfillment_type ?? 'pickup') === 'pickup' && $order->pickup_at)
+                            <div class="quote-panel__row">
+                                <span class="quote-panel__label">{{ __('vendor.pickup_datetime') }}</span>
+                                {{ $order->pickup_at->timezone(config('app.timezone'))->format('M d, Y h:i A') }}
+                            </div>
+                        @endif
+                        @if(($order->fulfillment_type ?? 'pickup') === 'delivery' && (float) ($order->delivery_charge ?? 0) > 0)
                             <div class="quote-panel__row">
                                 <span class="quote-panel__label">{{ __('vendor.delivery_charge') }}</span>
-                                ₹{{ number_format((float) $cart->delivery_charge, 2) }}
+                                ₹{{ number_format((float) $order->delivery_charge, 2) }}
                             </div>
                         @endif
                     </div>
@@ -325,9 +352,9 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($cart->items as $line)
+                                @forelse($order->items as $line)
                                     <tr>
-                                        <td>{{ $line->item?->name ?? '—' }}</td>
+                                        <td>{{ $line->item?->name ?? $line->item_name ?? '—' }}</td>
                                         <td class="num">{{ $line->quantity }}</td>
                                         <td class="num">₹{{ number_format($line->lineSubtotal(), 2) }}</td>
                                     </tr>
@@ -345,15 +372,18 @@
                     <h2 class="quote-section__title">{{ __('vendor.quotation_amounts') }}</h2>
                     <div class="quote-totals">
                         <div class="quote-totals__box">
-                            <div class="quote-totals__row"><span>{{ __('vendor.subtotal') }}</span><span>₹{{ number_format($cart->sub_total, 2) }}</span></div>
-                            <div class="quote-totals__row"><span>{{ __('vendor.tax') }}</span><span>₹{{ number_format($cart->tax_total, 2) }}</span></div>
-                            <div class="quote-totals__row"><span>{{ __('vendor.discount') }}</span><span>−₹{{ number_format($cart->discount_total, 2) }}</span></div>
-                            @if(($cart->fulfillment_type ?? 'pickup') === 'delivery' && (float) ($cart->delivery_charge ?? 0) > 0)
-                                <div class="quote-totals__row"><span>{{ __('vendor.delivery_charge') }}</span><span>₹{{ number_format((float) $cart->delivery_charge, 2) }}</span></div>
+                            <div class="quote-totals__row"><span>{{ __('vendor.subtotal') }}</span><span>₹{{ number_format($order->sub_total, 2) }}</span></div>
+                            <div class="quote-totals__row"><span>{{ __('vendor.tax') }}</span><span>₹{{ number_format($order->tax_total, 2) }}</span></div>
+                            <div class="quote-totals__row"><span>{{ __('vendor.discount') }}</span><span>−₹{{ number_format($order->discount_total, 2) }}</span></div>
+                            @if(($order->fulfillment_type ?? 'pickup') === 'delivery' && (float) ($order->delivery_charge ?? 0) > 0)
+                                <div class="quote-totals__row"><span>{{ __('vendor.delivery_charge') }}</span><span>₹{{ number_format((float) $order->delivery_charge, 2) }}</span></div>
                             @endif
-                            <div class="quote-totals__row"><span>{{ __('vendor.quote_order_total') }}</span><span><strong>₹{{ number_format($orderGrand, 2) }}</strong></span></div>
-                            <div class="quote-totals__row"><span>{{ __('vendor.quote_security_deposit') }}</span><span>₹{{ number_format($deposit, 2) }}</span></div>
-                            <div class="quote-totals__row quote-totals__row--grand"><span>{{ __('vendor.quote_total_with_deposit') }}</span><span>₹{{ number_format($withDeposit, 2) }}</span></div>
+                            @if((float) ($order->extra_charges_total ?? 0) > 0)
+                                <div class="quote-totals__row"><span>{{ __('vendor.extra_charges_label') }}</span><span>₹{{ number_format((float) ($order->extra_charges_total ?? 0), 2) }}</span></div>
+                            @endif
+                            <div class="quote-totals__row"><span>{{ __('vendor.quote_order_total') }}</span><span><strong>₹{{ number_format((float) ($order->grand_total ?? 0), 2) }}</strong></span></div>
+                            <div class="quote-totals__row"><span>{{ __('vendor.quote_security_deposit') }}</span><span>₹{{ number_format((float) ($order->security_deposit ?? 0), 2) }}</span></div>
+                            <div class="quote-totals__row quote-totals__row--grand"><span>{{ __('vendor.quote_total_with_deposit') }}</span><span>₹{{ number_format((float) ($order->grand_total ?? 0) + (float) ($order->security_deposit ?? 0), 2) }}</span></div>
                         </div>
                     </div>
                 </section>
@@ -361,12 +391,12 @@
                 <section class="quote-section">
                     <h2 class="quote-section__title">{{ __('vendor.print_paid_balance') }}</h2>
                     <div class="quote-paycard">
-                        <div class="quote-paycard__row"><span>{{ __('vendor.paid_amount') }}</span><strong>₹{{ number_format($paid, 2) }}</strong></div>
-                        <div class="quote-paycard__row"><span>{{ __('vendor.balance_due') }}</span><strong>₹{{ number_format($balance, 2) }}</strong></div>
+                        <div class="quote-paycard__row"><span>{{ __('vendor.paid_amount') }}</span><strong>₹{{ number_format((float) ($order->paid_amount ?? 0), 2) }}</strong></div>
+                        <div class="quote-paycard__row"><span>{{ __('vendor.balance_due') }}</span><strong>₹{{ number_format(max(0, ((float) ($order->grand_total ?? 0) + (float) ($order->security_deposit ?? 0)) - (float) ($order->paid_amount ?? 0)), 2) }}</strong></div>
                     </div>
                 </section>
 
-                @if(count($paymentRows))
+                @if(!empty($paymentRows) && is_countable($paymentRows) && count($paymentRows) > 0)
                     <section class="quote-section">
                         <h2 class="quote-section__title">{{ __('vendor.print_payments') }}</h2>
                         <div class="quote-table-wrap">
@@ -380,15 +410,19 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($paymentRows as $p)
+                                    @foreach((array) $paymentRows as $p)
                                         @php
                                             $m = $p['method'] ?? '';
                                             $mLabel = $methodLabels[$m] ?? ucfirst(str_replace('_', ' ', (string) $m));
                                             $forLabel = ($p['payment_for'] ?? '') === 'security_deposit' ? __('vendor.payment_for_deposit_short') : __('vendor.payment_for_order_short');
+                                            if (($p['entry_kind'] ?? 'payment') === 'refund') {
+                                                $forLabel = $forLabel.' · '.__('vendor.label_refund');
+                                            }
                                             $paidOn = ! empty($p['paid_on']) ? \Carbon\Carbon::parse($p['paid_on'])->format('M j, Y') : '—';
+                                            $pIsRefund = (($p['entry_kind'] ?? 'payment') === 'refund');
                                         @endphp
                                         <tr>
-                                            <td class="num">₹{{ number_format((float) ($p['amount'] ?? 0), 2) }}</td>
+                                            <td class="num">@if($pIsRefund)−@endif₹{{ number_format((float) ($p['amount'] ?? 0), 2) }}</td>
                                             <td>{{ $forLabel }}</td>
                                             <td>{{ $mLabel }}</td>
                                             <td>{{ $paidOn }}</td>

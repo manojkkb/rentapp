@@ -28,6 +28,31 @@ function isImageFile(file) {
     return file.type.startsWith('image/');
 }
 
+/** Fallback when browsers drop `input.files` (e.g. file input inside Alpine x-show / display:none). */
+function cropBlobStore() {
+    if (! window.__squareCropLastByInput) {
+        window.__squareCropLastByInput = new WeakMap();
+    }
+
+    return window.__squareCropLastByInput;
+}
+
+function rememberSquareCropOutput(inputEl, file) {
+    cropBlobStore().set(inputEl, file);
+}
+
+function forgetSquareCropOutput(inputEl) {
+    if (! inputEl) {
+        return;
+    }
+    cropBlobStore().delete(inputEl);
+}
+
+if (typeof window !== 'undefined') {
+    window.__squareCropGetLastBlob = (input) => (input ? cropBlobStore().get(input) : null);
+    window.__squareCropForgetLastBlob = forgetSquareCropOutput;
+}
+
 /**
  * @param {object} cfg
  * @param {string} cfg.bootKey — unique window flag name
@@ -200,6 +225,7 @@ export function initSquareImageCrop(cfg) {
     document.querySelectorAll('.' + cancelClass).forEach((btn) => {
         btn.addEventListener('click', () => {
             if (activeInput) {
+                forgetSquareCropOutput(activeInput);
                 activeInput.value = '';
             }
             closeModal();
@@ -241,6 +267,7 @@ export function initSquareImageCrop(cfg) {
                 const dataTransfer = new DataTransfer();
                 dataTransfer.items.add(outFile);
                 activeInput.files = dataTransfer.files;
+                rememberSquareCropOutput(activeInput, outFile);
                 closeModal();
             })
             .catch((err) => {
@@ -255,6 +282,7 @@ export function initSquareImageCrop(cfg) {
     modal.addEventListener('click', (e) => {
         if (e.target.classList.contains(backdropClass)) {
             if (activeInput) {
+                forgetSquareCropOutput(activeInput);
                 activeInput.value = '';
             }
             closeModal();
@@ -278,6 +306,7 @@ export function initSquareImageCrop(cfg) {
         const inputEl = el;
         const picked = file;
 
+        forgetSquareCropOutput(inputEl);
         inputEl.value = '';
 
         openModal(picked, inputEl);

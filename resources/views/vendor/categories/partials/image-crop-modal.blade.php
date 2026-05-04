@@ -1,6 +1,6 @@
 {{-- Square crop (Croppie): mobile-first, safe areas, touch-friendly --}}
 <div id="categoryImageCropModal"
-     class="hidden fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-0 sm:p-4"
+     class="hidden fixed inset-0 z-[200] flex items-end justify-center sm:items-center p-0 sm:p-4"
      role="dialog"
      aria-modal="true"
      aria-labelledby="categoryImageCropTitle">

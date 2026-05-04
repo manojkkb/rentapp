@@ -356,7 +356,7 @@
      x-show="open"
      x-cloak
      id="addSubcategoryModal"
-     class="fixed inset-0 z-[55] isolate overflow-y-auto"
+     class="fixed inset-0 z-[55] overflow-y-auto"
      style="display: none;">
     <div class="fixed inset-0 z-0 bg-black/50 transition-opacity"
          @click="open = false"
@@ -883,6 +883,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const formData = new FormData(addSubcategoryForm);
             const isActiveCheckbox = document.getElementById('add_sub_is_active');
             formData.set('is_active', isActiveCheckbox.checked ? '1' : '0');
+
+            const addSubImg = document.getElementById('add_sub_image');
+            let subImageFile = addSubImg?.files?.[0];
+            if (! subImageFile && typeof window.__squareCropGetLastBlob === 'function' && addSubImg) {
+                subImageFile = window.__squareCropGetLastBlob(addSubImg);
+            }
+            if (subImageFile) {
+                formData.delete('image');
+                formData.append('image', subImageFile, subImageFile.name || 'category-' + Date.now() + '.webp');
+            }
 
             const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 

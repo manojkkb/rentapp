@@ -218,7 +218,7 @@
                         <div class="quote-panel__row">
                             <span class="quote-panel__label">{{ __('vendor.fulfillment_method') }}</span>
                             {{ $cart->fulfillment_type === 'delivery' ? __('vendor.delivery') : __('vendor.pickup') }}
-                            @if($cart->fulfillment_type === 'delivery' && $cart->delivery_address)
+                            @if(filled($cart->delivery_address))
                                 <br><span style="font-weight:500;color:var(--q-ink);margin-top:6px;display:inline-block;">{{ $cart->delivery_address }}</span>
                             @endif
                         </div>

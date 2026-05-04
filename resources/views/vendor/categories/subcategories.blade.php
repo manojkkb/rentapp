@@ -377,6 +377,9 @@ function subcategoryModal() {
             this.name = '';
             this.isActive = true;
             if (this.$refs.subcategoryImageFile) {
+                if (typeof window.__squareCropForgetLastBlob === 'function') {
+                    window.__squareCropForgetLastBlob(this.$refs.subcategoryImageFile);
+                }
                 this.$refs.subcategoryImageFile.value = '';
             }
         },
@@ -397,8 +400,13 @@ function subcategoryModal() {
             fd.append('parent_id', String(this.parentId));
             fd.append('is_active', this.isActive ? '1' : '0');
             const imgInput = this.$refs.subcategoryImageFile;
-            if (imgInput && imgInput.files && imgInput.files[0]) {
-                fd.append('image', imgInput.files[0]);
+            const cropped =
+                (imgInput && imgInput.files && imgInput.files[0])
+                || (typeof window.__squareCropGetLastBlob === 'function' && imgInput
+                    ? window.__squareCropGetLastBlob(imgInput)
+                    : null);
+            if (cropped) {
+                fd.append('image', cropped, cropped.name || 'category-' + Date.now() + '.webp');
             }
             try {
                 const res = await fetch(this.storeUrl, {

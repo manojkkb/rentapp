@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -24,7 +24,7 @@
  
     @yield('styles')
 </head>
-<body class="bg-gray-50 min-h-screen" 
+<body class="h-full overflow-hidden bg-gray-50" 
       x-data="{ 
           sidebarOpen: localStorage.getItem('sidebarOpen') !== null 
               ? localStorage.getItem('sidebarOpen') === 'true' 
@@ -36,17 +36,17 @@
       }"
       @resize.window="if (window.innerWidth < 768 && sidebarOpen) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }">
     
-    <div class="flex h-screen overflow-hidden">
+    <div class="flex h-full min-h-0 overflow-hidden">
         <!-- Sidebar -->
         @include('vendor.layouts.sidebar')
         
         <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
             <!-- Navbar -->
             @include('vendor.layouts.navbar')
             
             <!-- Main Content -->
-            <main class="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50 pb-20 md:pb-6">
+            <main class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 p-3 sm:p-4 md:p-6 @yield('main_bottom_class', 'pb-20 md:pb-6')">
                 @yield('content')
             </main>
         </div>

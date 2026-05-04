@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
+use App\Models\Coupon;
 use App\Models\Items;
 use App\Models\VendorCart;
 use App\Models\Order;
@@ -223,9 +224,11 @@ class VendorCartController extends Controller
         $type = $validated['fulfillment_type'];
 
         if ($type === 'pickup') {
+            $addr = trim((string) ($validated['delivery_address'] ?? ''));
+
             $cart->update([
                 'fulfillment_type' => 'pickup',
-                'delivery_address' => null,
+                'delivery_address' => $addr !== '' ? $addr : null,
                 'delivery_charge' => 0,
                 'pickup_at' => ! empty($validated['pickup_at']) ? $validated['pickup_at'] : null,
             ]);
@@ -1081,13 +1084,28 @@ class VendorCartController extends Controller
             // Calculate rent days
             $rentDays = max(1, (int) ceil($cart->start_time->diffInDays($cart->end_time)));
 
-            // Create order
+            // Create order (snapshot cart pricing, fulfillment, discounts, payments)
             $order = Order::create([
                 'order_number' => $orderNumber,
                 'customer_id' => $cart->customer_id,
                 'vendor_id' => $cart->vendor_id,
                 'start_at' => $cart->start_time,
                 'end_at' => $cart->end_time,
+                'fulfillment_type' => $cart->fulfillment_type ?? 'pickup',
+                'delivery_address' => $cart->delivery_address,
+                'pickup_at' => $cart->pickup_at,
+                'delivery_charge' => round((float) ($cart->delivery_charge ?? 0), 2),
+                'discount_type' => $cart->discount_type,
+                'discount_value' => $cart->discount_value,
+                'discount_amount' => round((float) ($cart->discount_amount ?? 0), 2),
+                'coupon_id' => $cart->coupon_id,
+                'coupon_code' => $cart->coupon_code,
+                'coupon_discount' => round((float) ($cart->coupon_discount ?? 0), 2),
+                'security_deposit' => round((float) ($cart->security_deposit ?? 0), 2),
+                'security_deposit_type' => $cart->security_deposit_type ?? 'none',
+                'security_deposit_value' => $cart->security_deposit_value,
+                'token_amount' => round((float) ($cart->token_amount ?? 0), 2),
+                'payment_detail' => is_array($cart->payment_detail) ? $cart->payment_detail : [],
                 'sub_total' => $cart->sub_total,
                 'tax_total' => $cart->tax_total,
                 'discount_total' => $cart->discount_total,
@@ -1096,17 +1114,31 @@ class VendorCartController extends Controller
                 'status' => 'pending',
             ]);
 
+            if ($cart->coupon_id) {
+                $coupon = Coupon::where('id', $cart->coupon_id)->lockForUpdate()->first();
+                if ($coupon) {
+                    $coupon->increment('used_count');
+                }
+            }
+
             // Create order items from cart items
             foreach ($cart->items as $cartItem) {
                 if ($cartItem->item) {
                     $itemTotal = $cartItem->lineSubtotal();
+                    $linePriceType = $cartItem->item->price_type ?? $cartItem->price_type ?? 'per_day';
+                    $lineBillingUnits = $this->normalizedBillingUnits(
+                        $cartItem->billing_units !== null ? (float) $cartItem->billing_units : null,
+                        $linePriceType
+                    );
 
                     OrderItem::create([
                         'order_id' => $order->id,
                         'item_id' => $cartItem->item_id,
-                        'item_name' => $cartItem->item->name, // Snapshot
-                        'price' => $cartItem->item->price, // Snapshot
+                        'item_name' => $cartItem->item->name,
+                        'price' => $cartItem->item->price,
                         'quantity' => $cartItem->quantity,
+                        'price_type' => $linePriceType,
+                        'billing_units' => Items::priceTypeUsesBillingUnits($linePriceType) ? $lineBillingUnits : null,
                         'start_at' => $cart->start_time,
                         'end_at' => $cart->end_time,
                         'rent_days' => $rentDays,

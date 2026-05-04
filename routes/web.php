@@ -130,7 +130,27 @@ Route::prefix('vendor')->name('vendor.')->group(function ()
         // Orders
         Route::get('orders', [VendorOrderController::class, 'index'])->name('orders.index');
         Route::get('orders/{order}', [VendorOrderController::class, 'show'])->name('orders.show');
+        Route::get('orders/{order}/print', [VendorOrderController::class, 'printOrder'])->name('orders.print');
+        Route::get('orders/{order}/invoice/download', [VendorOrderController::class, 'downloadInvoice'])->name('orders.invoice.download');
+        Route::put('orders/{order}', [VendorOrderController::class, 'update'])->name('orders.update');
         Route::put('orders/{order}/status', [VendorOrderController::class, 'updateStatus'])->name('orders.update-status');
+
+        Route::patch('orders/{order}/fulfillment', [VendorOrderController::class, 'updateOrderFulfillment'])->name('orders.fulfillment');
+        Route::patch('orders/{order}/booking', [VendorOrderController::class, 'updateOrderBooking'])->name('orders.booking');
+        Route::post('orders/{order}/items', [VendorOrderController::class, 'addOrderLine'])->name('orders.items.add');
+        Route::put('orders/{order}/items/{item}', [VendorOrderController::class, 'updateOrderLine'])->name('orders.items.update');
+        Route::delete('orders/{order}/items/{item}', [VendorOrderController::class, 'removeOrderLine'])->name('orders.items.remove');
+        Route::post('orders/{order}/discount', [VendorOrderController::class, 'applyOrderDiscount'])->name('orders.discount');
+        Route::delete('orders/{order}/discount', [VendorOrderController::class, 'removeOrderDiscount'])->name('orders.discount.remove');
+        Route::post('orders/{order}/coupon', [VendorOrderController::class, 'applyOrderCoupon'])->name('orders.coupon.apply');
+        Route::delete('orders/{order}/coupon', [VendorOrderController::class, 'removeOrderCoupon'])->name('orders.coupon.remove');
+        Route::get('orders/{order}/coupons', [VendorOrderController::class, 'listOrderCoupons'])->name('orders.coupons.list');
+        Route::post('orders/{order}/payment', [VendorOrderController::class, 'recordOrderPayment'])->name('orders.payment');
+        Route::delete('orders/{order}/payments/{paymentIndex}', [VendorOrderController::class, 'removeOrderPayment'])
+            ->name('orders.payments.destroy')
+            ->whereNumber('paymentIndex');
+        Route::post('orders/{order}/extra-charges', [VendorOrderController::class, 'addOrderExtraCharge'])->name('orders.extra-charges');
+        Route::post('orders/{order}/security-deposit', [VendorOrderController::class, 'applyOrderSecurityDeposit'])->name('orders.security-deposit');
         
         // Reviews
         Route::get('reviews', [ReviewController::class, 'index'])->name('reviews.index');

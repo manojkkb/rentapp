@@ -1,7 +1,11 @@
 @extends('vendor.layouts.app')
 
-@section('title', __('vendor.cart_details'))
-@section('page-title', __('vendor.cart_details'))
+@section('title', __('vendor.order_details'))
+@section('page-title', __('vendor.order_details'))
+
+@section('main_bottom_class')
+    pb-[max(4.25rem,env(safe-area-inset-bottom))] md:pb-6
+@endsection
 
 @section('content')
 {{-- Alpine state must not live inside x-data="..." — JSON quotes break the HTML attribute and leak JS as visible text. --}}
@@ -13,17 +17,17 @@ function isoToDatetimeLocalValue(iso) {
     const pad = (n) => String(n).padStart(2, '0');
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
 }
-function cartPageData() {
+function orderPageData() {
     const p = {
-        addedItems: @json($cart->items->pluck('quantity', 'item_id')),
-        addedItemBillingUnits: @json($cart->items->mapWithKeys(fn ($row) => [$row->item_id => (float) ($row->billing_units ?? 1)])->all()),
+        addedItems: @json($order->items->pluck('quantity', 'item_id')),
+        addedItemBillingUnits: @json($order->items->mapWithKeys(fn ($row) => [$row->item_id => (float) ($row->billing_units ?? 1)])->all()),
         billingUnitsLabels: @json($cartBillingUnitsLabels),
         items: @json($availableItems),
-        fulfillmentType: @json($cart->fulfillment_type ?: 'pickup'),
-        deliveryAddress: @json($cart->delivery_address ?? ''),
-        pickupAt: @json($cart->pickup_at ? $cart->pickup_at->copy()->timezone(config('app.timezone'))->format('Y-m-d\TH:i') : ''),
-        deliveryCharge: @json(round((float) ($cart->delivery_charge ?? 0), 2)),
-        saveFulfillmentUrl: @json(route('vendor.carts.fulfillment', $cart)),
+        fulfillmentType: @json($order->fulfillment_type ?: 'pickup'),
+        deliveryAddress: @json($order->delivery_address ?? ''),
+        pickupAt: @json($order->pickup_at ? $order->pickup_at->copy()->timezone(config('app.timezone'))->format('Y-m-d\TH:i') : ''),
+        deliveryCharge: @json(round((float) ($order->delivery_charge ?? 0), 2)),
+        saveFulfillmentUrl: @json(route('vendor.orders.fulfillment', $order)),
     };
     return {
         showAddItem: false,
@@ -78,8 +82,8 @@ function cartPageData() {
                     if (data.delivery_charge !== undefined && data.delivery_charge !== null) {
                         this.deliveryCharge = parseFloat(data.delivery_charge) || 0;
                     }
-                    if (data.cart && typeof updateSummary === 'function') {
-                        updateSummary(data.cart);
+                    if (data.order && typeof updateSummary === 'function') {
+                        updateSummary(data.order);
                     }
                     showToast(data.message || 'Saved', 'success');
                 } else if (res.status === 422 && data.errors) {
@@ -204,64 +208,66 @@ function cartPageData() {
     };
 }
 </script>
-<div id="cartApp" x-data="cartPageData()"
-@cart-item-removed.window="syncItemRemoved($event.detail.itemId)"
-@cart-item-updated.window="syncItemUpdated($event.detail.itemId, $event.detail.quantity, $event.detail.billing_units)"
-@cart-emptied.window="syncAllRemoved()"
+<div id="orderApp" x-data="orderPageData()"
+@order-item-removed.window="syncItemRemoved($event.detail.itemId)"
+@order-item-updated.window="syncItemUpdated($event.detail.itemId, $event.detail.quantity, $event.detail.billing_units)"
+@order-emptied.window="syncAllRemoved()"
 >
     
-    <div class="mb-4 md:mb-6 flex flex-wrap items-center justify-between gap-3">
-        <a href="{{ route('vendor.carts.index') }}"
-           class="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/80 hover:text-blue-800 active:scale-[0.98]">
+    <div class="mb-3 flex w-full min-w-0 flex-col gap-3 sm:mb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between md:mb-6">
+        <a href="{{ route('vendor.orders.index') }}"
+           class="inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/80 hover:text-blue-800 active:scale-[0.98] sm:w-auto sm:justify-start">
             <i class="fas fa-arrow-left text-blue-600"></i>
             {{ __('vendor.back') }}
         </a>
-        <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-            <a href="{{ route('vendor.carts.quote', $cart) }}"
-               target="_blank"
-               rel="noopener noreferrer"
-               class="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-blue-600 transition hover:text-blue-800 sm:px-2">
-                <i class="fas fa-share-alt text-xs opacity-80"></i>
-                {{ __('vendor.share_quote') }}
-            </a>
-            <a href="{{ route('vendor.carts.quote.download', $cart) }}"
-               class="inline-flex min-h-[44px] items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-blue-600 transition hover:text-blue-800 sm:px-2">
-                <i class="fas fa-file-download text-xs opacity-80"></i>
-                {{ __('vendor.download_quote') }}
-            </a>
-            <button type="button"
-                    data-print-url="{{ route('vendor.carts.print', $cart) }}"
-                    onclick="window.open(this.getAttribute('data-print-url') + '?autoprint=1', '_blank', 'noopener,noreferrer')"
-                    class="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50 active:scale-[0.98]">
-                <i class="fas fa-file-invoice text-gray-600"></i>
-                {{ __('vendor.print_quote') }}
-            </button>
-            @if($cart->items->count() > 0)
-                <button type="button"
-                        onclick="openPlaceOrderConfirmModal()"
-                        class="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.98]">
-                    <i class="fas fa-check-circle"></i>
-                    {{ __('vendor.place_order') }}
-                </button>
-            @else
-                <button type="button" disabled
-                        class="inline-flex min-h-[44px] cursor-not-allowed items-center gap-2 rounded-xl bg-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-500">
-                    <i class="fas fa-check-circle"></i>
-                    {{ __('vendor.place_order') }}
-                </button>
-            @endif
+        @php
+            $orderStatusBadgeClasses = [
+                'pending' => 'border-amber-200 bg-amber-50 text-amber-900 ring-amber-100',
+                'confirmed' => 'border-blue-200 bg-blue-50 text-blue-900 ring-blue-100',
+                'ongoing' => 'border-purple-200 bg-purple-50 text-purple-900 ring-purple-100',
+                'completed' => 'border-emerald-200 bg-emerald-50 text-emerald-900 ring-emerald-100',
+                'cancelled' => 'border-red-200 bg-red-50 text-red-900 ring-red-100',
+            ];
+            $st = $order->status;
+            $orderStatusBadgeClass = $orderStatusBadgeClasses[$st] ?? 'border-gray-200 bg-gray-50 text-gray-900 ring-gray-100';
+            $orderNextStatuses = $order->allowedNextStatuses();
+        @endphp
+        <div class="flex w-full min-w-0 flex-wrap items-stretch gap-2 sm:w-auto sm:items-center sm:justify-end sm:gap-3">
+            <span class="inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-bold text-emerald-800 sm:flex-initial sm:justify-start sm:px-4">
+                <span class="truncate">{{ $order->order_number }}</span>
+            </span>
+            <div class="flex w-full min-w-0 flex-1 flex-col gap-2 sm:w-auto sm:max-w-md sm:flex-initial sm:flex-row sm:items-center sm:justify-end">
+                <span class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold ring-1 sm:justify-start sm:px-4 {{ $orderStatusBadgeClass }}">
+                    {{ __('vendor.'.$st) }}
+                </span>
+                @if(count($orderNextStatuses) > 0)
+                    <form method="POST"
+                          action="{{ route('vendor.orders.update-status', $order) }}"
+                          class="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-2">
+                        @csrf
+                        @method('PUT')
+                        <label for="order-status-next" class="sr-only">{{ __('vendor.order_status') }}</label>
+                        <select id="order-status-next"
+                                name="status"
+                                required
+                                class="min-h-[44px] w-full min-w-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm ring-1 ring-gray-100 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 sm:w-auto sm:min-w-[11rem]">
+                            <option value="" disabled selected>{{ __('vendor.order_status_next_placeholder') }}</option>
+                            @foreach($orderNextStatuses as $next)
+                                <option value="{{ $next }}">{{ __('vendor.'.$next) }}</option>
+                            @endforeach
+                        </select>
+                        <button type="submit"
+                                class="inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.99] sm:w-auto">
+                            {{ __('vendor.update_status') }}
+                        </button>
+                    </form>
+                @endif
+                @error('status')
+                    <p class="text-xs font-medium text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
         </div>
     </div>
-
-    @if($cart->items->count() > 0)
-        <form id="vendorPlaceOrderForm"
-              action="{{ route('vendor.carts.place-order', $cart->id) }}"
-              method="POST"
-              class="hidden"
-              aria-hidden="true">
-            @csrf
-        </form>
-    @endif
 
     <!-- Success/Error Messages -->
     @if(session('success'))
@@ -292,9 +298,9 @@ function cartPageData() {
         </div>
     @endif
 
-    <div class="grid grid-cols-1 gap-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:grid-cols-3 lg:gap-8">
+    <div class="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3 lg:gap-8 lg:pb-0">
 
-        <div class="space-y-5 lg:col-span-2 lg:space-y-6">
+        <div class="order-2 space-y-4 sm:space-y-5 lg:order-1 lg:col-span-2 lg:space-y-6">
 
             <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
                 <div class="border-b border-gray-100 bg-gradient-to-r from-blue-50 via-white to-indigo-50/80 px-4 py-4 sm:px-6 sm:py-5">
@@ -304,8 +310,8 @@ function cartPageData() {
                                 <i class="fas fa-shopping-cart text-lg text-white"></i>
                             </div>
                             <div class="min-w-0">
-                                <h2 class="truncate text-lg font-bold tracking-tight text-gray-900 sm:text-xl" data-cart-name>{{ $cart->cart_name }}</h2>
-                                <p class="mt-0.5 text-sm text-gray-600">{{ __('vendor.created') }} {{ $cart->created_at->format('M d, Y') }}</p>
+                                <h2 class="truncate text-lg font-bold tracking-tight text-gray-900 sm:text-xl" data-order-title>{{ $order->order_number }}</h2>
+                                <p class="mt-0.5 text-sm text-gray-600">{{ __('vendor.created') }} {{ $order->created_at->format('M d, Y') }}</p>
                             </div>
                         </div>
                         <button type="button" onclick="openEditCartModal()"
@@ -324,8 +330,8 @@ function cartPageData() {
                             </div>
                             <div class="min-w-0">
                                 <p class="text-xs font-bold uppercase tracking-wide text-gray-500">{{ __('vendor.customer') }}</p>
-                                <p class="mt-1 text-sm font-semibold text-gray-900">{{ $cart->customer->name }}</p>
-                                <p class="mt-0.5 text-sm text-gray-600">{{ $cart->customer->mobile }}</p>
+                                <p class="mt-1 text-sm font-semibold text-gray-900">{{ $order->customer->name }}</p>
+                                <p class="mt-0.5 text-sm text-gray-600">{{ $order->customer->mobile }}</p>
                             </div>
                         </div>
                         <div class="flex gap-3 rounded-xl border border-gray-100 bg-gray-50/80 p-4">
@@ -334,9 +340,9 @@ function cartPageData() {
                             </div>
                             <div class="min-w-0" data-booking-dates>
                                 <p class="text-xs font-bold uppercase tracking-wide text-gray-500">{{ __('vendor.booking_period') }}</p>
-                                @if($cart->start_time && $cart->end_time)
-                                    <p class="mt-1 text-sm font-semibold leading-snug text-gray-900">{{ $cart->start_time->format('M d, Y h:i A') }}</p>
-                                    <p class="mt-0.5 text-xs text-gray-600">{{ __('vendor.to') }} {{ $cart->end_time->format('M d, Y h:i A') }}</p>
+                                @if($order->start_at && $order->end_at)
+                                    <p class="mt-1 text-sm font-semibold leading-snug text-gray-900">{{ $order->start_at->format('M d, Y h:i A') }}</p>
+                                    <p class="mt-0.5 text-xs text-gray-600">{{ __('vendor.to') }} {{ $order->end_at->format('M d, Y h:i A') }}</p>
                                 @else
                                     <p class="mt-1 text-sm italic text-gray-500">{{ __('vendor.not_specified') }}</p>
                                 @endif
@@ -467,19 +473,12 @@ function cartPageData() {
                             <h3 class="text-lg font-bold tracking-tight text-gray-900">{{ __('vendor.cart_items') }}</h3>
                             <p class="mt-1 text-sm text-gray-600">
                                 <span data-items-count class="inline-flex items-center gap-2 font-medium text-gray-800">
-                                    <span class="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-blue-100 px-2 text-xs font-bold text-blue-800 tabular-nums">{{ $cart->items->count() }}</span>
+                                    <span class="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-blue-100 px-2 text-xs font-bold text-blue-800 tabular-nums">{{ $order->items->count() }}</span>
                                     <span>{{ __('vendor.items') }}</span>
                                 </span>
                             </p>
                         </div>
                         <div class="flex w-full flex-shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
-                            @if($cart->items->count() > 0)
-                            <button type="button" onclick="confirmEmptyCart()"
-                                    class="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-100 active:scale-[0.99] sm:flex-none sm:min-h-[44px] sm:py-2.5">
-                                <i class="fas fa-trash-alt"></i>
-                                {{ __('vendor.btn_empty_cart') }}
-                            </button>
-                            @endif
                             <button type="button" @click="showAddItem = true"
                                     class="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 active:scale-[0.99] sm:flex-none sm:min-h-[44px] sm:py-2.5">
                                 <i class="fas fa-plus"></i>
@@ -489,8 +488,8 @@ function cartPageData() {
                     </div>
                 </div>
 
-                <div data-items-list class="min-h-[10rem] p-3 sm:p-4 md:p-5">
-                    @if($cart->items->count() > 0)
+                <div data-items-list class="p-3 sm:p-4 md:p-5">
+                    @if($order->items->count() > 0)
                         <style>
                             @media (max-width: 767px) {
                                 .cart-line-table thead { display: none !important; }
@@ -546,10 +545,13 @@ function cartPageData() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                            @foreach($cart->items as $cartItem)
+                            @foreach($order->items as $cartItem)
+                                @php
+                                    $linePt = $cartItem->price_type ?? ($cartItem->item?->price_type ?? 'per_day');
+                                @endphp
                                 <tr data-cart-line="1"
                                     class="border-b border-gray-100 bg-white transition hover:bg-slate-50/80 max-md:border-0 max-md:hover:bg-white md:border-b"
-                                    data-line-price-type="{{ $cartItem->item->price_type }}"
+                                    data-line-price-type="{{ $linePt }}"
                                     data-line-qty="{{ $cartItem->quantity }}"
                                     data-line-billing="{{ (float) ($cartItem->billing_units ?? 1) }}">
                                     <td class="align-middle py-3 pl-3 pr-2 sm:pl-4" data-col="{{ __('vendor.item') }}">
@@ -558,23 +560,23 @@ function cartPageData() {
                                                 <i class="fas fa-box-open text-xl text-blue-600/90"></i>
                                             </div>
                                             <div class="min-w-0">
-                                                <div class="font-bold leading-snug text-gray-900">{{ $cartItem->item->name }}</div>
-                                                <div class="mt-0.5 text-base font-bold tabular-nums text-blue-700">₹{{ number_format($cartItem->item->price, 2) }}</div>
-                                                <div class="text-xs text-gray-500">{{ $cartItem->item->category->name ?? __('vendor.no_category') }}</div>
+                                                <div class="font-bold leading-snug text-gray-900">{{ $cartItem->item?->name ?? $cartItem->item_name }}</div>
+                                                <div class="mt-0.5 text-base font-bold tabular-nums text-blue-700">₹{{ number_format((float) ($cartItem->item?->price ?? $cartItem->price), 2) }}</div>
+                                                <div class="text-xs text-gray-500">{{ $cartItem->item?->category->name ?? __('vendor.no_category') }}</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="align-middle px-2 py-3 text-center max-md:text-left" data-col="{{ __('vendor.quantity') }}">
                                         <div class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50/80 px-1 py-0.5" data-line-qty-stepper="{{ $cartItem->item_id }}">
                                             <button type="button"
-                                                onclick="nudgeLineQty({{ $cart->id }}, {{ $cartItem->item_id }}, -1, this)"
+                                                onclick="nudgeLineQty({{ $order->id }}, {{ $cartItem->item_id }}, -1, this)"
                                                 class="flex h-9 w-9 items-center justify-center rounded-md bg-white text-gray-700 shadow-sm transition hover:bg-gray-100 active:scale-95"
                                                 title="{{ __('vendor.quantity') }} −1">
                                                 <i class="fas fa-minus text-xs"></i>
                                             </button>
                                             <span class="min-w-[2rem] text-center text-sm font-bold tabular-nums text-gray-900" data-qty-display="{{ $cartItem->item_id }}">{{ $cartItem->quantity }}</span>
                                             <button type="button"
-                                                onclick="nudgeLineQty({{ $cart->id }}, {{ $cartItem->item_id }}, 1, this)"
+                                                onclick="nudgeLineQty({{ $order->id }}, {{ $cartItem->item_id }}, 1, this)"
                                                 class="flex h-9 w-9 items-center justify-center rounded-md bg-white text-gray-700 shadow-sm transition hover:bg-gray-100 active:scale-95"
                                                 title="{{ __('vendor.quantity') }} +1">
                                                 <i class="fas fa-plus text-xs"></i>
@@ -582,21 +584,21 @@ function cartPageData() {
                                         </div>
                                     </td>
                                     <td class="align-middle px-2 py-3 text-center max-md:text-left" data-col="{{ __('vendor.cart_duration') }}">
-                                        @if(\App\Models\Items::priceTypeUsesBillingUnits($cartItem->item->price_type))
+                                        @if(\App\Models\Items::priceTypeUsesBillingUnits($linePt))
                                             <div class="inline-flex flex-col items-center gap-1">
-                                                <span class="text-[0.65rem] font-semibold uppercase tracking-wide text-gray-500">{{ \App\Models\Items::billingUnitsFieldLabel($cartItem->item->price_type) }}</span>
+                                                <span class="text-[0.65rem] font-semibold uppercase tracking-wide text-gray-500">{{ \App\Models\Items::billingUnitsFieldLabel($linePt) }}</span>
                                                 <div class="inline-flex items-center gap-1">
                                                     <button type="button"
-                                                        onclick="nudgeLineBilling({{ $cart->id }}, {{ $cartItem->item_id }}, -1)"
+                                                        onclick="nudgeLineBilling({{ $order->id }}, {{ $cartItem->item_id }}, -1)"
                                                         class="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95">
                                                         <i class="fas fa-minus text-xs"></i>
                                                     </button>
                                                     <input id="line-billing-{{ $cartItem->item_id }}" type="number" step="0.01" min="0.01" lang="en"
                                                         class="h-9 w-14 rounded-lg border border-gray-200 bg-white text-center text-sm font-bold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25"
                                                         value="{{ (float) ($cartItem->billing_units ?? 1) }}"
-                                                        onblur="updateCartBillingUnits({{ $cart->id }}, {{ $cartItem->item_id }}, this)">
+                                                        onblur="updateCartBillingUnits({{ $order->id }}, {{ $cartItem->item_id }}, this)">
                                                     <button type="button"
-                                                        onclick="nudgeLineBilling({{ $cart->id }}, {{ $cartItem->item_id }}, 1)"
+                                                        onclick="nudgeLineBilling({{ $order->id }}, {{ $cartItem->item_id }}, 1)"
                                                         class="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95">
                                                         <i class="fas fa-plus text-xs"></i>
                                                     </button>
@@ -612,7 +614,7 @@ function cartPageData() {
                                     <td class="align-middle px-2 py-3 pr-3 text-center sm:pr-4 max-md:text-left" data-col="{{ __('vendor.remove_from_cart') }}">
                                         <button type="button"
                                                 data-cart-remove="1"
-                                                onclick="removeCartItem({{ $cart->id }}, {{ $cartItem->item_id }}, this)"
+                                                onclick="removeCartItem({{ $order->id }}, {{ $cartItem->item_id }}, this)"
                                                 class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-red-100 bg-red-50 text-red-600 transition hover:bg-red-100 hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                                                 title="{{ __('vendor.remove_from_cart') }}">
                                             <i class="fas fa-trash text-sm"></i>
@@ -640,8 +642,8 @@ function cartPageData() {
             </section>
         </div>
 
-        <div class="lg:col-span-1">
-            <div class="sticky top-4 z-[5] max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100 sm:top-6">
+        <div class="order-1 lg:order-2 lg:col-span-1">
+            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100 lg:sticky lg:top-6 lg:z-[5]">
                 <div class="border-b border-gray-100 bg-gradient-to-r from-emerald-50 via-white to-teal-50/80 px-4 py-4 sm:px-5 sm:py-5">
                     <div class="flex items-start gap-3">
                         <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 text-white shadow-md ring-2 ring-white/60">
@@ -661,11 +663,11 @@ function cartPageData() {
                         <div class="space-y-0 rounded-xl border border-gray-100 bg-gray-50/70 p-1">
                             <div class="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5">
                                 <span class="text-sm text-gray-600">{{ __('vendor.sub_total') }}</span>
-                                <span data-sub-total class="text-sm font-semibold tabular-nums text-gray-900">₹{{ number_format($cart->sub_total, 2) }}</span>
+                                <span data-sub-total class="text-sm font-semibold tabular-nums text-gray-900">₹{{ number_format($order->sub_total, 2) }}</span>
                             </div>
                             <div class="flex items-center justify-between gap-3 rounded-lg border-t border-gray-100/80 bg-white/60 px-3 py-2.5">
                                 <span class="text-sm text-gray-600">{{ __('vendor.tax') }} <span class="text-gray-400">(10%)</span></span>
-                                <span data-tax-total class="text-sm font-semibold tabular-nums text-gray-900">₹{{ number_format($cart->tax_total, 2) }}</span>
+                                <span data-tax-total class="text-sm font-semibold tabular-nums text-gray-900">₹{{ number_format($order->tax_total, 2) }}</span>
                             </div>
                         </div>
                     </div>
@@ -674,29 +676,29 @@ function cartPageData() {
                     <div>
                         <p class="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">{{ __('vendor.summary_section_savings') }}</p>
                         <div class="space-y-2 rounded-xl border border-dashed border-gray-200 bg-white p-3">
-                            <div id="discount-add" class="{{ $cart->discount_amount > 0 ? 'hidden' : '' }}">
+                            <div id="discount-add" class="{{ $order->discount_amount > 0 ? 'hidden' : '' }}">
                                 <button type="button" onclick="openDiscountModal()"
                                         class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 py-2.5 text-sm font-semibold text-blue-700 transition hover:border-blue-200 hover:bg-blue-50/80">
                                     <i class="fas fa-plus-circle text-xs"></i>
                                     <span>{{ __('vendor.add_discount') }}</span>
                                 </button>
                             </div>
-                            <div id="discount-applied" class="{{ $cart->discount_amount > 0 ? '' : 'hidden' }}">
+                            <div id="discount-applied" class="{{ $order->discount_amount > 0 ? '' : 'hidden' }}">
                                 <div class="flex items-center justify-between gap-2 rounded-lg bg-blue-50/50 px-3 py-2 ring-1 ring-blue-100/80">
                                     <div class="flex min-w-0 items-center gap-2">
                                         <i class="fas fa-tag shrink-0 text-blue-600 text-xs"></i>
                                         <span class="truncate text-sm font-medium text-gray-800" id="discount-label">
-                                            @if($cart->discount_type === 'percent')
-                                                {{ __('vendor.discount') }} {{ rtrim(rtrim(number_format($cart->discount_value, 2), '0'), '.') }}%
-                                            @elseif($cart->discount_type === 'fixed')
-                                                {{ __('vendor.discount') }} ₹{{ number_format($cart->discount_value, 2) }}
+                                            @if($order->discount_type === 'percent')
+                                                {{ __('vendor.discount') }} {{ rtrim(rtrim(number_format($order->discount_value, 2), '0'), '.') }}%
+                                            @elseif($order->discount_type === 'fixed')
+                                                {{ __('vendor.discount') }} ₹{{ number_format($order->discount_value, 2) }}
                                             @else
                                                 {{ __('vendor.discount') }}
                                             @endif
                                         </span>
                                     </div>
                                     <div class="flex shrink-0 items-center gap-2">
-                                        <span data-discount-amount class="text-sm font-semibold tabular-nums text-red-600">-₹{{ number_format($cart->discount_amount, 2) }}</span>
+                                        <span data-discount-amount class="text-sm font-semibold tabular-nums text-red-600">-₹{{ number_format($order->discount_amount, 2) }}</span>
                                         <button type="button" onclick="removeDiscount()"
                                                 class="rounded p-1 text-red-500 transition hover:bg-red-100 hover:text-red-700"
                                                 title="{{ __('vendor.remove') }} {{ __('vendor.discount') }}">
@@ -706,21 +708,21 @@ function cartPageData() {
                                 </div>
                             </div>
 
-                            <div id="coupon-add" class="{{ $cart->coupon_code ? 'hidden' : '' }}">
+                            <div id="coupon-add" class="{{ $order->coupon_code ? 'hidden' : '' }}">
                                 <button type="button" onclick="openCouponModal()"
                                         class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 py-2.5 text-sm font-semibold text-emerald-800 transition hover:border-emerald-200 hover:bg-emerald-50/80">
                                     <i class="fas fa-ticket-alt text-xs"></i>
                                     <span>{{ __('vendor.add_coupon') }}</span>
                                 </button>
                             </div>
-                            <div id="coupon-applied" class="{{ $cart->coupon_code ? '' : 'hidden' }}">
+                            <div id="coupon-applied" class="{{ $order->coupon_code ? '' : 'hidden' }}">
                                 <div class="flex items-center justify-between gap-2 rounded-lg bg-emerald-50/50 px-3 py-2 ring-1 ring-emerald-100/80">
                                     <div class="flex min-w-0 items-center gap-2">
                                         <i class="fas fa-ticket-alt shrink-0 text-emerald-600 text-xs"></i>
-                                        <span class="truncate text-sm font-semibold text-emerald-900" data-coupon-code>{{ $cart->coupon_code }}</span>
+                                        <span class="truncate text-sm font-semibold text-emerald-900" data-coupon-code>{{ $order->coupon_code }}</span>
                                     </div>
                                     <div class="flex shrink-0 items-center gap-2">
-                                        <span data-coupon-discount class="text-sm font-semibold tabular-nums text-red-600">-₹{{ number_format($cart->coupon_discount, 2) }}</span>
+                                        <span data-coupon-discount class="text-sm font-semibold tabular-nums text-red-600">-₹{{ number_format($order->coupon_discount, 2) }}</span>
                                         <button type="button" onclick="removeCoupon()"
                                                 class="rounded p-1 text-red-500 transition hover:bg-red-100 hover:text-red-700"
                                                 title="{{ __('vendor.remove') }} {{ __('vendor.coupon_code') }}">
@@ -732,18 +734,18 @@ function cartPageData() {
 
                             <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2.5">
                                 <span class="text-sm font-semibold text-gray-700">{{ __('vendor.total_savings') }}</span>
-                                <span data-discount-total class="text-sm font-bold tabular-nums text-red-600">-₹{{ number_format($cart->discount_total, 2) }}</span>
+                                <span data-discount-total class="text-sm font-bold tabular-nums text-red-600">-₹{{ number_format($order->discount_total, 2) }}</span>
                             </div>
                         </div>
                     </div>
 
                     @php
-                        $showDeliveryLine = (($cart->fulfillment_type ?? 'pickup') === 'delivery' && (float) ($cart->delivery_charge ?? 0) > 0);
+                        $showDeliveryLine = (($order->fulfillment_type ?? 'pickup') === 'delivery' && (float) ($order->delivery_charge ?? 0) > 0);
                     @endphp
                     <div id="summary-delivery-charge-row"
                          class="flex items-center justify-between gap-3 rounded-xl border border-orange-100 bg-orange-50/40 px-3.5 py-2.5 {{ $showDeliveryLine ? '' : 'hidden' }}">
                         <span class="text-sm font-medium text-gray-800">{{ __('vendor.delivery_charge') }}</span>
-                        <span data-delivery-charge-line class="text-sm font-bold tabular-nums text-gray-900">₹{{ number_format((float) ($cart->delivery_charge ?? 0), 2) }}</span>
+                        <span data-delivery-charge-line class="text-sm font-bold tabular-nums text-gray-900">₹{{ number_format((float) ($order->delivery_charge ?? 0), 2) }}</span>
                     </div>
 
                     {{-- 3. Order total (before deposit) --}}
@@ -752,7 +754,7 @@ function cartPageData() {
                             <span class="text-sm font-bold text-slate-800">{{ __('vendor.summary_order_total') }}</span>
                             <span class="mt-0.5 block text-[11px] leading-snug text-slate-500">{{ __('vendor.summary_order_total_hint') }}</span>
                         </div>
-                        <span data-order-total class="shrink-0 text-base font-bold tabular-nums text-slate-900">₹{{ number_format($cart->grand_total, 2) }}</span>
+                        <span data-order-total class="shrink-0 text-base font-bold tabular-nums text-slate-900">₹{{ number_format($order->grand_total, 2) }}</span>
                     </div>
 
                     {{-- 4. Security deposit --}}
@@ -765,7 +767,7 @@ function cartPageData() {
                             </span>
                             <span id="securityDepositLabel" class="truncate">{{ __('vendor.quote_security_deposit') }}</span>
                         </button>
-                        <span data-security-deposit-total class="shrink-0 text-sm font-bold tabular-nums text-gray-900">₹{{ number_format($cart->security_deposit ?? 0, 2) }}</span>
+                        <span data-security-deposit-total class="shrink-0 text-sm font-bold tabular-nums text-gray-900">₹{{ number_format($order->security_deposit ?? 0, 2) }}</span>
                     </div>
 
                     {{-- 5. Total due (order + deposit) --}}
@@ -775,7 +777,7 @@ function cartPageData() {
                                 <span class="text-sm font-bold text-gray-900">{{ __('vendor.summary_total_due') }}</span>
                                 <span class="mt-0.5 block text-[11px] font-medium leading-snug text-emerald-800/80">{{ __('vendor.summary_total_due_hint') }}</span>
                             </div>
-                            <span data-grand-total class="shrink-0 text-xl font-bold tabular-nums tracking-tight text-emerald-700">₹{{ number_format((float) $cart->grand_total + (float) ($cart->security_deposit ?? 0), 2) }}</span>
+                            <span data-grand-total class="shrink-0 text-xl font-bold tabular-nums tracking-tight text-emerald-700">₹{{ number_format((float) $order->grand_total + (float) ($order->security_deposit ?? 0), 2) }}</span>
                         </div>
                     </div>
 
@@ -784,11 +786,11 @@ function cartPageData() {
                         <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">{{ __('vendor.summary_section_payment') }}</p>
                         <div class="flex items-center justify-between rounded-xl bg-gray-50/80 px-3.5 py-2.5 ring-1 ring-gray-100">
                             <span class="text-sm text-gray-600">{{ __('vendor.paid_amount') }}</span>
-                            <span data-paid-amount class="text-sm font-semibold tabular-nums text-emerald-600">₹{{ number_format($cart->paid_amount, 2) }}</span>
+                            <span data-paid-amount class="text-sm font-semibold tabular-nums text-emerald-600">₹{{ number_format($order->paid_amount, 2) }}</span>
                         </div>
                         <div class="flex items-center justify-between rounded-xl border border-amber-200/80 bg-amber-50/70 px-3.5 py-3">
                             <span class="text-sm font-bold text-gray-900">{{ __('vendor.balance_due') }}</span>
-                            <span data-balance-due class="text-base font-bold tabular-nums text-red-600">₹{{ number_format((float) $cart->grand_total + (float) ($cart->security_deposit ?? 0) - (float) $cart->paid_amount, 2) }}</span>
+                            <span data-balance-due class="text-base font-bold tabular-nums text-red-600">₹{{ number_format((float) $order->grand_total + (float) ($order->security_deposit ?? 0) - (float) $order->paid_amount, 2) }}</span>
                         </div>
                         <button type="button" onclick="openAddPaymentModal()"
                                 class="mt-1 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 active:scale-[0.99]">
@@ -796,7 +798,7 @@ function cartPageData() {
                         </button>
 
                         @php
-                            $paymentRows = is_array($cart->payment_detail) ? $cart->payment_detail : [];
+                            $paymentRows = is_array($order->payment_detail) ? $order->payment_detail : [];
                         @endphp
                         <div id="payment-history-section" class="mt-4 space-y-2">
                             <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">{{ __('vendor.payment_history_title') }}</p>
@@ -1071,7 +1073,7 @@ function cartPageData() {
                         if (o) o.value = t;
                         if (s) s.value = t;
                     }
-                    const npRecordPaymentUrl = @json(route('vendor.carts.payment', $cart));
+                    const npRecordPaymentUrl = @json(route('vendor.orders.payment', $order));
                     const npMethodLabels = { card: 'Card', cash: 'Cash', upi: 'UPI', bank_transfer: 'Bank transfer', wallet: 'Wallet', other: 'Other' };
                     function npGetActivePaymentAmount() {
                         const k = document.getElementById('newPaymentDueModal')?.dataset?.npKind;
@@ -1152,9 +1154,9 @@ function cartPageData() {
                         .then(function (res) {
                             if (payLabel && prevLabel) payLabel.textContent = prevLabel;
                             if (btn) btn.disabled = false;
-                            if (res.ok && res.data && res.data.success && res.data.cart) {
+                            if (res.ok && res.data && res.data.success && res.data.order) {
                                 if (typeof updateSummary === 'function') {
-                                    updateSummary(res.data.cart);
+                                    updateSummary(res.data.order);
                                 }
                                 npResetPaymentMethodUi();
                                 refreshNewPaymentDueModalTotals(k);
@@ -1241,7 +1243,7 @@ function cartPageData() {
                         document.getElementById('newPaymentDueModal').classList.add('hidden');
                         document.body.style.overflow = '';
                     }
-                    const npPaymentCartId = @json($cart->id);
+                    const npPaymentCartId = @json($order->id);
                     function applyNewPaymentDueLayout(kind) {
                         const modal = document.getElementById('newPaymentDueModal');
                         const title = document.getElementById('npDueTitle');
@@ -1294,7 +1296,7 @@ function cartPageData() {
                         document.body.style.overflow = 'hidden';
                     }
                     @php
-                        $_destroyPaymentSample = route('vendor.carts.payments.destroy', [$cart, 0]);
+                        $_destroyPaymentSample = route('vendor.orders.payments.destroy', [$order, 0]);
                         $npDestroyPaymentPrefix = substr($_destroyPaymentSample, 0, strrpos($_destroyPaymentSample, '/') + 1);
                     @endphp
                     const npPaymentRemovePrefix = @json($npDestroyPaymentPrefix);
@@ -1310,7 +1312,7 @@ function cartPageData() {
                         if (isNaN(d.getTime())) return '';
                         return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
                     }
-                    function refreshPaymentListFromCart(cart) {
+                    function refreshPaymentListFromOrder(cart) {
                         const list = document.getElementById('payment-history-list');
                         const empty = document.getElementById('payment-history-empty');
                         if (!list) return;
@@ -1358,8 +1360,8 @@ function cartPageData() {
                         })
                             .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
                             .then(function (res) {
-                                if (res.ok && res.data.success && res.data.cart) {
-                                    if (typeof updateSummary === 'function') updateSummary(res.data.cart);
+                                if (res.ok && res.data.success && res.data.order) {
+                                    if (typeof updateSummary === 'function') updateSummary(res.data.order);
                                     if (typeof showToast === 'function') showToast(res.data.message || 'Removed', 'success');
                                 } else if (typeof showToast === 'function') {
                                     showToast((res.data && res.data.message) ? res.data.message : 'Could not remove', 'error');
@@ -1377,24 +1379,12 @@ function cartPageData() {
                    
                    
                     <div class="space-y-2.5 pt-1">
-                        @if($cart->items->count() > 0)
-                            <button type="button"
-                                    onclick="openPlaceOrderConfirmModal()"
-                                    class="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.99]">
-                                <i class="fas fa-check-circle"></i>{{ __('vendor.place_order') }}
-                            </button>
-                        @else
-                            <button type="button" disabled
-                                    class="flex min-h-[52px] w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-3.5 text-sm font-semibold text-gray-400">
-                                <i class="fas fa-check-circle"></i>{{ __('vendor.place_order') }}
-                            </button>
-                        @endif
-                        <button type="button"
-                                data-print-url="{{ route('vendor.carts.print', $cart) }}"
-                                onclick="window.open(this.getAttribute('data-print-url') + '?autoprint=1', '_blank', 'noopener,noreferrer')"
-                                class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50">
+                        <a href="{{ route('vendor.orders.print', ['order' => $order, 'autoprint' => 1]) }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50">
                             <i class="fas fa-file-invoice text-gray-600"></i>{{ __('vendor.print_quote') }}
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -1778,7 +1768,7 @@ function cartPageData() {
                                placeholder="Enter discount value">
                     </div>
                     <p class="mt-1.5 text-xs text-gray-500">
-                        Subtotal: <span class="font-semibold">₹{{ number_format($cart->sub_total, 2) }}</span>
+                        Subtotal: <span class="font-semibold">₹{{ number_format($order->sub_total, 2) }}</span>
                     </p>
                     <p id="discountError" class="mt-1 text-sm text-red-600 hidden"></p>
                 </div>
@@ -1826,7 +1816,7 @@ function cartPageData() {
                     <label class="block text-sm font-semibold text-gray-700">Deposit Rule</label>
 
                     <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50">
-                        <input type="radio" name="security_deposit_type" value="none" class="mt-1 h-4 w-4 text-blue-600" @checked(($cart->security_deposit_type ?? 'none') === 'none')>
+                        <input type="radio" name="security_deposit_type" value="none" class="mt-1 h-4 w-4 text-blue-600" @checked(($order->security_deposit_type ?? 'none') === 'none')>
                         <div>
                             <p class="text-sm font-semibold text-gray-900">None</p>
                             <p class="text-xs text-gray-600">Do not charge a security deposit by default.</p>
@@ -1834,7 +1824,7 @@ function cartPageData() {
                     </label>
 
                     <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50">
-                        <input type="radio" name="security_deposit_type" value="order_amount" class="mt-1 h-4 w-4 text-blue-600" @checked(($cart->security_deposit_type ?? 'none') === 'order_amount')>
+                        <input type="radio" name="security_deposit_type" value="order_amount" class="mt-1 h-4 w-4 text-blue-600" @checked(($order->security_deposit_type ?? 'none') === 'order_amount')>
                         <div>
                             <p class="text-sm font-semibold text-gray-900">Order amount</p>
                             <p class="text-xs text-gray-600">Add a percentage of the total order amount.</p>
@@ -1842,7 +1832,7 @@ function cartPageData() {
                     </label>
 
                     <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50">
-                        <input type="radio" name="security_deposit_type" value="product_security_deposit" class="mt-1 h-4 w-4 text-blue-600" @checked(($cart->security_deposit_type ?? 'none') === 'product_security_deposit')>
+                        <input type="radio" name="security_deposit_type" value="product_security_deposit" class="mt-1 h-4 w-4 text-blue-600" @checked(($order->security_deposit_type ?? 'none') === 'product_security_deposit')>
                         <div>
                             <p class="text-sm font-semibold text-gray-900">Product security deposit value</p>
                             <p class="text-xs text-gray-600">Charge a percentage of the security deposit value of all products on an order.</p>
@@ -1850,7 +1840,7 @@ function cartPageData() {
                     </label>
 
                     <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50">
-                        <input type="radio" name="security_deposit_type" value="fixed_amount" class="mt-1 h-4 w-4 text-blue-600" @checked(($cart->security_deposit_type ?? 'none') === 'fixed_amount')>
+                        <input type="radio" name="security_deposit_type" value="fixed_amount" class="mt-1 h-4 w-4 text-blue-600" @checked(($order->security_deposit_type ?? 'none') === 'fixed_amount')>
                         <div>
                             <p class="text-sm font-semibold text-gray-900">Fixed amount</p>
                             <p class="text-xs text-gray-600">Charge a fixed amount, regardless of the products on an order.</p>
@@ -1965,8 +1955,8 @@ function cartPageData() {
                             <i class="fas fa-shopping-cart text-white"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.edit') }} {{ __('vendor.cart') }}</h3>
-                            <p class="text-xs text-gray-600">{{ __('vendor.update_cart_info') }}</p>
+                            <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.edit') }} {{ __('vendor.booking_dates') }}</h3>
+                            <p class="text-xs text-gray-600">{{ __('vendor.order_booking_modal_help') }}</p>
                         </div>
                     </div>
                     <button type="button" onclick="closeEditCartModal()" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors">
@@ -1985,28 +1975,11 @@ function cartPageData() {
                             <i class="fas fa-user text-gray-400"></i>
                         </div>
                         <input type="text" 
-                               value="{{ $cart->customer->name }} - {{ $cart->customer->mobile }}"
+                               value="{{ $order->customer->name }} - {{ $order->customer->mobile }}"
                                class="w-full pl-11 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
                                disabled readonly>
                     </div>
                     <p class="mt-1.5 text-xs text-gray-500"><i class="fas fa-info-circle mr-1"></i>{{ __('vendor.customer_cannot_change') }}</p>
-                </div>
-
-                <!-- Cart Name -->
-                <div>
-                    <label for="edit_cart_name" class="block text-sm font-semibold text-gray-700 mb-2">
-                        {{ __('vendor.name') }} <span class="text-red-500">*</span>
-                    </label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="fas fa-tag text-gray-400"></i>
-                        </div>
-                        <input type="text" name="cart_name" id="edit_cart_name"
-                               value="{{ $cart->cart_name }}"
-                               class="w-full pl-11 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                               placeholder="{{ __('vendor.cart_name_placeholder') }}" required>
-                    </div>
-                    <p id="editCartNameError" class="mt-1.5 text-sm text-red-600 hidden"></p>
                 </div>
 
                 <!-- Booking Dates -->
@@ -2017,12 +1990,12 @@ function cartPageData() {
                     </label>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label for="edit_start_time" class="block text-sm font-semibold text-gray-700 mb-1">
+                            <label for="edit_start_at" class="block text-sm font-semibold text-gray-700 mb-1">
                                 <i class="far fa-calendar-alt text-emerald-600 mr-1"></i>{{ __('vendor.start_date_time') }}
                             </label>
                             <div class="date-input-wrapper">
-                                <input type="text" name="start_time" id="edit_start_time"
-                                       value="{{ $cart->start_time ? $cart->start_time->format('Y-m-d H:i') : '' }}"
+                                <input type="text" name="start_at" id="edit_start_at"
+                                       value="{{ $order->start_at ? $order->start_at->format('Y-m-d H:i') : '' }}"
                                        readonly
                                        class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white cursor-pointer"
                                        placeholder="Select start date">
@@ -2034,12 +2007,12 @@ function cartPageData() {
                             <p id="editStartTimeError" class="mt-1 text-sm text-red-600 hidden"></p>
                         </div>
                         <div>
-                            <label for="edit_end_time" class="block text-sm font-semibold text-gray-700 mb-1">
+                            <label for="edit_end_at" class="block text-sm font-semibold text-gray-700 mb-1">
                                 <i class="far fa-calendar-alt text-emerald-600 mr-1"></i>{{ __('vendor.end_date_time') }}
                             </label>
                             <div class="date-input-wrapper">
-                                <input type="text" name="end_time" id="edit_end_time"
-                                       value="{{ $cart->end_time ? $cart->end_time->format('Y-m-d H:i') : '' }}"
+                                <input type="text" name="end_at" id="edit_end_at"
+                                       value="{{ $order->end_at ? $order->end_at->format('Y-m-d H:i') : '' }}"
                                        readonly
                                        class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white cursor-pointer"
                                        placeholder="Select end date">
@@ -2096,62 +2069,6 @@ function cartPageData() {
     </div>
 </div>
 
-<!-- Place order confirmation modal -->
-<div id="placeOrderConfirmModal"
-     class="fixed inset-0 z-[75] hidden items-center justify-center p-4 bg-gray-900/50 transition-opacity"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="placeOrderConfirmTitle"
-     onclick="if (event.target === this) closePlaceOrderConfirmModal()">
-    <div class="relative bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all" onclick="event.stopPropagation()">
-        <div class="p-6 text-center">
-            <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center bg-emerald-100 rounded-full">
-                <i class="fas fa-check-circle text-2xl text-emerald-600"></i>
-            </div>
-            <h3 id="placeOrderConfirmTitle" class="text-lg font-bold text-gray-900 mb-2">{{ __('vendor.modal_place_order_title') }}</h3>
-            <p class="text-sm text-gray-600">{{ __('vendor.confirm_place_order') }}</p>
-        </div>
-        <div class="flex items-center justify-center gap-3 px-6 pb-6">
-            <button type="button"
-                    id="placeOrderModalCancel"
-                    class="flex-1 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <i class="fas fa-times mr-2"></i>{{ __('vendor.cancel') }}
-            </button>
-            <button type="button"
-                    id="placeOrderModalConfirm"
-                    class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors">
-                <i class="fas fa-check-circle mr-2"></i>{{ __('vendor.place_order') }}
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Empty Cart Confirm Modal -->
-<div id="emptyCartModal" class="fixed inset-0 z-50 hidden" onclick="if(event.target===this)closeEmptyCartModal()">
-    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-    <div class="relative flex items-center justify-center min-h-full p-4">
-        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
-            <div class="p-6 text-center">
-                <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center bg-red-100 rounded-full">
-                    <i class="fas fa-trash-alt text-2xl text-red-600"></i>
-                </div>
-                <h3 class="text-lg font-bold text-gray-900 mb-2">Empty Cart?</h3>
-                <p class="text-sm text-gray-600">This will remove all items and reset discounts. This action cannot be undone.</p>
-            </div>
-            <div class="flex border-t border-gray-200">
-                <button type="button" onclick="closeEmptyCartModal()"
-                        class="flex-1 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors border-r border-gray-200">
-                    Cancel
-                </button>
-                <button type="button" id="emptyCartConfirmBtn" onclick="emptyCart()"
-                        class="flex-1 px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors">
-                    <i class="fas fa-trash-alt mr-1"></i>Empty Cart
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
 <style>
@@ -2171,7 +2088,6 @@ function cartPageData() {
     .date-input-wrapper input:not([value=""]) ~ .date-clear-btn,
     .date-input-wrapper input.has-value ~ .date-clear-btn { display: block; }
 </style>
-</style>
 @endsection
 
 @section('scripts')
@@ -2186,7 +2102,7 @@ function addItemToCartAjax(itemId, qty, component) {
     const priceType = item?.price_type ?? 'per_day';
     const billingUnits = priceType === 'fixed' ? 1 : Math.max(parseFloat(component.addedItemBillingUnits[itemId]) || 1, 0.01);
 
-    fetch('{{ route("vendor.carts.items.add", $cart->id) }}', {
+    fetch('{{ route("vendor.orders.items.add", $order->id) }}', {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2203,8 +2119,8 @@ function addItemToCartAjax(itemId, qty, component) {
         if (data.success) {
             component.addedItems = { ...component.addedItems, [itemId]: qty };
             component.addedItemBillingUnits = { ...component.addedItemBillingUnits, [itemId]: billingUnits };
-            updateSummary(data.cart);
-            refreshCartItems();
+            updateSummary(data.order);
+            refreshOrderItems();
             showToast(data.message || 'Item added to cart', 'success');
         } else {
             showToast(data.message || 'Error adding item', 'error');
@@ -2229,7 +2145,7 @@ function updateModalItemQty(itemId, newQty, component) {
         billingUnits = Math.max(parseFloat(component.addedItemBillingUnits[itemId]) || 1, 0.01);
     }
 
-    fetch(`{{ url('vendor/carts') }}/{{ $cart->id }}/items/${itemId}`, {
+    fetch(`{{ url('vendor/orders') }}/{{ $order->id }}/items/${itemId}`, {
         method: 'PUT',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2245,8 +2161,8 @@ function updateModalItemQty(itemId, newQty, component) {
             if (data.item && data.item.billing_units != null) {
                 component.addedItemBillingUnits = { ...component.addedItemBillingUnits, [itemId]: parseFloat(data.item.billing_units) };
             }
-            updateSummary(data.cart);
-            refreshCartItems();
+            updateSummary(data.order);
+            refreshOrderItems();
         } else {
             showToast(data.message || 'Error updating quantity', 'error');
         }
@@ -2264,7 +2180,7 @@ function updateModalItemQty(itemId, newQty, component) {
 function removeModalItem(itemId, component) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    fetch(`{{ url('vendor/carts') }}/{{ $cart->id }}/items/${itemId}`, {
+    fetch(`{{ url('vendor/orders') }}/{{ $order->id }}/items/${itemId}`, {
         method: 'DELETE',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2275,9 +2191,9 @@ function removeModalItem(itemId, component) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            window.dispatchEvent(new CustomEvent('cart-item-removed', { detail: { itemId } }));
-            updateSummary(data.cart);
-            refreshCartItems();
+            window.dispatchEvent(new CustomEvent('order-item-removed', { detail: { itemId } }));
+            updateSummary(data.order);
+            refreshOrderItems();
             showToast(data.message || 'Item removed', 'success');
         } else {
             component.addedItems = { ...component.addedItems, [itemId]: 1 };
@@ -2295,7 +2211,7 @@ function removeModalItem(itemId, component) {
 }
 
 // --- Refresh cart items list via page reload ---
-function refreshCartItems() {
+function refreshOrderItems() {
     fetch(window.location.href, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
@@ -2347,7 +2263,7 @@ function initEditDatePickers() {
     if (editStartPicker) editStartPicker.destroy();
     if (editEndPicker) editEndPicker.destroy();
 
-    editStartPicker = flatpickr('#edit_start_time', {
+    editStartPicker = flatpickr('#edit_start_at', {
         ...fpConfig,
         onChange: function(selectedDates, dateStr, instance) {
             toggleClearBtn(instance);
@@ -2359,7 +2275,7 @@ function initEditDatePickers() {
         }
     });
 
-    editEndPicker = flatpickr('#edit_end_time', {
+    editEndPicker = flatpickr('#edit_end_at', {
         ...fpConfig,
         onChange: function(selectedDates, dateStr, instance) {
             toggleClearBtn(instance);
@@ -2442,7 +2358,7 @@ function submitDiscount(e) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Applying...';
 
-    fetch(`{{ route('vendor.carts.discount', $cart->id) }}`, {
+    fetch(`{{ route('vendor.orders.discount', $order->id) }}`, {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2479,7 +2395,7 @@ function submitDiscount(e) {
             document.getElementById('discount-applied').classList.remove('hidden');
             document.getElementById('discount-add').classList.add('hidden');
 
-            updateSummary(data.cart);
+            updateSummary(data.order);
             closeDiscountModal();
             showToast(data.message, 'success');
         } else {
@@ -2502,7 +2418,7 @@ function submitDiscount(e) {
 function removeDiscount() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    fetch(`{{ route('vendor.carts.discount.remove', $cart->id) }}`, {
+    fetch(`{{ route('vendor.orders.discount.remove', $order->id) }}`, {
         method: 'DELETE',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2517,7 +2433,7 @@ function removeDiscount() {
             document.getElementById('discount-add').classList.remove('hidden');
             document.getElementById('discount-applied').classList.add('hidden');
 
-            updateSummary(data.cart);
+            updateSummary(data.order);
             showToast(data.message, 'success');
         } else {
             showToast(data.message || 'Error removing discount', 'error');
@@ -2531,12 +2447,12 @@ function removeDiscount() {
 
 // --- Security Deposit Modal ---
 const securityDepositState = {
-    type: @json($cart->security_deposit_type ?? 'none'),
-    value: parseFloat(@json($cart->security_deposit_value ?? 0)) || 0,
-    amount: parseFloat(@json((float) ($cart->security_deposit ?? 0))),
+    type: @json($order->security_deposit_type ?? 'none'),
+    value: parseFloat(@json($order->security_deposit_value ?? 0)) || 0,
+    amount: parseFloat(@json((float) ($order->security_deposit ?? 0))),
     /** Order total from server (sub + tax − discounts), excludes security deposit */
-    orderGrandTotal: parseFloat(@json((float) $cart->grand_total)),
-    subTotal: parseFloat(@json((float) $cart->sub_total)),
+    orderGrandTotal: parseFloat(@json((float) $order->grand_total)),
+    subTotal: parseFloat(@json((float) $order->sub_total)),
 };
 
 function openSecurityDepositModal() {
@@ -2697,7 +2613,7 @@ function submitSecurityDeposit(e) {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Apply';
     }
 
-    fetch(`{{ route('vendor.carts.security-deposit', $cart->id) }}`, {
+    fetch(`{{ route('vendor.orders.security-deposit', $order->id) }}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2715,10 +2631,10 @@ function submitSecurityDeposit(e) {
             return { ok: r.ok, data };
         })
         .then(({ ok, data }) => {
-            if (ok && data.success && data.cart) {
-                securityDepositState.type = data.cart.security_deposit_type || selectedType;
-                securityDepositState.value = parseFloat(data.cart.security_deposit_value ?? 0) || 0;
-                updateSummary(data.cart);
+            if (ok && data.success && data.order) {
+                securityDepositState.type = data.order.security_deposit_type || selectedType;
+                securityDepositState.value = parseFloat(data.order.security_deposit_value ?? 0) || 0;
+                updateSummary(data.order);
                 closeSecurityDepositModal();
                 showToast(data.message || 'Security deposit updated', 'success');
             } else {
@@ -2769,7 +2685,7 @@ function loadCouponList() {
     const listEl = document.getElementById('couponList');
     listEl.innerHTML = '<div class="flex items-center justify-center py-8"><i class="fas fa-spinner fa-spin text-gray-400 text-xl"></i></div>';
 
-    fetch(`{{ route('vendor.carts.coupons.list', $cart->id) }}`, {
+    fetch(`{{ route('vendor.orders.coupons.list', $order->id) }}`, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json',
@@ -2841,7 +2757,7 @@ function applyCouponFromModal() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-    fetch(`{{ route('vendor.carts.coupon.apply', $cart->id) }}`, {
+    fetch(`{{ route('vendor.orders.coupon.apply', $order->id) }}`, {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2864,7 +2780,7 @@ function applyCouponFromModal() {
         document.getElementById('coupon-applied').classList.remove('hidden');
         document.getElementById('coupon-add').classList.add('hidden');
 
-        updateSummary(data.cart);
+        updateSummary(data.order);
         closeCouponModal();
         showToast(data.message, 'success');
     })
@@ -2882,7 +2798,7 @@ function applyCouponFromModal() {
 function removeCoupon() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    fetch(`{{ route('vendor.carts.coupon.remove', $cart->id) }}`, {
+    fetch(`{{ route('vendor.orders.coupon.remove', $order->id) }}`, {
         method: 'DELETE',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2897,7 +2813,7 @@ function removeCoupon() {
             document.getElementById('coupon-add').classList.remove('hidden');
             document.getElementById('coupon-applied').classList.add('hidden');
 
-            updateSummary(data.cart);
+            updateSummary(data.order);
             showToast(data.message, 'success');
         } else {
             showToast(data.message || 'Error removing coupon', 'error');
@@ -2913,8 +2829,6 @@ function removeCoupon() {
 function openEditCartModal() {
     document.getElementById('editCartModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
-    // Clear previous errors
-    document.getElementById('editCartNameError').classList.add('hidden');
     document.getElementById('editStartTimeError').classList.add('hidden');
     document.getElementById('editEndTimeError').classList.add('hidden');
 }
@@ -2927,85 +2841,59 @@ function closeEditCartModal() {
 function submitEditCart(e) {
     e.preventDefault();
 
-    const form = document.getElementById('editCartForm');
     const submitBtn = document.getElementById('editCartSubmitBtn');
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    // Clear previous errors
-    document.getElementById('editCartNameError').classList.add('hidden');
     document.getElementById('editStartTimeError').classList.add('hidden');
     document.getElementById('editEndTimeError').classList.add('hidden');
 
-    // Disable button
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>{{ __("vendor.updating") }}...';
 
-    const formData = {
-        cart_name: document.getElementById('edit_cart_name').value,
-        start_time: document.getElementById('edit_start_time').value || null,
-        end_time: document.getElementById('edit_end_time').value || null,
-        _method: 'PUT'
+    const payload = {
+        start_at: document.getElementById('edit_start_at').value || null,
+        end_at: document.getElementById('edit_end_at').value || null,
     };
 
-    fetch(`{{ route('vendor.carts.update', $cart->id) }}`, {
-        method: 'POST',
+    fetch(`{{ route('vendor.orders.booking', $order) }}`, {
+        method: 'PATCH',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
     })
     .then(response => response.json().then(data => ({ status: response.status, data })))
     .then(({ status, data }) => {
         if (status === 422 && data.errors) {
-            // Show validation errors
-            if (data.errors.cart_name) {
-                const el = document.getElementById('editCartNameError');
-                el.textContent = data.errors.cart_name[0];
-                el.classList.remove('hidden');
-            }
-            if (data.errors.start_time) {
+            if (data.errors.start_at) {
                 const el = document.getElementById('editStartTimeError');
-                el.textContent = data.errors.start_time[0];
+                el.textContent = data.errors.start_at[0];
                 el.classList.remove('hidden');
             }
-            if (data.errors.end_time) {
+            if (data.errors.end_at) {
                 const el = document.getElementById('editEndTimeError');
-                el.textContent = data.errors.end_time[0];
+                el.textContent = data.errors.end_at[0];
                 el.classList.remove('hidden');
             }
             return;
         }
 
         if (data.success) {
-            // Update cart name in header
-            const cartNameEl = document.querySelector('[data-cart-name]');
-            if (cartNameEl) cartNameEl.textContent = data.cart.cart_name;
-
-            // Update booking dates
-            const bookingEl = document.querySelector('[data-booking-dates]');
-            if (bookingEl) {
-                if (data.cart.start_time && data.cart.end_time) {
-                    bookingEl.innerHTML = `
-                        <p class="text-sm font-semibold text-gray-900">${data.cart.start_time}</p>
-                        <p class="text-xs text-gray-600">to ${data.cart.end_time}</p>
-                    `;
-                } else {
-                    bookingEl.innerHTML = '<p class="text-sm text-gray-500 italic">Not specified</p>';
-                }
-            }
-
+            if (typeof updateSummary === 'function' && data.order) updateSummary(data.order);
+            if (typeof refreshOrderItems === 'function') refreshOrderItems();
             closeEditCartModal();
-            showToast(data.message, 'success');
+            showToast(data.message || 'Saved', 'success');
+            setTimeout(() => window.location.reload(), 400);
         } else {
-            showToast(data.message || 'Error updating cart', 'error');
+            showToast(data.message || 'Error updating booking', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Error updating cart', 'error');
+        showToast('Error updating booking', 'error');
     })
     .finally(() => {
         submitBtn.disabled = false;
@@ -3047,7 +2935,7 @@ function updateCartItemQty(cartId, itemId, quantity, el) {
         billingUnits = Number.isFinite(b) && b >= 0.01 ? b : 1;
     }
 
-    fetch(`{{ url('vendor/carts') }}/${cartId}/items/${itemId}`, {
+    fetch(`{{ url('vendor/orders') }}/${cartId}/items/${itemId}`, {
         method: 'PUT',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -3061,7 +2949,7 @@ function updateCartItemQty(cartId, itemId, quantity, el) {
     .then(data => {
         if (data.success) {
             // Sync Alpine state via event
-            window.dispatchEvent(new CustomEvent('cart-item-updated', {
+            window.dispatchEvent(new CustomEvent('order-item-updated', {
                 detail: {
                     itemId: itemId,
                     quantity: data.item.quantity,
@@ -3090,7 +2978,7 @@ function updateCartItemQty(cartId, itemId, quantity, el) {
             }
 
             // Update summary totals
-            updateSummary(data.cart);
+            updateSummary(data.order);
 
             showToast(data.message, 'success');
         } else {
@@ -3128,7 +3016,7 @@ function updateCartBillingUnits(cartId, itemId, inputEl) {
     const billingToSend = priceType === 'fixed' ? 1 : billing;
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    fetch(`{{ url('vendor/carts') }}/${cartId}/items/${itemId}`, {
+    fetch(`{{ url('vendor/orders') }}/${cartId}/items/${itemId}`, {
         method: 'PUT',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -3146,7 +3034,7 @@ function updateCartBillingUnits(cartId, itemId, inputEl) {
                 row.setAttribute('data-line-billing', data.item.billing_units);
                 inputEl.value = parseFloat(data.item.billing_units);
             }
-            window.dispatchEvent(new CustomEvent('cart-item-updated', {
+            window.dispatchEvent(new CustomEvent('order-item-updated', {
                 detail: {
                     itemId: itemId,
                     quantity: data.item.quantity,
@@ -3155,7 +3043,7 @@ function updateCartBillingUnits(cartId, itemId, inputEl) {
             }));
             const lineTotalEl = document.querySelector(`[data-line-total="${itemId}"]`);
             if (lineTotalEl) lineTotalEl.textContent = '₹' + parseFloat(data.item.line_total).toFixed(2);
-            updateSummary(data.cart);
+            updateSummary(data.order);
             showToast(data.message, 'success');
         } else {
             showToast(data.message || 'Could not update line', 'error');
@@ -3195,7 +3083,7 @@ function confirmDelete() {
     button.disabled = true;
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-    fetch(`{{ url('vendor/carts') }}/${cartId}/items/${itemId}`, {
+    fetch(`{{ url('vendor/orders') }}/${cartId}/items/${itemId}`, {
         method: 'DELETE',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -3207,7 +3095,7 @@ function confirmDelete() {
     .then(data => {
         if (data.success) {
             // Sync Alpine state via event
-            window.dispatchEvent(new CustomEvent('cart-item-removed', { detail: { itemId: itemId } }));
+            window.dispatchEvent(new CustomEvent('order-item-removed', { detail: { itemId: itemId } }));
 
             // Animate and remove the row
             row.style.transition = 'opacity 0.3s, max-height 0.3s';
@@ -3217,16 +3105,16 @@ function confirmDelete() {
                 row.remove();
 
                 // Update summary totals
-                updateSummary(data.cart);
+                updateSummary(data.order);
 
                 const itemsCountEl = document.querySelector('[data-items-count]');
                 if (itemsCountEl) {
-                    const c = data.cart.items_count;
+                    const c = data.order.items_count;
                     itemsCountEl.innerHTML = '<span class="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-blue-100 px-2 text-xs font-bold text-blue-800 tabular-nums">' + c + '</span> <span class="font-medium text-gray-800">{{ __("vendor.items") }}</span>';
                 }
 
-                if (data.cart.items_count === 0) {
-                    refreshCartItems();
+                if (data.order.items_count === 0) {
+                    refreshOrderItems();
                 }
             }, 300);
 
@@ -3245,36 +3133,10 @@ function confirmDelete() {
     });
 }
 
-function openPlaceOrderConfirmModal() {
-    const modal = document.getElementById('placeOrderConfirmModal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    document.body.style.overflow = 'hidden';
-}
-
-function closePlaceOrderConfirmModal() {
-    const modal = document.getElementById('placeOrderConfirmModal');
-    if (!modal) return;
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-    document.body.style.overflow = '';
-}
-
-function submitVendorPlaceOrder() {
-    const form = document.getElementById('vendorPlaceOrderForm');
-    if (form) form.submit();
-}
-
 // Modal event listeners
 document.getElementById('deleteModalCancel').addEventListener('click', closeDeleteModal);
 document.getElementById('deleteModalOverlay').addEventListener('click', closeDeleteModal);
 document.getElementById('deleteModalConfirm').addEventListener('click', confirmDelete);
-
-const placeOrderModalCancel = document.getElementById('placeOrderModalCancel');
-const placeOrderModalConfirm = document.getElementById('placeOrderModalConfirm');
-if (placeOrderModalCancel) placeOrderModalCancel.addEventListener('click', closePlaceOrderConfirmModal);
-if (placeOrderModalConfirm) placeOrderModalConfirm.addEventListener('click', submitVendorPlaceOrder);
 
 function updateSummary(cart) {
     const subTotalEl = document.querySelector('[data-sub-total]');
@@ -3318,8 +3180,8 @@ function updateSummary(cart) {
         if (paidEl) paidEl.textContent = '₹' + parseFloat(cart.paid_amount).toFixed(2);
     }
     applySecurityDepositDisplay(cart);
-    if (typeof refreshPaymentListFromCart === 'function') {
-        refreshPaymentListFromCart(cart);
+    if (typeof refreshPaymentListFromOrder === 'function') {
+        refreshPaymentListFromOrder(cart);
     }
 }
 
@@ -3340,50 +3202,5 @@ function showToast(message, type = 'success') {
     setTimeout(() => toast.remove(), 5000);
 }
 
-// --- Empty Cart ---
-function confirmEmptyCart() {
-    document.getElementById('emptyCartModal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-}
-
-function closeEmptyCartModal() {
-    document.getElementById('emptyCartModal').classList.add('hidden');
-    document.body.style.overflow = '';
-}
-
-function emptyCart() {
-    const btn = document.getElementById('emptyCartConfirmBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Emptying...';
-
-    fetch('{{ route("vendor.carts.empty", $cart->id) }}', {
-        method: 'DELETE',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-        }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            // Sync Alpine state via event
-            window.dispatchEvent(new CustomEvent('cart-emptied'));
-            closeEmptyCartModal();
-            showToast(data.message, 'success');
-            setTimeout(() => location.reload(), 500);
-        } else {
-            showToast(data.message || 'Error emptying cart', 'error');
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        showToast('Error emptying cart', 'error');
-    })
-    .finally(() => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-trash-alt mr-1"></i>Empty Cart';
-    });
-}
 </script>
 @endsection
