@@ -26,15 +26,11 @@
                 </p>
                 
                 <div class="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-                    <button class="gradient-green text-white px-8 py-4 rounded-full font-bold text-lg hover:shadow-2xl transition transform hover:-translate-y-1 flex items-center justify-center space-x-2">
-                        <span>Get Started</span>
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                    
-                    <button class="bg-white text-green-600 px-8 py-4 rounded-full font-bold text-lg border-2 border-green-600 hover:bg-green-50 transition flex items-center justify-center space-x-2">
-                        <i class="fas fa-play-circle"></i>
-                        <span>Watch Demo</span>
-                    </button>
+                    <a href="{{ route('vendor.login') }}"
+                       class="gradient-green text-white px-8 py-4 rounded-full font-bold text-lg hover:shadow-2xl transition transform hover:-translate-y-1 inline-flex items-center justify-center space-x-2">
+                        <i class="fas fa-store"></i>
+                        <span>Vendor login</span>
+                    </a>
                 </div>
                 
                 <!-- Stats -->
@@ -342,11 +338,9 @@
                 <p class="text-xl mb-8 opacity-90">Join {{ number_format($totalVendors) }}+ vendors and thousands of happy customers on our platform</p>
                 
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                    <a href="#" class="bg-white text-green-600 px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-100 transition transform hover:-translate-y-1 shadow-xl inline-flex items-center justify-center">
-                        Browse {{ number_format($totalItems) }}+ Items
-                    </a>
-                    <a href="{{ route('vendor.login') }}" class="bg-transparent text-white px-8 py-4 rounded-full font-bold text-lg border-2 border-white hover:bg-white hover:text-green-600 transition inline-flex items-center justify-center">
-                        Become a Vendor
+                    <a href="{{ route('vendor.login') }}" class="bg-white text-green-600 px-8 py-4 rounded-full font-bold text-lg hover:bg-gray-100 transition transform hover:-translate-y-1 shadow-xl inline-flex items-center justify-center gap-2">
+                        <i class="fas fa-store"></i>
+                        <span>Vendor login</span>
                     </a>
                 </div>
             </div>

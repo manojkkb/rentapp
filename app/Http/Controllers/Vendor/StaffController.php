@@ -4,336 +4,329 @@ namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Vendor;
+use App\Models\VendorRole;
 use App\Models\VendorUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class StaffController extends Controller
 {
-    /**
-     * Display a listing of staff users
-     */
     public function index(Request $request)
     {
         $vendor = Auth::user()->currentVendor();
-        
-        if (!$vendor) {
+
+        if (! $vendor) {
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
-        
-        // Get all users for this vendor with pivot data
-        $query = $vendor->users()
-            ->withPivot('id', 'role', 'is_owner', 'is_active', 'last_login_at', 'permissions');
-        
-        // Search functionality
-        if ($request->has('search') && $request->search != '') {
+
+        $query = VendorUser::query()
+            ->where('vendor_id', $vendor->id)
+            ->with(['user', 'vendorRole']);
+
+        if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('users.name', 'like', '%' . $search . '%')
-                  ->orWhere('users.mobile', 'like', '%' . $search . '%')
-                  ->orWhere('vendor_users.role', 'like', '%' . $search . '%');
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('user', function ($userQuery) use ($search) {
+                    $userQuery->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('mobile', 'like', '%'.$search.'%');
+                })
+                    ->orWhereHas('vendorRole', function ($roleQuery) use ($search) {
+                        $roleQuery->where('name', 'like', '%'.$search.'%');
+                    })
+                    ->orWhere('role', 'like', '%'.$search.'%');
             });
         }
-        
-        $staff = $query->orderBy('vendor_users.created_at', 'desc')->paginate(15);
-        
-        // Return only the partial for AJAX requests
+
+        $staff = $query->orderByDesc('created_at')->paginate(15);
+        $roles = $this->vendorRoles($vendor);
+
         if ($request->ajax() || $request->wantsJson()) {
             return view('vendor.staff.partials.staff-list', compact('staff'))->render();
         }
-        
-        return view('vendor.staff.index', compact('staff', 'vendor'));
+
+        return view('vendor.staff.index', compact('staff', 'vendor', 'roles'));
     }
-    
-    /**
-     * Show the form for creating a new staff user
-     */
+
     public function create()
     {
         $vendor = Auth::user()->currentVendor();
-        
-        if (!$vendor) {
+
+        if (! $vendor) {
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
-        
-        // Define available roles
-        $roles = [
-            'manager' => 'Manager',
-            'staff' => 'Staff',
-            'cashier' => 'Cashier',
-        ];
-        
+
+        $roles = $this->vendorRoles($vendor);
+
         return view('vendor.staff.create', compact('vendor', 'roles'));
     }
-    
-    /**
-     * Store a newly created staff user
-     */
+
     public function store(Request $request)
     {
         $vendor = Auth::user()->currentVendor();
-        
-        if (!$vendor) {
+
+        if (! $vendor) {
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Please select a vendor'], 403);
             }
+
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
-        
-        // Validate request
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'mobile' => 'required|digits:10',
-            'email' => 'nullable|email|max:255',
-            'role' => 'required|in:manager,staff,cashier',
-            'is_active' => 'boolean',
-        ]);
-        
-        DB::beginTransaction();
-        
+
         try {
-            // Check if user with this mobile already exists
-            $user = User::where('mobile', $request->mobile)->first();
-            
-            if ($user) {
-                // Check if user is already added to this vendor
-                $existingVendorUser = $vendor->users()->where('user_id', $user->id)->exists();
-                
-                if ($existingVendorUser) {
-                    DB::rollBack();
-                    if ($request->wantsJson()) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'This user is already added to your vendor. Please edit the existing staff member.'
-                        ], 422);
-                    }
-                    return back()->withInput()
-                        ->withErrors(['mobile' => 'This user is already added to your vendor. Please edit the existing staff member.']);
-                }
-                
-                // User exists but not in this vendor, add them
-                $vendor->users()->attach($user->id, [
-                    'is_owner' => false,
-                    'role' => $request->role,
-                    'is_active' => $request->has('is_active') ? true : false,
-                    'permissions' => json_encode([]),
-                ]);
-                
-                DB::commit();
-                
-                if ($request->wantsJson()) {
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Existing user added to your vendor successfully!'
-                    ]);
-                }
-                
-                return redirect()->route('vendor.staff.index')
-                    ->with('success', 'Existing user added to your vendor successfully!');
-            }
-            
-            // Create new user
-            $user = User::create([
-                'name' => $request->name,
-                'mobile' => $request->mobile,
-                'email' => $request->email ?? $request->mobile . '@staff.temp',
-                'password' => Hash::make('password123'), // Default password
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'mobile' => 'required|digits:10',
+                'email' => 'nullable|email|max:255',
+                'vendor_role_id' => [
+                    'required',
+                    Rule::exists('vendor_roles', 'id')->where('vendor_id', $vendor->id),
+                ],
+                'is_active' => 'boolean',
             ]);
-            
-            // Add user to vendor_users pivot
-            $vendor->users()->attach($user->id, [
-                'is_owner' => false,
-                'role' => $request->role,
-                'is_active' => $request->has('is_active') ? true : false,
-                'permissions' => json_encode([]),
-            ]);
-            
-            DB::commit();
-            
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Staff user added successfully! Default password: password123'
-                ]);
-            }
-            
-            return redirect()->route('vendor.staff.index')
-                ->with('success', 'Staff user added successfully! Default password: password123');
-                
-        } catch (\Exception $e) {
-            DB::rollBack();
+        } catch (\Illuminate\Validation\ValidationException $e) {
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to create staff user: ' . $e->getMessage()
+                    'message' => $e->validator->errors()->first(),
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+
+            throw $e;
+        }
+
+        $vendorRole = $this->resolveVendorRole($vendor, (int) $request->vendor_role_id);
+
+        DB::beginTransaction();
+
+        try {
+            $user = User::where('mobile', $request->mobile)->first();
+
+            if ($user) {
+                if ($vendor->users()->where('user_id', $user->id)->exists()) {
+                    DB::rollBack();
+
+                    $message = __('vendor.staff_already_exists');
+
+                    if ($request->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => $message], 422);
+                    }
+
+                    return back()->withInput()->withErrors(['mobile' => $message]);
+                }
+
+                $vendor->users()->attach($user->id, $this->pivotPayload($vendorRole, $request->boolean('is_active')));
+
+                DB::commit();
+
+                $message = __('vendor.staff_existing_user_added');
+
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => true, 'message' => $message]);
+                }
+
+                return redirect()->route('vendor.staff.index')->with('success', $message);
+            }
+
+            $user = User::create([
+                'name' => $request->name,
+                'mobile' => $request->mobile,
+                'email' => $request->email ?? $request->mobile.'@staff.temp',
+                'password' => Hash::make('password123'),
+            ]);
+
+            $vendor->users()->attach($user->id, $this->pivotPayload($vendorRole, $request->boolean('is_active')));
+
+            DB::commit();
+
+            $message = __('vendor.staff_added_with_password');
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => $message]);
+            }
+
+            return redirect()->route('vendor.staff.index')->with('success', $message);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('vendor.staff_create_failed', ['error' => $e->getMessage()]),
                 ], 500);
             }
+
             return back()->withInput()
-                ->withErrors(['error' => 'Failed to create staff user: ' . $e->getMessage()]);
+                ->withErrors(['error' => __('vendor.staff_create_failed', ['error' => $e->getMessage()])]);
         }
     }
-    
-    /**
-     * Show the form for editing a staff user
-     */
+
     public function edit($id)
     {
         $vendor = Auth::user()->currentVendor();
-        
-        if (!$vendor) {
+
+        if (! $vendor) {
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
-        
-        // Get the vendor_user pivot record
+
         $vendorUser = VendorUser::where('id', $id)
             ->where('vendor_id', $vendor->id)
+            ->with('vendorRole')
             ->firstOrFail();
-        
-        $staffUser = User::findOrFail($vendorUser->user_id);
-        
-        // Prevent editing owner
+
         if ($vendorUser->is_owner) {
-            return back()->withErrors(['error' => 'Cannot edit owner account']);
+            return back()->withErrors(['error' => __('vendor.staff_owner_locked')]);
         }
-        
-        // Define available roles
-        $roles = [
-            'manager' => 'Manager',
-            'staff' => 'Staff',
-            'cashier' => 'Cashier',
-        ];
-        
+
+        $staffUser = User::findOrFail($vendorUser->user_id);
+        $roles = $this->vendorRoles($vendor);
+
         return view('vendor.staff.edit', compact('vendor', 'staffUser', 'vendorUser', 'roles'));
     }
-    
-    /**
-     * Update the specified staff user
-     */
+
     public function update(Request $request, $id)
     {
         $vendor = Auth::user()->currentVendor();
-        
-        if (!$vendor) {
+
+        if (! $vendor) {
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
-        
-        // Get the vendor_user pivot record
+
         $vendorUser = VendorUser::where('id', $id)
             ->where('vendor_id', $vendor->id)
             ->firstOrFail();
-        
-        // Prevent editing owner
+
         if ($vendorUser->is_owner) {
-            return back()->withErrors(['error' => 'Cannot edit owner account']);
+            return back()->withErrors(['error' => __('vendor.staff_owner_locked')]);
         }
-        
+
         $staffUser = User::findOrFail($vendorUser->user_id);
-        
-        // Validate request
+
         $request->validate([
             'name' => 'required|string|max:255',
-            'mobile' => 'required|digits:10|unique:users,mobile,' . $staffUser->id,
-            'email' => 'nullable|email|max:255|unique:users,email,' . $staffUser->id,
-            'role' => 'required|in:manager,staff,cashier',
+            'mobile' => 'required|digits:10|unique:users,mobile,'.$staffUser->id,
+            'email' => 'nullable|email|max:255|unique:users,email,'.$staffUser->id,
+            'vendor_role_id' => [
+                'required',
+                Rule::exists('vendor_roles', 'id')->where('vendor_id', $vendor->id),
+            ],
             'is_active' => 'boolean',
         ]);
-        
+
+        $vendorRole = $this->resolveVendorRole($vendor, (int) $request->vendor_role_id);
+
         DB::beginTransaction();
-        
+
         try {
-            // Update user
             $staffUser->update([
                 'name' => $request->name,
                 'mobile' => $request->mobile,
                 'email' => $request->email ?? $staffUser->email,
             ]);
-            
-            // Update password if provided
+
             if ($request->filled('password')) {
                 $request->validate([
                     'password' => 'min:6|confirmed',
                 ]);
-                
+
                 $staffUser->update([
                     'password' => Hash::make($request->password),
                 ]);
             }
-            
-            // Update pivot record
+
             $vendorUser->update([
-                'role' => $request->role,
-                'is_active' => $request->has('is_active') ? true : false,
+                'vendor_role_id' => $vendorRole->id,
+                'role' => $vendorRole->slug,
+                'is_active' => $request->boolean('is_active'),
             ]);
-            
+
             DB::commit();
-            
+
             return redirect()->route('vendor.staff.index')
-                ->with('success', 'Staff user updated successfully!');
-                
+                ->with('success', __('vendor.staff_updated'));
         } catch (\Exception $e) {
             DB::rollBack();
+
             return back()->withInput()
-                ->withErrors(['error' => 'Failed to update staff user: ' . $e->getMessage()]);
+                ->withErrors(['error' => __('vendor.staff_update_failed', ['error' => $e->getMessage()])]);
         }
     }
-    
-    /**
-     * Remove the specified staff user
-     */
+
     public function destroy($id)
     {
         $vendor = Auth::user()->currentVendor();
-        
-        if (!$vendor) {
+
+        if (! $vendor) {
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
-        
-        // Get the vendor_user pivot record
+
         $vendorUser = VendorUser::where('id', $id)
             ->where('vendor_id', $vendor->id)
             ->firstOrFail();
-        
-        // Prevent deleting owner
+
         if ($vendorUser->is_owner) {
-            return back()->withErrors(['error' => 'Cannot remove owner account']);
+            return back()->withErrors(['error' => __('vendor.staff_owner_locked')]);
         }
-        
-        // Delete the pivot record (removes access to this vendor)
+
         $vendorUser->delete();
-        
+
         return redirect()->route('vendor.staff.index')
-            ->with('success', 'Staff user removed successfully!');
+            ->with('success', __('vendor.staff_deleted'));
     }
-    
-    /**
-     * Toggle staff active status
-     */
+
     public function toggleStatus($id)
     {
         $vendor = Auth::user()->currentVendor();
-        
-        if (!$vendor) {
+
+        if (! $vendor) {
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
-        
-        // Get the vendor_user pivot record
+
         $vendorUser = VendorUser::where('id', $id)
             ->where('vendor_id', $vendor->id)
             ->firstOrFail();
-        
-        // Prevent toggling owner
+
         if ($vendorUser->is_owner) {
-            return back()->withErrors(['error' => 'Cannot change owner status']);
+            return back()->withErrors(['error' => __('vendor.staff_owner_locked')]);
         }
-        
+
         $vendorUser->update([
-            'is_active' => !$vendorUser->is_active
+            'is_active' => ! $vendorUser->is_active,
         ]);
-        
-        $status = $vendorUser->is_active ? 'activated' : 'deactivated';
-        
-        return back()->with('success', "Staff user {$status} successfully!");
+
+        $status = $vendorUser->is_active ? __('vendor.activated') : __('vendor.deactivated');
+
+        return back()->with('success', __('vendor.staff_status_changed', ['status' => $status]));
+    }
+
+    private function vendorRoles(Vendor $vendor)
+    {
+        return VendorRole::query()
+            ->where('vendor_id', $vendor->id)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function resolveVendorRole(Vendor $vendor, int $vendorRoleId): VendorRole
+    {
+        return VendorRole::query()
+            ->where('vendor_id', $vendor->id)
+            ->findOrFail($vendorRoleId);
+    }
+
+    private function pivotPayload(VendorRole $role, bool $isActive): array
+    {
+        return [
+            'is_owner' => false,
+            'vendor_role_id' => $role->id,
+            'role' => $role->slug,
+            'is_active' => $isActive,
+            'permissions' => json_encode([]),
+        ];
     }
 }

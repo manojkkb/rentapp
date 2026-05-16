@@ -12,6 +12,7 @@ class VendorUser extends Model
         'user_id',
         'is_owner',
         'role',
+        'vendor_role_id',
         'is_active',
         'last_login_at',
         'permissions',
@@ -38,5 +39,27 @@ class VendorUser extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function vendorRole(): BelongsTo
+    {
+        return $this->belongsTo(VendorRole::class);
+    }
+
+    public function roleLabel(): string
+    {
+        if ($this->is_owner) {
+            return __('vendor.owner');
+        }
+
+        if ($this->vendorRole) {
+            return $this->vendorRole->name;
+        }
+
+        if ($this->role) {
+            return ucfirst($this->role);
+        }
+
+        return __('vendor.staff');
     }
 }

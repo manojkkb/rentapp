@@ -16,6 +16,7 @@ class Order extends Model
 
     protected $fillable = [
         'order_number',
+        'event_name',
         'customer_id',
         'vendor_id',
         'start_at',
@@ -41,8 +42,15 @@ class Order extends Model
         'grand_total',
         'extra_charges_total',
         'extra_charges_lines',
+        'late_fees_total',
+        'damage_fees_total',
+        'lost_fees_total',
+        'refunds_total',
+        'internal_notes',
         'paid_amount',
         'status',
+        'delivered_at',
+        'returned_at',
     ];
 
     protected $casts = [
@@ -63,10 +71,16 @@ class Order extends Model
         'grand_total' => 'decimal:2',
         'extra_charges_total' => 'decimal:2',
         'extra_charges_lines' => 'array',
+        'late_fees_total' => 'decimal:2',
+        'damage_fees_total' => 'decimal:2',
+        'lost_fees_total' => 'decimal:2',
+        'refunds_total' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
+        'delivered_at' => 'datetime',
+        'returned_at' => 'datetime',
     ];
 
     /**
@@ -97,7 +111,7 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
-    
+
     /**
      * Get the review for this order
      */
@@ -105,7 +119,7 @@ class Order extends Model
     {
         return $this->hasOne(CustomerReview::class);
     }
-    
+
     /**
      * Check if this order has been reviewed
      */

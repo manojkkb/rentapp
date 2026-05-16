@@ -12,6 +12,14 @@ class Items extends Model
 {
     use SoftDeletes;
 
+    /** @var list<string> */
+    public const CONDITION_STATUSES = [
+        'excellent',
+        'good',
+        'average',
+        'damaged',
+    ];
+
     protected $appends = ['photo_url'];
 
     protected $hidden = [
@@ -27,6 +35,22 @@ class Items extends Model
         'description',
         'price',
         'price_type',
+        'security_deposit',
+        'replacement_cost',
+        'late_fee_per_day',
+        'is_damage_protection',
+        'minimum_rental_duration',
+        'maximum_rental_duration',
+        'weight',
+        'dimension_length',
+        'dimension_width',
+        'dimension_height',
+        'condition_status',
+        'total_stock',
+        'available_stock',
+        'rented_stock',
+        'damaged_stock',
+        'maintenance_stock',
         'stock',
         'manage_stock',
         'is_available',
@@ -39,8 +63,36 @@ class Items extends Model
         'is_active' => 'boolean',
         'is_available' => 'boolean',
         'manage_stock' => 'boolean',
+        'is_damage_protection' => 'boolean',
         'price' => 'decimal:2',
+        'security_deposit' => 'decimal:2',
+        'replacement_cost' => 'decimal:2',
+        'late_fee_per_day' => 'decimal:2',
+        'weight' => 'decimal:3',
+        'dimension_length' => 'decimal:2',
+        'dimension_width' => 'decimal:2',
+        'dimension_height' => 'decimal:2',
+        'minimum_rental_duration' => 'integer',
+        'maximum_rental_duration' => 'integer',
+        'total_stock' => 'integer',
+        'available_stock' => 'integer',
+        'rented_stock' => 'integer',
+        'damaged_stock' => 'integer',
+        'maintenance_stock' => 'integer',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    public static function conditionStatusOptions(): array
+    {
+        $out = [];
+        foreach (self::CONDITION_STATUSES as $key) {
+            $out[$key] = __("vendor.item_condition_{$key}");
+        }
+
+        return $out;
+    }
 
     /**
      * Get the vendor that owns the item
@@ -64,14 +116,6 @@ class Items extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class, 'item_id');
-    }
-
-    /**
-     * Get all cart items for this item
-     */
-    public function cartItems(): HasMany
-    {
-        return $this->hasMany(VendorCartItem::class, 'item_id');
     }
 
     /**
@@ -99,7 +143,7 @@ class Items extends Model
     }
 
     /**
-     * Allowed values for items.price_type and vendor_cart_items.price_type.
+     * Allowed values for items.price_type and order_items.price_type.
      *
      * @return list<string>
      */
@@ -109,7 +153,7 @@ class Items extends Model
     }
 
     /**
-     * Localized labels for cart / item forms (vendor lang file).
+     * Localized labels for item / order line forms (vendor lang file).
      *
      * @return array<string, string>
      */
@@ -130,9 +174,6 @@ class Items extends Model
         return $priceType !== 'fixed';
     }
 
-    /**
-     * Short label for the "how many units" field (days, hours, …).
-     */
     /**
      * Public URL for the item photo on S3, or null.
      */

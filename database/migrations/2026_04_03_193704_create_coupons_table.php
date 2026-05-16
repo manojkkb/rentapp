@@ -29,6 +29,10 @@ return new class extends Migration
 
             $table->unique(['vendor_id', 'code']);
         });
+
+        Schema::table('orders', function (Blueprint $table) {
+            $table->foreign('coupon_id')->references('id')->on('coupons')->nullOnDelete();
+        });
     }
 
     /**
@@ -36,6 +40,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::table('orders', function (Blueprint $table) {
+            $table->dropForeign(['coupon_id']);
+        });
+
         Schema::dropIfExists('coupons');
     }
 };

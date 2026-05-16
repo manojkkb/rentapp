@@ -184,18 +184,33 @@
                 <input type="hidden" name="vendor_id" id="selectedVendorId" required>
                 
                 <!-- Vendor Cards -->
-                <div class="space-y-4 mb-6">
-                    @foreach($vendors as $vendor)
-                        <div class="vendor-card border-2 border-gray-200 rounded-lg p-4 hover:border-green-500"
+                <div class="space-y-4 mb-2">
+                    @foreach($memberships as $membership)
+                        @php $vendor = $membership->vendor; @endphp
+                        <div class="vendor-card group border-2 border-gray-200 rounded-lg p-4 hover:border-green-500"
                              onclick="selectVendor({{ $vendor->id }})"
+                             role="button"
+                             tabindex="0"
+                             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectVendor({{ $vendor->id }});}"
                              id="vendor-card-{{ $vendor->id }}">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-4">
-                                    <div class="bg-green-100 rounded-full p-3">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex min-w-0 flex-1 items-center space-x-4">
+                                    <div class="bg-green-100 rounded-full p-3 shrink-0">
                                         <i class="fas fa-store text-green-600 text-xl"></i>
                                     </div>
-                                    <div>
-                                        <h3 class="font-semibold text-gray-800 text-lg">{{ $vendor->name }}</h3>
+                                    <div class="min-w-0">
+                                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                                            <h3 class="font-semibold text-gray-800 text-lg">{{ $vendor->name }}</h3>
+                                            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+                                                {{ $membership->is_owner ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-800' }}">
+                                                @if($membership->is_owner)
+                                                    <i class="fas fa-crown mr-1 text-[10px]"></i>
+                                                @else
+                                                    <i class="fas fa-user-tag mr-1 text-[10px]"></i>
+                                                @endif
+                                                {{ $membership->roleLabel() }}
+                                            </span>
+                                        </div>
                                         <div class="text-sm text-gray-600 space-y-1">
                                             @if($vendor->city || $vendor->state)
                                                 <p><i class="fas fa-map-marker-alt mr-1 text-gray-400"></i>
@@ -208,31 +223,13 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="vendor-status">
-                                    @if($vendor->is_verified)
-                                        <span class="text-green-600 text-sm">
-                                            <i class="fas fa-check-circle"></i> Verified
-                                        </span>
-                                    @else
-                                        <span class="text-yellow-600 text-sm">
-                                            <i class="fas fa-clock"></i> Pending
-                                        </span>
-                                    @endif
+                                <div class="shrink-0 text-gray-400 transition-colors group-hover:text-green-600" aria-hidden="true">
+                                    <i class="fas fa-arrow-right text-xl"></i>
                                 </div>
                             </div>
                         </div>
                     @endforeach
                 </div>
-                
-                <!-- Submit Button -->
-                <button 
-                    type="submit"
-                    class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3.5 rounded-lg transition-colors shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                    id="submitBtn"
-                    disabled
-                >
-                    <i class="fas fa-arrow-right mr-2"></i>Continue with Selected Vendor
-                </button>
             </form>
             
             <!-- Create New Vendor Button -->
@@ -258,24 +255,38 @@
     </div>
     
     <script>
-        let selectedVendorId = null;
-        
+        let selectLocked = false;
+
         function selectVendor(vendorId) {
-            // Remove selection from all cards
+            if (selectLocked) {
+                return;
+            }
+
             document.querySelectorAll('.vendor-card').forEach(card => {
                 card.classList.remove('selected');
             });
-            
-            // Add selection to clicked card
+
             const card = document.getElementById('vendor-card-' + vendorId);
+            if (!card) {
+                return;
+            }
             card.classList.add('selected');
-            
-            // Update hidden input
+
             document.getElementById('selectedVendorId').value = vendorId;
-            selectedVendorId = vendorId;
-            
-            // Enable submit button
-            document.getElementById('submitBtn').disabled = false;
+
+            selectLocked = true;
+            document.querySelectorAll('.vendor-card').forEach(c => {
+                c.classList.add('opacity-60', 'pointer-events-none');
+            });
+            card.classList.remove('opacity-60', 'pointer-events-none');
+            card.classList.add('opacity-100');
+
+            const form = document.getElementById('selectVendorForm');
+            if (form.requestSubmit) {
+                form.requestSubmit();
+            } else {
+                form.submit();
+            }
         }
     </script>
 </body>

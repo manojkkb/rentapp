@@ -75,7 +75,7 @@ class Vendor extends Model
     public function users()
     {
         return $this->belongsToMany(User::class, 'vendor_users')
-            ->withPivot('is_owner', 'role', 'is_active', 'last_login_at', 'permissions')
+            ->withPivot('is_owner', 'role', 'vendor_role_id', 'is_active', 'last_login_at', 'permissions')
             ->withTimestamps();
     }
 
@@ -87,12 +87,25 @@ class Vendor extends Model
         return $this->users()->wherePivot('is_active', true);
     }
 
+    public function roles(): HasMany
+    {
+        return $this->hasMany(VendorRole::class);
+    }
+
     /**
      * Get all items for the vendor.
      */
     public function items(): HasMany
     {
         return $this->hasMany(Items::class);
+    }
+
+    /**
+     * Get all orders for the vendor.
+     */
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
     }
 
     /**

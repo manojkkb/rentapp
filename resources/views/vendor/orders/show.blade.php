@@ -51,6 +51,52 @@ function orderPageData() {
         fulfillmentFieldError: '',
         saveFulfillmentUrl: p.saveFulfillmentUrl,
         readOnly: p.readOnly,
+        showFulfillmentModal: false,
+        _fulfillmentSnapshot: null,
+        pickupLabel: @json(__('vendor.pickup')),
+        deliveryLabel: @json(__('vendor.delivery')),
+        notSpecifiedLabel: @json(__('vendor.not_specified')),
+        openFulfillmentModal() {
+            if (this.readOnly) return;
+            this._fulfillmentSnapshot = {
+                fulfillmentType: this.fulfillmentType,
+                deliveryAddress: this.deliveryAddress,
+                pickupAt: this.pickupAt,
+                deliveryCharge: this.deliveryCharge,
+            };
+            this.fulfillmentFieldError = '';
+            this.showFulfillmentModal = true;
+        },
+        cancelFulfillmentModal() {
+            if (this.savingFulfillment) return;
+            if (this._fulfillmentSnapshot) {
+                const s = this._fulfillmentSnapshot;
+                this.fulfillmentType = s.fulfillmentType;
+                this.deliveryAddress = s.deliveryAddress;
+                this.pickupAt = s.pickupAt;
+                this.deliveryCharge = s.deliveryCharge;
+            }
+            this.fulfillmentFieldError = '';
+            this.showFulfillmentModal = false;
+            this._fulfillmentSnapshot = null;
+        },
+        fulfillmentSummaryPrimary() {
+            return this.fulfillmentType === 'pickup' ? this.pickupLabel : this.deliveryLabel;
+        },
+        fulfillmentSummarySecondary() {
+            if (this.fulfillmentType === 'pickup') {
+                if (!this.pickupAt) return this.notSpecifiedLabel;
+                const d = new Date(this.pickupAt);
+                if (isNaN(d.getTime())) return this.pickupAt;
+                return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+            }
+            const addr = (this.deliveryAddress || '').trim();
+            const ch = parseFloat(this.deliveryCharge) || 0;
+            const bits = [];
+            if (ch > 0) bits.push('₹' + ch.toFixed(2));
+            if (addr) bits.push(addr.length > 72 ? addr.slice(0, 69) + '…' : addr);
+            return bits.length ? bits.join(' · ') : this.notSpecifiedLabel;
+        },
         async saveFulfillment() {
             if (this.readOnly) {
                 return;
@@ -94,6 +140,8 @@ function orderPageData() {
                         updateSummary(data.order);
                     }
                     showToast(data.message || 'Saved', 'success');
+                    this.showFulfillmentModal = false;
+                    this._fulfillmentSnapshot = null;
                 } else if (res.status === 422 && data.errors) {
                     const msgs = Object.values(data.errors).flat();
                     this.fulfillmentFieldError = msgs[0] || data.message || '';
@@ -222,68 +270,27 @@ function orderPageData() {
 @order-emptied.window="syncAllRemoved()"
 >
     
-    <div class="mb-3 flex w-full min-w-0 flex-col gap-3 sm:mb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between md:mb-6">
-        <div class="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto sm:min-w-0">
+    <div class="mb-3 flex w-full min-w-0 flex-col gap-3 sm:mb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4 md:mb-6">
+        <div class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <a href="{{ route('vendor.orders.index') }}"
                class="inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/80 hover:text-blue-800 active:scale-[0.98] sm:w-auto sm:justify-start">
                 <i class="fas fa-arrow-left text-blue-600"></i>
                 {{ __('vendor.back') }}
             </a>
-            @if($orderReadOnly)
-                <a href="{{ route('vendor.orders.print', $order) }}"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50 sm:w-auto sm:flex-initial">
-                    <i class="fas fa-file-invoice text-gray-600"></i>{{ __('vendor.print_quote') }}
-                </a>
-            @endif
-        </div>
-        @php
-            $orderStatusBadgeClasses = [
-                'pending' => 'border-amber-200 bg-amber-50 text-amber-900 ring-amber-100',
-                'confirmed' => 'border-blue-200 bg-blue-50 text-blue-900 ring-blue-100',
-                'ongoing' => 'border-purple-200 bg-purple-50 text-purple-900 ring-purple-100',
-                'completed' => 'border-emerald-200 bg-emerald-50 text-emerald-900 ring-emerald-100',
-                'cancelled' => 'border-red-200 bg-red-50 text-red-900 ring-red-100',
-            ];
-            $st = $order->status;
-            $orderStatusBadgeClass = $orderStatusBadgeClasses[$st] ?? 'border-gray-200 bg-gray-50 text-gray-900 ring-gray-100';
-            $orderNextStatuses = $order->allowedNextStatuses();
-        @endphp
-        <div class="flex w-full min-w-0 flex-wrap items-stretch gap-2 sm:w-auto sm:items-center sm:justify-end sm:gap-3">
-            <span class="inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-bold text-emerald-800 sm:flex-initial sm:justify-start sm:px-4">
-                <span class="truncate">{{ $order->order_number }}</span>
-            </span>
-            <div class="flex w-full min-w-0 flex-1 flex-col gap-2 sm:w-auto sm:max-w-md sm:flex-initial sm:flex-row sm:items-center sm:justify-end">
-                <span class="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold ring-1 sm:justify-start sm:px-4 {{ $orderStatusBadgeClass }}">
-                    {{ __('vendor.'.$st) }}
-                </span>
-                @if(count($orderNextStatuses) > 0)
-                    <form method="POST"
-                          action="{{ route('vendor.orders.update-status', $order) }}"
-                          class="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-2">
-                        @csrf
-                        @method('PUT')
-                        <label for="order-status-next" class="sr-only">{{ __('vendor.order_status') }}</label>
-                        <select id="order-status-next"
-                                name="status"
-                                required
-                                class="min-h-[44px] w-full min-w-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm ring-1 ring-gray-100 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 sm:w-auto sm:min-w-[11rem]">
-                            <option value="" disabled selected>{{ __('vendor.order_status_next_placeholder') }}</option>
-                            @foreach($orderNextStatuses as $next)
-                                <option value="{{ $next }}">{{ __('vendor.'.$next) }}</option>
-                            @endforeach
-                        </select>
-                        <button type="submit"
-                                class="inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.99] sm:w-auto">
-                            {{ __('vendor.update_status') }}
-                        </button>
-                    </form>
-                @endif
-                @error('status')
-                    <p class="text-xs font-medium text-red-600">{{ $message }}</p>
-                @enderror
+            <div class="min-w-0 flex-1">
+                <p class="truncate text-base font-bold leading-tight text-gray-900 sm:text-lg">
+                    {{ $order->event_name ?: '—' }}
+                </p>
+                <p class="mt-1 font-mono text-sm font-semibold text-gray-600">
+                    {{ $order->order_number }}
+                </p>
             </div>
+        </div>
+        <div class="flex shrink-0 items-center justify-stretch sm:justify-end">
+            <a href="{{ route('vendor.orders.invoice.download', $order) }}"
+               class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800 shadow-sm transition hover:bg-blue-100 sm:w-auto">
+                <i class="fas fa-download text-blue-700"></i>{{ __('vendor.download_invoice') }}
+            </a>
         </div>
     </div>
 
@@ -324,54 +331,49 @@ function orderPageData() {
 
     <div class="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3 lg:gap-8 lg:pb-0">
 
-        <div class="order-2 space-y-4 sm:space-y-5 lg:order-1 lg:col-span-2 lg:space-y-6">
+        <div class="order-2 space-y-3 sm:space-y-4 lg:order-1 lg:col-span-2 lg:space-y-5">
             @if($orderReadOnly)
-                <div inert class="select-none opacity-[0.94] space-y-4 sm:space-y-5 lg:space-y-6">
+                <div inert class="select-none opacity-[0.94] space-y-3 sm:space-y-4 lg:space-y-5">
             @endif
 
-            <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
-                <div class="border-b border-gray-100 bg-gradient-to-r from-blue-50 via-white to-indigo-50/80 px-4 py-4 sm:px-6 sm:py-5">
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="flex min-w-0 items-center gap-3">
-                            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-md ring-2 ring-white/50">
-                                <i class="fas fa-shopping-cart text-lg text-white"></i>
+            <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
+                <div class="p-3 sm:p-4">
+                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+                        <div class="flex min-w-0 gap-2 rounded-lg border border-gray-100 bg-gray-50/90 p-2.5 sm:p-3">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200/50">
+                                <i class="fas fa-user text-xs" aria-hidden="true"></i>
                             </div>
-                            <div class="min-w-0">
-                                <h2 class="truncate text-lg font-bold tracking-tight text-gray-900 sm:text-xl" data-order-title>{{ $order->order_number }}</h2>
-                                <p class="mt-0.5 text-sm text-gray-600">{{ __('vendor.created') }} {{ $order->created_at->format('M d, Y') }}</p>
-                            </div>
-                        </div>
-                        <button type="button" onclick="openEditCartModal()"
-                                class="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-blue-200 bg-white px-3 py-2.5 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:px-4">
-                            <i class="fas fa-edit"></i>
-                            <span class="hidden sm:inline">{{ __('vendor.edit') }}</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="space-y-4 p-4 sm:p-6">
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                        <div class="flex gap-3 rounded-xl border border-gray-100 bg-gray-50/80 p-4">
-                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 ring-1 ring-emerald-200/60">
-                                <i class="fas fa-user text-emerald-700"></i>
-                            </div>
-                            <div class="min-w-0">
-                                <p class="text-xs font-bold uppercase tracking-wide text-gray-500">{{ __('vendor.customer') }}</p>
-                                <p class="mt-1 text-sm font-semibold text-gray-900">{{ $order->customer->name }}</p>
-                                <p class="mt-0.5 text-sm text-gray-600">{{ $order->customer->mobile }}</p>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.customer') }}</p>
+                                <p class="truncate text-sm font-semibold leading-tight text-gray-900">{{ $order->customer->name }}</p>
+                                <p class="truncate text-xs text-gray-600">{{ $order->customer->mobile }}</p>
                             </div>
                         </div>
-                        <div class="flex gap-3 rounded-xl border border-gray-100 bg-gray-50/80 p-4">
-                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 ring-1 ring-violet-200/60">
-                                <i class="fas fa-calendar text-violet-700"></i>
+                        <div class="flex min-w-0 gap-2 rounded-lg border border-gray-100 bg-gray-50/90 p-2.5 sm:p-3">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-violet-100 text-violet-700 ring-1 ring-violet-200/50">
+                                <i class="fas fa-calendar text-xs" aria-hidden="true"></i>
                             </div>
-                            <div class="min-w-0" data-booking-dates>
-                                <p class="text-xs font-bold uppercase tracking-wide text-gray-500">{{ __('vendor.booking_period') }}</p>
-                                @if($order->start_at && $order->end_at)
-                                    <p class="mt-1 text-sm font-semibold leading-snug text-gray-900">{{ $order->start_at->format('M d, Y h:i A') }}</p>
-                                    <p class="mt-0.5 text-xs text-gray-600">{{ __('vendor.to') }} {{ $order->end_at->format('M d, Y h:i A') }}</p>
-                                @else
-                                    <p class="mt-1 text-sm italic text-gray-500">{{ __('vendor.not_specified') }}</p>
+                            <div class="flex min-w-0 flex-1 items-start justify-between gap-2">
+                                <div class="min-w-0 flex-1" data-booking-dates>
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.booking_period') }}</p>
+                                    @if($order->start_at && $order->end_at)
+                                        <p class="mt-0.5 text-xs font-semibold leading-snug text-gray-900 sm:text-sm">
+                                            {{ $order->start_at->format('M j, g:i A') }}
+                                            <span class="mx-0.5 font-normal text-gray-400">→</span>
+                                            {{ $order->end_at->format('M j, Y g:i A') }}
+                                        </p>
+                                    @else
+                                        <p class="mt-0.5 text-xs italic text-gray-500 sm:text-sm">{{ __('vendor.not_specified') }}</p>
+                                    @endif
+                                </div>
+                                @if(!$orderReadOnly)
+                                    <button type="button"
+                                            onclick="openEditCartModal()"
+                                            class="inline-flex shrink-0 items-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-blue-700 shadow-sm transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 sm:gap-1.5 sm:px-2.5 sm:text-xs"
+                                            aria-label="{{ __('vendor.edit') }} {{ __('vendor.booking_period') }}">
+                                        <i class="fas fa-edit text-xs" aria-hidden="true"></i>
+                                        <span class="hidden sm:inline">{{ __('vendor.edit') }}</span>
+                                    </button>
                                 @endif
                             </div>
                         </div>
@@ -379,119 +381,146 @@ function orderPageData() {
                 </div>
             </section>
 
-            <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
-                <div class="border-b border-gray-100 bg-gradient-to-r from-amber-50 via-white to-orange-50/90 px-4 py-4 sm:px-6 sm:py-5">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-md ring-2 ring-white/40">
-                            <i class="fas fa-truck text-lg text-white"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <h3 class="text-lg font-bold tracking-tight text-gray-900">{{ __('vendor.fulfillment_method') }}</h3>
-                            <p class="mt-0.5 text-sm leading-relaxed text-gray-600">{{ __('vendor.fulfillment_method_help') }}</p>
-                        </div>
+            <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
+                <div class="flex items-start gap-3 p-3 sm:items-center sm:gap-4 sm:p-4">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-700 ring-1 ring-orange-200/60">
+                        <i class="fas fa-truck text-sm" aria-hidden="true"></i>
                     </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.fulfillment_method') }}</p>
+                        <p class="truncate text-sm font-bold text-gray-900" x-text="fulfillmentSummaryPrimary()"></p>
+                        <p class="mt-0.5 line-clamp-2 text-xs leading-snug text-gray-600" x-text="fulfillmentSummarySecondary()"></p>
+                    </div>
+                    <button type="button"
+                            x-show="!readOnly"
+                            x-cloak
+                            @click="openFulfillmentModal()"
+                            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs font-semibold text-orange-800 shadow-sm transition hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-500/30 sm:text-sm">
+                        <i class="fas fa-pen" aria-hidden="true"></i>
+                        {{ __('vendor.edit') }}
+                    </button>
                 </div>
-                <div class="space-y-5 p-4 sm:p-6">
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                        <label class="relative flex min-h-[52px] cursor-pointer rounded-2xl border-2 p-4 transition-all"
-                               :class="fulfillmentType === 'pickup' ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/30' : 'border-gray-200 hover:border-gray-300 bg-white'">
-                            <input type="radio" name="fulfillment_type" value="pickup" x-model="fulfillmentType" @change="fulfillmentFieldError = ''" class="sr-only">
-                            <div class="flex items-start gap-3 w-full">
-                                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2"
-                                      :class="fulfillmentType === 'pickup' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300 bg-white'">
-                                    <span class="h-2 w-2 rounded-full bg-white" x-show="fulfillmentType === 'pickup'"></span>
-                                </span>
-                                <div>
-                                    <span class="block text-sm font-bold text-gray-900">{{ __('vendor.pickup') }}</span>
-                                    <span class="block text-xs text-gray-600 mt-0.5">{{ __('vendor.pickup_short_help') }}</span>
+            </section>
+
+            {{-- Fulfillment edit modal --}}
+            <div x-show="showFulfillmentModal"
+                 x-cloak
+                 class="fixed inset-0 z-[60] flex items-end justify-center sm:items-center"
+                 role="dialog"
+                 aria-modal="true"
+                 @keydown.escape.window="showFulfillmentModal && !savingFulfillment && cancelFulfillmentModal()">
+                <div class="absolute inset-0 bg-black/40" @click="!savingFulfillment && cancelFulfillmentModal()" aria-hidden="true"></div>
+                <div class="relative z-10 flex max-h-[min(90dvh,32rem)] w-full max-w-lg flex-col rounded-t-2xl border border-gray-200 bg-white shadow-2xl sm:max-h-[85vh] sm:rounded-2xl"
+                     @click.stop>
+                    <div class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 sm:px-5">
+                        <h3 class="text-base font-bold text-gray-900">{{ __('vendor.fulfillment_method') }}</h3>
+                        <button type="button"
+                                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-800"
+                                @click="!savingFulfillment && cancelFulfillmentModal()"
+                                aria-label="{{ __('vendor.modal_close_aria') }}">
+                            <i class="fas fa-times" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
+                        <p class="mb-4 text-xs text-gray-600 sm:text-sm">{{ __('vendor.fulfillment_method_help') }}</p>
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+                            <label class="relative flex min-h-[48px] cursor-pointer rounded-xl border-2 p-3 transition-all"
+                                   :class="fulfillmentType === 'pickup' ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/30' : 'border-gray-200 hover:border-gray-300 bg-white'">
+                                <input type="radio" name="fulfillment_type_modal" value="pickup" x-model="fulfillmentType" @change="fulfillmentFieldError = ''" class="sr-only">
+                                <div class="flex w-full items-start gap-2">
+                                    <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2"
+                                          :class="fulfillmentType === 'pickup' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300 bg-white'">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-white" x-show="fulfillmentType === 'pickup'"></span>
+                                    </span>
+                                    <div>
+                                        <span class="block text-sm font-bold text-gray-900">{{ __('vendor.pickup') }}</span>
+                                        <span class="block text-xs text-gray-600">{{ __('vendor.pickup_short_help') }}</span>
+                                    </div>
                                 </div>
-                            </div>
-                        </label>
-                        <label class="relative flex min-h-[52px] cursor-pointer rounded-2xl border-2 p-4 transition-all"
-                               :class="fulfillmentType === 'delivery' ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/30' : 'border-gray-200 hover:border-gray-300 bg-white'">
-                            <input type="radio" name="fulfillment_type" value="delivery" x-model="fulfillmentType" @change="fulfillmentFieldError = ''" class="sr-only">
-                            <div class="flex items-start gap-3 w-full">
-                                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2"
-                                      :class="fulfillmentType === 'delivery' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300 bg-white'">
-                                    <span class="h-2 w-2 rounded-full bg-white" x-show="fulfillmentType === 'delivery'"></span>
-                                </span>
-                                <div>
-                                    <span class="block text-sm font-bold text-gray-900">{{ __('vendor.delivery') }}</span>
-                                    <span class="block text-xs text-gray-600 mt-0.5">{{ __('vendor.delivery_short_help') }}</span>
+                            </label>
+                            <label class="relative flex min-h-[48px] cursor-pointer rounded-xl border-2 p-3 transition-all"
+                                   :class="fulfillmentType === 'delivery' ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/30' : 'border-gray-200 hover:border-gray-300 bg-white'">
+                                <input type="radio" name="fulfillment_type_modal" value="delivery" x-model="fulfillmentType" @change="fulfillmentFieldError = ''" class="sr-only">
+                                <div class="flex w-full items-start gap-2">
+                                    <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2"
+                                          :class="fulfillmentType === 'delivery' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300 bg-white'">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-white" x-show="fulfillmentType === 'delivery'"></span>
+                                    </span>
+                                    <div>
+                                        <span class="block text-sm font-bold text-gray-900">{{ __('vendor.delivery') }}</span>
+                                        <span class="block text-xs text-gray-600">{{ __('vendor.delivery_short_help') }}</span>
+                                    </div>
                                 </div>
+                            </label>
+                        </div>
+
+                        <div x-show="fulfillmentType === 'pickup'" class="mt-4 space-y-3" x-cloak>
+                            <div class="space-y-1.5">
+                                <label for="pickup_at_input" class="block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.pickup_datetime') }}</label>
+                                <input type="datetime-local"
+                                       id="pickup_at_input"
+                                       x-model="pickupAt"
+                                       class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25" />
+                                <p class="text-xs text-gray-500">{{ __('vendor.pickup_datetime_help') }}</p>
                             </div>
-                        </label>
-                    </div>
-
-                    <div x-show="fulfillmentType === 'pickup'" class="space-y-4" x-cloak>
-                        <div class="space-y-2">
-                            <label for="pickup_at_input" class="block text-sm font-semibold text-gray-800">
-                                {{ __('vendor.pickup_datetime') }}
-                            </label>
-                            <input type="datetime-local"
-                                   id="pickup_at_input"
-                                   x-model="pickupAt"
-                                   class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-base text-gray-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 sm:text-sm"
-                            />
-                            <p class="text-xs text-gray-500">{{ __('vendor.pickup_datetime_help') }}</p>
-                        </div>
-                        <div class="space-y-2">
-                            <label for="delivery_address_pickup_input" class="block text-sm font-semibold text-gray-800">
-                                {{ __('vendor.delivery_address') }}
-                            </label>
-                            <textarea id="delivery_address_pickup_input"
-                                      x-model="deliveryAddress"
-                                      rows="4"
-                                      class="w-full resize-y rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-base text-gray-900 shadow-inner placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 sm:text-sm"
-                                      :class="fulfillmentFieldError ? 'border-red-400' : ''"
-                                      placeholder="{{ __('vendor.delivery_address_help') }}"></textarea>
-                            <p class="text-xs text-gray-500">{{ __('vendor.delivery_address_optional_pickup') }}</p>
-                        </div>
-                    </div>
-
-                    <div x-show="fulfillmentType === 'delivery'" class="space-y-2" x-cloak>
-                        <div>
-                            <label for="delivery_charge_input" class="block text-sm font-semibold text-gray-800">
-                                {{ __('vendor.delivery_charge') }}
-                            </label>
-                            <div class="relative mt-1">
-                                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-500">₹</span>
-                                <input type="number"
-                                       id="delivery_charge_input"
-                                       x-model.number="deliveryCharge"
-                                       min="0"
-                                       step="0.01"
-                                       class="w-full rounded-xl border border-gray-200 bg-white py-3 pl-9 pr-4 text-base text-gray-900 shadow-inner focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 sm:text-sm"
-                                       placeholder="0.00"
-                                />
+                            <div class="space-y-1.5">
+                                <label for="delivery_address_pickup_input" class="block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.delivery_address') }}</label>
+                                <textarea id="delivery_address_pickup_input"
+                                          x-model="deliveryAddress"
+                                          rows="3"
+                                          class="w-full resize-y rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-inner placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25"
+                                          :class="fulfillmentFieldError ? 'border-red-400' : ''"
+                                          placeholder="{{ __('vendor.delivery_address_help') }}"></textarea>
+                                <p class="text-xs text-gray-500">{{ __('vendor.delivery_address_optional_pickup') }}</p>
                             </div>
-                            <p class="mt-1 text-xs text-gray-500">{{ __('vendor.delivery_charge_help') }}</p>
                         </div>
-                        <label for="delivery_address_input" class="block text-sm font-semibold text-gray-800">
-                            {{ __('vendor.delivery_address') }}
-                        </label>
-                        <textarea id="delivery_address_input"
-                                  x-model="deliveryAddress"
-                                  rows="4"
-                                  class="w-full resize-y rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-base text-gray-900 shadow-inner placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 sm:text-sm"
-                                  :class="fulfillmentFieldError ? 'border-red-400' : ''"
-                                  placeholder="{{ __('vendor.delivery_address_help') }}"></textarea>
-                        <p class="text-xs text-gray-500">{{ __('vendor.delivery_address_help') }}</p>
-                        <p x-show="fulfillmentFieldError" class="text-sm text-red-600" x-text="fulfillmentFieldError"></p>
-                    </div>
 
-                    <div class="flex flex-wrap items-center gap-3 pt-1">
+                        <div x-show="fulfillmentType === 'delivery'" class="mt-4 space-y-3" x-cloak>
+                            <div class="space-y-1.5">
+                                <label for="delivery_charge_input" class="block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.delivery_charge') }}</label>
+                                <div class="relative">
+                                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">₹</span>
+                                    <input type="number"
+                                           id="delivery_charge_input"
+                                           x-model.number="deliveryCharge"
+                                           min="0"
+                                           step="0.01"
+                                           class="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-8 pr-3 text-sm text-gray-900 shadow-inner focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/25"
+                                           placeholder="0.00" />
+                                </div>
+                                <p class="text-xs text-gray-500">{{ __('vendor.delivery_charge_help') }}</p>
+                            </div>
+                            <div class="space-y-1.5">
+                                <label for="delivery_address_input" class="block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.delivery_address') }}</label>
+                                <textarea id="delivery_address_input"
+                                          x-model="deliveryAddress"
+                                          rows="3"
+                                          class="w-full resize-y rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-inner placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/25"
+                                          :class="fulfillmentFieldError ? 'border-red-400' : ''"
+                                          placeholder="{{ __('vendor.delivery_address_help') }}"></textarea>
+                                <p class="text-xs text-gray-500">{{ __('vendor.delivery_address_help') }}</p>
+                            </div>
+                        </div>
+                        <p x-show="fulfillmentFieldError" class="mt-3 text-sm text-red-600" x-text="fulfillmentFieldError"></p>
+                    </div>
+                    <div class="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50/80 px-4 py-3 sm:flex-row sm:justify-end sm:px-5">
+                        <button type="button"
+                                @click="cancelFulfillmentModal()"
+                                :disabled="savingFulfillment"
+                                class="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                            {{ __('vendor.cancel') }}
+                        </button>
                         <button type="button"
                                 @click="saveFulfillment()"
                                 :disabled="savingFulfillment"
-                                class="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99]">
+                                class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
                             <i class="fas fa-spinner fa-spin" x-show="savingFulfillment"></i>
                             <i class="fas fa-save" x-show="!savingFulfillment"></i>
                             {{ __('vendor.save') }}
                         </button>
                     </div>
                 </div>
-            </section>
+            </div>
 
             <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
                 <div class="border-b border-gray-100 bg-gradient-to-r from-slate-50 via-white to-blue-50/60 px-4 py-4 sm:px-6 sm:py-5">
@@ -589,7 +618,6 @@ function orderPageData() {
                                             <div class="min-w-0">
                                                 <div class="font-bold leading-snug text-gray-900">{{ $cartItem->item?->name ?? $cartItem->item_name }}</div>
                                                 <div class="mt-0.5 text-base font-bold tabular-nums text-blue-700">₹{{ number_format((float) ($cartItem->item?->price ?? $cartItem->price), 2) }}</div>
-                                                <div class="text-xs text-gray-500">{{ $cartItem->item?->category->name ?? __('vendor.no_category') }}</div>
                                             </div>
                                         </div>
                                     </td>
@@ -672,55 +700,146 @@ function orderPageData() {
             @endif
         </div>
 
-        <div class="order-1 lg:order-2 lg:col-span-1">
-            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100 lg:sticky lg:top-6 lg:z-[5]">
-                <div class="border-b border-gray-100 bg-gradient-to-r from-emerald-50 via-white to-teal-50/80 px-4 py-4 sm:px-5 sm:py-5">
-                    <div class="flex items-start gap-3">
-                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 text-white shadow-md ring-2 ring-white/60">
-                            <i class="fas fa-receipt text-lg"></i>
+        <div class="order-1 flex flex-col gap-4 lg:order-2 lg:col-span-1">
+            @php
+                $orderStatusBadgeClasses = [
+                    'pending' => 'border-amber-200 bg-amber-50 text-amber-900 ring-amber-100',
+                    'confirmed' => 'border-blue-200 bg-blue-50 text-blue-900 ring-blue-100',
+                    'ongoing' => 'border-purple-200 bg-purple-50 text-purple-900 ring-purple-100',
+                    'completed' => 'border-emerald-200 bg-emerald-50 text-emerald-900 ring-emerald-100',
+                    'cancelled' => 'border-red-200 bg-red-50 text-red-900 ring-red-100',
+                ];
+                $stPanel = $order->status;
+                $orderStatusBadgeClassPanel = $orderStatusBadgeClasses[$stPanel] ?? 'border-gray-200 bg-gray-50 text-gray-900 ring-gray-100';
+                $orderNextStatusesPanel = $order->allowedNextStatuses();
+                $tzRental = config('app.timezone');
+                $fmtRental = fn ($dt) => $dt ? $dt->copy()->timezone($tzRental)->format('M j, Y g:i A') : null;
+                $showRentalHandoff = in_array($stPanel, ['confirmed', 'ongoing', 'completed'], true);
+            @endphp
+            <section class="rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100" aria-labelledby="order-status-section-title">
+                <div class="border-b border-gray-100 bg-slate-50/90 px-3 py-2 sm:px-3.5">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-700 text-white shadow-sm ring-1 ring-slate-600/30">
+                            <i class="fas fa-tasks text-sm" aria-hidden="true"></i>
                         </div>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-lg font-bold tracking-tight text-gray-900">{{ __('vendor.summary') }}</h3>
-                            <p class="mt-0.5 text-xs leading-relaxed text-gray-600">{{ __('vendor.summary_help') }}</p>
+                            <h2 id="order-status-section-title" class="text-base font-bold tracking-tight text-gray-900">{{ __('vendor.order_status_section') }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-3 p-3 sm:space-y-4 sm:p-3.5" id="order-rental-status-panel">
+                    <div class="rounded-lg border border-gray-100 bg-gray-50/80 p-3 ring-1 ring-gray-100/80">
+                        <p class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{{ __('vendor.order_status') }}</p>
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            @if(count($orderNextStatusesPanel) > 0 && ! $orderReadOnly)
+                                <form method="POST" action="{{ route('vendor.orders.update-status', $order) }}" class="flex w-full flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-end sm:gap-2">
+                                    @csrf
+                                    @method('PUT')
+                                    <label for="order-status-next-panel" class="sr-only">{{ __('vendor.order_status') }}</label>
+                                    <select id="order-status-next-panel" name="status" required
+                                            class="min-h-[40px] w-full min-w-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-900 shadow-sm ring-1 ring-gray-100 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500/25 sm:flex-1 sm:min-w-[12rem]">
+                                        <option value="{{ $stPanel }}" selected>{{ __('vendor.'.$stPanel) }}</option>
+                                        @foreach($orderNextStatusesPanel as $next)
+                                            <option value="{{ $next }}">{{ __('vendor.'.$next) }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="submit"
+                                            class="inline-flex min-h-[40px] w-full shrink-0 items-center justify-center gap-1.5 rounded-xl bg-slate-700 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 sm:w-auto">
+                                        {{ __('vendor.update_status') }}
+                                    </button>
+                                </form>
+                            @else
+                                <span class="inline-flex min-h-[38px] w-fit items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ring-1 {{ $orderStatusBadgeClassPanel }}">
+                                    {{ __('vendor.'.$stPanel) }}
+                                </span>
+                                @if($orderReadOnly)
+                                    <p class="text-[11px] leading-snug text-gray-500 sm:max-w-[14rem] sm:text-right">{{ __('vendor.order_edit_not_allowed_locked') }}</p>
+                                @endif
+                            @endif
+                        </div>
+                        @error('status')
+                            <p class="mt-2 text-xs font-medium text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    @if($showRentalHandoff)
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div class="rounded-lg border border-teal-100/90 bg-teal-50/40 p-3 ring-1 ring-teal-100/60">
+                            <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-teal-900/85">{{ __('vendor.delivered_status') }}</p>
+                            <p id="rs-delivered-summary" class="text-xs font-semibold leading-snug text-gray-900">{{ $order->delivered_at ? $fmtRental($order->delivered_at) : __('vendor.not_delivered_yet') }}</p>
+                            @if(! $orderReadOnly)
+                                <div class="mt-2 flex flex-wrap gap-2" id="rs-delivered-actions">
+                                    <button type="button" id="rs-btn-deliver-mark"
+                                            class="{{ $order->delivered_at ? 'hidden' : '' }} inline-flex items-center justify-center rounded-lg bg-teal-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-teal-700"
+                                            onclick="patchRentalStatus({ delivered: 'mark' }, this)">{{ __('vendor.mark_delivered') }}</button>
+                                    <button type="button" id="rs-btn-deliver-clear"
+                                            class="{{ $order->delivered_at ? '' : 'hidden' }} inline-flex items-center justify-center rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50"
+                                            onclick="openRentalClearConfirm('delivered', this)">{{ __('vendor.clear_delivered') }}</button>
+                                </div>
+                            @endif
+                        </div>
+                        <div class="rounded-lg border border-indigo-100/90 bg-indigo-50/40 p-3 ring-1 ring-indigo-100/60">
+                            <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-900/85">{{ __('vendor.returned_status') }}</p>
+                            <p id="rs-returned-summary" class="text-xs font-semibold leading-snug text-gray-900">{{ $order->returned_at ? $fmtRental($order->returned_at) : __('vendor.not_returned_yet') }}</p>
+                            @if(! $orderReadOnly)
+                                <div class="mt-2 flex flex-wrap gap-2" id="rs-returned-actions">
+                                    <button type="button" id="rs-btn-return-mark"
+                                            class="{{ $order->returned_at ? 'hidden' : '' }} inline-flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+                                            onclick="patchRentalStatus({ returned: 'mark' }, this)">{{ __('vendor.mark_returned') }}</button>
+                                    <button type="button" id="rs-btn-return-clear"
+                                            class="{{ $order->returned_at ? '' : 'hidden' }} inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-indigo-900 shadow-sm transition hover:bg-indigo-50"
+                                            onclick="openRentalClearConfirm('returned', this)">{{ __('vendor.clear_returned') }}</button>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+                </div>
+            </section>
+
+            <div class="rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100 lg:sticky lg:top-4 lg:z-[5]">
+                <div class="border-b border-gray-100 bg-gray-50/90 px-3 py-2 sm:px-3.5">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-500/30">
+                            <i class="fas fa-receipt text-sm" aria-hidden="true"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-base font-bold tracking-tight text-gray-900">{{ __('vendor.summary') }}</h3>
+                            <p class="mt-0.5 hidden text-[11px] leading-snug text-gray-600 sm:block">{{ __('vendor.summary_help') }}</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="space-y-4 p-4 sm:p-5">
+                <div class="space-y-3 p-3 sm:p-3.5">
                     @if($orderReadOnly)
-                        <div inert class="select-none space-y-4 opacity-[0.94]">
+                        <div inert class="select-none space-y-3 opacity-[0.94]">
                     @endif
                     {{-- 1. Rental charges --}}
                     <div>
-                        <p class="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">{{ __('vendor.summary_section_charges') }}</p>
-                        <div class="space-y-0 rounded-xl border border-gray-100 bg-gray-50/70 p-1">
-                            <div class="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5">
-                                <span class="text-sm text-gray-600">{{ __('vendor.sub_total') }}</span>
-                                <span data-sub-total class="text-sm font-semibold tabular-nums text-gray-900">₹{{ number_format($order->sub_total, 2) }}</span>
-                            </div>
-                            <div class="flex items-center justify-between gap-3 rounded-lg border-t border-gray-100/80 bg-white/60 px-3 py-2.5">
-                                <span class="text-sm text-gray-600">{{ __('vendor.tax') }} <span class="text-gray-400">(10%)</span></span>
-                                <span data-tax-total class="text-sm font-semibold tabular-nums text-gray-900">₹{{ number_format($order->tax_total, 2) }}</span>
+                        <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{{ __('vendor.summary_section_charges') }}</p>
+                        <div class="space-y-0 rounded-lg border border-gray-100 bg-gray-50/70 p-0.5">
+                            <div class="flex items-center justify-between gap-2 rounded-md px-2.5 py-2">
+                                <span class="text-xs text-gray-600">{{ __('vendor.sub_total') }}</span>
+                                <span data-sub-total class="text-xs font-semibold tabular-nums text-gray-900">₹{{ number_format($order->sub_total, 2) }}</span>
                             </div>
                         </div>
                     </div>
 
                     {{-- 2. Discounts & coupons --}}
                     <div>
-                        <p class="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">{{ __('vendor.summary_section_savings') }}</p>
-                        <div class="space-y-2 rounded-xl border border-dashed border-gray-200 bg-white p-3">
+                        <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{{ __('vendor.summary_section_savings') }}</p>
+                        <div class="space-y-1.5 rounded-lg border border-dashed border-gray-200 bg-white p-2">
                             <div id="discount-add" class="{{ $order->discount_amount > 0 ? 'hidden' : '' }}">
                                 <button type="button" onclick="openDiscountModal()"
-                                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 py-2.5 text-sm font-semibold text-blue-700 transition hover:border-blue-200 hover:bg-blue-50/80">
+                                        class="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-gray-50/80 py-2 text-xs font-semibold text-blue-700 transition hover:border-blue-200 hover:bg-blue-50/80">
                                     <i class="fas fa-plus-circle text-xs"></i>
                                     <span>{{ __('vendor.add_discount') }}</span>
                                 </button>
                             </div>
                             <div id="discount-applied" class="{{ $order->discount_amount > 0 ? '' : 'hidden' }}">
-                                <div class="flex items-center justify-between gap-2 rounded-lg bg-blue-50/50 px-3 py-2 ring-1 ring-blue-100/80">
-                                    <div class="flex min-w-0 items-center gap-2">
-                                        <i class="fas fa-tag shrink-0 text-blue-600 text-xs"></i>
-                                        <span class="truncate text-sm font-medium text-gray-800" id="discount-label">
+                                <div class="flex items-center justify-between gap-2 rounded-md bg-blue-50/50 px-2.5 py-1.5 ring-1 ring-blue-100/80">
+                                    <div class="flex min-w-0 items-center gap-1.5">
+                                        <i class="fas fa-tag shrink-0 text-blue-600 text-[10px]"></i>
+                                        <span class="truncate text-xs font-medium text-gray-800" id="discount-label">
                                             @if($order->discount_type === 'percent')
                                                 {{ __('vendor.discount') }} {{ rtrim(rtrim(number_format($order->discount_value, 2), '0'), '.') }}%
                                             @elseif($order->discount_type === 'fixed')
@@ -731,7 +850,7 @@ function orderPageData() {
                                         </span>
                                     </div>
                                     <div class="flex shrink-0 items-center gap-2">
-                                        <span data-discount-amount class="text-sm font-semibold tabular-nums text-red-600">-₹{{ number_format($order->discount_amount, 2) }}</span>
+                                        <span data-discount-amount class="text-xs font-semibold tabular-nums text-red-600">-₹{{ number_format($order->discount_amount, 2) }}</span>
                                         <button type="button" onclick="removeDiscount()"
                                                 class="rounded p-1 text-red-500 transition hover:bg-red-100 hover:text-red-700"
                                                 title="{{ __('vendor.remove') }} {{ __('vendor.discount') }}">
@@ -743,19 +862,19 @@ function orderPageData() {
 
                             <div id="coupon-add" class="{{ $order->coupon_code ? 'hidden' : '' }}">
                                 <button type="button" onclick="openCouponModal()"
-                                        class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 py-2.5 text-sm font-semibold text-emerald-800 transition hover:border-emerald-200 hover:bg-emerald-50/80">
+                                        class="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-gray-50/80 py-2 text-xs font-semibold text-emerald-800 transition hover:border-emerald-200 hover:bg-emerald-50/80">
                                     <i class="fas fa-ticket-alt text-xs"></i>
                                     <span>{{ __('vendor.add_coupon') }}</span>
                                 </button>
                             </div>
                             <div id="coupon-applied" class="{{ $order->coupon_code ? '' : 'hidden' }}">
-                                <div class="flex items-center justify-between gap-2 rounded-lg bg-emerald-50/50 px-3 py-2 ring-1 ring-emerald-100/80">
-                                    <div class="flex min-w-0 items-center gap-2">
-                                        <i class="fas fa-ticket-alt shrink-0 text-emerald-600 text-xs"></i>
-                                        <span class="truncate text-sm font-semibold text-emerald-900" data-coupon-code>{{ $order->coupon_code }}</span>
+                                <div class="flex items-center justify-between gap-2 rounded-md bg-emerald-50/50 px-2.5 py-1.5 ring-1 ring-emerald-100/80">
+                                    <div class="flex min-w-0 items-center gap-1.5">
+                                        <i class="fas fa-ticket-alt shrink-0 text-emerald-600 text-[10px]"></i>
+                                        <span class="truncate text-xs font-semibold text-emerald-900" data-coupon-code>{{ $order->coupon_code }}</span>
                                     </div>
                                     <div class="flex shrink-0 items-center gap-2">
-                                        <span data-coupon-discount class="text-sm font-semibold tabular-nums text-red-600">-₹{{ number_format($order->coupon_discount, 2) }}</span>
+                                        <span data-coupon-discount class="text-xs font-semibold tabular-nums text-red-600">-₹{{ number_format($order->coupon_discount, 2) }}</span>
                                         <button type="button" onclick="removeCoupon()"
                                                 class="rounded p-1 text-red-500 transition hover:bg-red-100 hover:text-red-700"
                                                 title="{{ __('vendor.remove') }} {{ __('vendor.coupon_code') }}">
@@ -765,9 +884,9 @@ function orderPageData() {
                                 </div>
                             </div>
 
-                            <div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-2.5">
-                                <span class="text-sm font-semibold text-gray-700">{{ __('vendor.total_savings') }}</span>
-                                <span data-discount-total class="text-sm font-bold tabular-nums text-red-600">-₹{{ number_format($order->discount_total, 2) }}</span>
+                            <div class="flex items-center justify-between gap-2 border-t border-gray-100 pt-2">
+                                <span class="text-xs font-semibold text-gray-700">{{ __('vendor.total_savings') }}</span>
+                                <span data-discount-total class="text-xs font-bold tabular-nums text-red-600">-₹{{ number_format($order->discount_total, 2) }}</span>
                             </div>
                         </div>
                     </div>
@@ -776,64 +895,74 @@ function orderPageData() {
                         $showDeliveryLine = (($order->fulfillment_type ?? 'pickup') === 'delivery' && (float) ($order->delivery_charge ?? 0) > 0);
                     @endphp
                     <div id="summary-delivery-charge-row"
-                         class="flex items-center justify-between gap-3 rounded-xl border border-orange-100 bg-orange-50/40 px-3.5 py-2.5 {{ $showDeliveryLine ? '' : 'hidden' }}">
-                        <span class="text-sm font-medium text-gray-800">{{ __('vendor.delivery_charge') }}</span>
-                        <span data-delivery-charge-line class="text-sm font-bold tabular-nums text-gray-900">₹{{ number_format((float) ($order->delivery_charge ?? 0), 2) }}</span>
+                         class="flex items-center justify-between gap-2 rounded-lg border border-orange-100 bg-orange-50/40 px-3 py-2 text-xs {{ $showDeliveryLine ? '' : 'hidden' }}">
+                        <span class="font-medium text-gray-800">{{ __('vendor.delivery_charge') }}</span>
+                        <span data-delivery-charge-line class="font-bold tabular-nums text-gray-900">₹{{ number_format((float) ($order->delivery_charge ?? 0), 2) }}</span>
                     </div>
 
                     @php
                         $extraLines = is_array($order->extra_charges_lines) ? $order->extra_charges_lines : [];
                         $extraTotal = (float) ($order->extra_charges_total ?? 0);
                     @endphp
-                    <div id="summary-extra-charges-block" class="space-y-2 rounded-xl border border-amber-100/90 bg-amber-50/30 px-3.5 py-2.5 {{ $extraTotal > 0 ? '' : 'hidden' }}">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-amber-900/80">{{ __('vendor.extra_charges_label') }}</p>
-                        <p class="text-[11px] leading-snug text-amber-900/70">{{ __('vendor.extra_charges_hint') }}</p>
-                        <ul id="extra-charges-lines-ul" class="space-y-1.5 text-sm text-gray-800">
+                    <div id="summary-extra-charges-block" class="space-y-1.5 rounded-lg border border-amber-100/90 bg-amber-50/30 px-3 py-2 text-xs {{ $extraTotal > 0 ? '' : 'hidden' }}">
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-amber-900/80">{{ __('vendor.extra_charges_label') }}</p>
+                        <p class="hidden text-[10px] leading-snug text-amber-900/70 sm:block">{{ __('vendor.extra_charges_hint') }}</p>
+                        <ul id="extra-charges-lines-ul" class="space-y-1 text-xs text-gray-800">
                             @foreach($extraLines as $line)
                                 @if(is_array($line))
-                                    <li class="flex items-start justify-between gap-2 border-b border-amber-100/80 pb-1.5 last:border-0 last:pb-0">
+                                    <li class="flex items-start justify-between gap-2 border-b border-amber-100/80 pb-1 text-xs last:border-0 last:pb-0">
                                         <span class="min-w-0 flex-1 leading-snug">{{ $line['label'] ?? '—' }}</span>
-                                        <span class="shrink-0 font-semibold tabular-nums text-gray-900">₹{{ number_format((float) ($line['amount'] ?? 0), 2) }}</span>
+                                        <div class="flex shrink-0 items-start gap-1.5">
+                                            <span class="font-semibold tabular-nums text-gray-900">₹{{ number_format((float) ($line['amount'] ?? 0), 2) }}</span>
+                                            @if(!$orderReadOnly)
+                                                <button type="button"
+                                                        onclick="removeExtraChargeLine({{ $loop->index }}, this)"
+                                                        class="rounded p-0.5 text-red-500 transition hover:bg-red-100 hover:text-red-700"
+                                                        title="{{ __('vendor.remove_extra_charge') }}">
+                                                    <i class="fas fa-times-circle text-sm" aria-hidden="true"></i>
+                                                </button>
+                                            @endif
+                                        </div>
                                     </li>
                                 @endif
                             @endforeach
                         </ul>
-                        <div class="flex items-center justify-between gap-2 border-t border-amber-100/90 pt-2">
-                            <span class="text-sm font-semibold text-amber-950">{{ __('vendor.extra_charges_label') }}</span>
-                            <span data-extra-charges-total class="text-sm font-bold tabular-nums text-amber-950">₹{{ number_format($extraTotal, 2) }}</span>
+                        <div class="flex items-center justify-between gap-2 border-t border-amber-100/90 pt-1.5 text-xs">
+                            <span class="font-semibold text-amber-950">{{ __('vendor.extra_charges_label') }}</span>
+                            <span data-extra-charges-total class="font-bold tabular-nums text-amber-950">₹{{ number_format($extraTotal, 2) }}</span>
                         </div>
                     </div>
 
                     {{-- 3. Order total (before deposit) --}}
-                    <div class="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/90 px-3.5 py-3">
+                    <div class="flex items-start justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2.5">
                         <div class="min-w-0">
-                            <span class="text-sm font-bold text-slate-800">{{ __('vendor.summary_order_total') }}</span>
-                            <span class="mt-0.5 block text-[11px] leading-snug text-slate-500">{{ __('vendor.summary_order_total_hint') }}</span>
+                            <span class="text-xs font-bold text-slate-800">{{ __('vendor.summary_order_total') }}</span>
+                            <span class="mt-0.5 block text-[10px] leading-snug text-slate-500">{{ __('vendor.summary_order_total_hint') }}</span>
                         </div>
-                        <span data-order-total class="shrink-0 text-base font-bold tabular-nums text-slate-900">₹{{ number_format($order->grand_total, 2) }}</span>
+                        <span data-order-total class="shrink-0 text-sm font-bold tabular-nums text-slate-900">₹{{ number_format($order->grand_total, 2) }}</span>
                     </div>
 
                     {{-- 4. Security deposit --}}
-                    <div class="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2.5 shadow-sm">
+                    <div class="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-white px-2.5 py-2 shadow-sm">
                         <button type="button"
                                 onclick="openSecurityDepositModal()"
-                                class="inline-flex min-w-0 flex-1 items-center gap-2 text-left text-sm font-semibold text-blue-700 transition hover:text-blue-900">
-                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-blue-100">
-                                <i class="fas fa-shield-alt text-xs"></i>
+                                class="inline-flex min-w-0 flex-1 items-center gap-2 text-left text-xs font-semibold text-blue-700 transition hover:text-blue-900">
+                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100">
+                                <i class="fas fa-shield-alt text-[10px]"></i>
                             </span>
                             <span id="securityDepositLabel" class="truncate">{{ __('vendor.quote_security_deposit') }}</span>
                         </button>
-                        <span data-security-deposit-total class="shrink-0 text-sm font-bold tabular-nums text-gray-900">₹{{ number_format($order->security_deposit ?? 0, 2) }}</span>
+                        <span data-security-deposit-total class="shrink-0 text-xs font-bold tabular-nums text-gray-900">₹{{ number_format($order->security_deposit ?? 0, 2) }}</span>
                     </div>
 
                     {{-- 5. Total due (order + deposit) --}}
-                    <div class="rounded-xl border-2 border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-white to-teal-50/70 p-4 shadow-sm ring-1 ring-emerald-100/60">
-                        <div class="flex items-start justify-between gap-3">
+                    <div class="rounded-lg border border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/60 p-3 shadow-sm ring-1 ring-emerald-100/50">
+                        <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
-                                <span class="text-sm font-bold text-gray-900">{{ __('vendor.summary_total_due') }}</span>
-                                <span class="mt-0.5 block text-[11px] font-medium leading-snug text-emerald-800/80">{{ __('vendor.summary_total_due_hint') }}</span>
+                                <span class="text-xs font-bold text-gray-900">{{ __('vendor.summary_total_due') }}</span>
+                                <span class="mt-0.5 block text-[10px] font-medium leading-snug text-emerald-800/80">{{ __('vendor.summary_total_due_hint') }}</span>
                             </div>
-                            <span data-grand-total class="shrink-0 text-xl font-bold tabular-nums tracking-tight text-emerald-700">₹{{ number_format((float) $order->grand_total + (float) ($order->security_deposit ?? 0), 2) }}</span>
+                            <span data-grand-total class="shrink-0 text-lg font-bold tabular-nums tracking-tight text-emerald-700">₹{{ number_format((float) $order->grand_total + (float) ($order->security_deposit ?? 0), 2) }}</span>
                         </div>
                     </div>
                     @if($orderReadOnly)
@@ -841,23 +970,23 @@ function orderPageData() {
                     @endif
 
                     {{-- 6. Payment status --}}
-                    <div class="space-y-2 border-t border-gray-200 pt-4">
-                        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">{{ __('vendor.summary_section_payment') }}</p>
-                        <div class="flex items-center justify-between rounded-xl bg-gray-50/80 px-3.5 py-2.5 ring-1 ring-gray-100">
-                            <span class="text-sm text-gray-600">{{ __('vendor.paid_amount') }}</span>
-                            <span data-paid-amount class="text-sm font-semibold tabular-nums text-emerald-600">₹{{ number_format($order->paid_amount, 2) }}</span>
+                    <div class="space-y-1.5 border-t border-gray-200 pt-3">
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{{ __('vendor.summary_section_payment') }}</p>
+                        <div class="flex items-center justify-between rounded-lg bg-gray-50/80 px-3 py-2 text-xs ring-1 ring-gray-100">
+                            <span class="text-gray-600">{{ __('vendor.paid_amount') }}</span>
+                            <span data-paid-amount class="font-semibold tabular-nums text-emerald-600">₹{{ number_format($order->paid_amount, 2) }}</span>
                         </div>
-                        <div class="flex items-center justify-between rounded-xl border border-amber-200/80 bg-amber-50/70 px-3.5 py-3">
-                            <span class="text-sm font-bold text-gray-900">{{ __('vendor.balance_due') }}</span>
-                            <span data-balance-due class="text-base font-bold tabular-nums text-red-600">₹{{ number_format((float) $order->grand_total + (float) ($order->security_deposit ?? 0) - (float) $order->paid_amount, 2) }}</span>
+                        <div class="flex items-center justify-between rounded-lg border border-amber-200/80 bg-amber-50/70 px-3 py-2">
+                            <span class="font-bold text-gray-900">{{ __('vendor.balance_due') }}</span>
+                            <span data-balance-due class="text-sm font-bold tabular-nums text-red-600">₹{{ number_format((float) $order->grand_total + (float) ($order->security_deposit ?? 0) - (float) $order->paid_amount, 2) }}</span>
                         </div>
-                        <div class="mt-1 flex flex-col gap-2 sm:flex-row">
+                        <div class="mt-0.5 flex flex-col gap-1.5 sm:flex-row">
                             <button type="button" onclick="openAddPaymentModal()"
-                                    class="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 active:scale-[0.99]">
+                                    class="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.99]">
                                 <i class="fas fa-wallet"></i>{{ __('vendor.new_payment') }}
                             </button>
                             <button type="button" onclick="openExtraChargeModal()"
-                                    class="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-100 active:scale-[0.99]">
+                                    class="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-semibold text-amber-950 shadow-sm transition hover:bg-amber-100 active:scale-[0.99]">
                                 <i class="fas fa-plus-circle"></i>{{ __('vendor.add_extra_charge') }}
                             </button>
                         </div>
@@ -865,24 +994,24 @@ function orderPageData() {
                         @php
                             $paymentRows = is_array($order->payment_detail) ? $order->payment_detail : [];
                         @endphp
-                        <div id="payment-history-section" class="mt-4 space-y-2">
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-gray-500">{{ __('vendor.payment_history_title') }}</p>
+                        <div id="payment-history-section" class="mt-2 space-y-1.5">
+                            <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{{ __('vendor.payment_history_title') }}</p>
                             <div id="payment-history-empty"
-                                 class="{{ count($paymentRows) ? 'hidden' : '' }} rounded-xl border border-dashed border-gray-200 bg-gray-50/90 px-3 py-3 text-center text-xs leading-relaxed text-gray-500">
+                                 class="{{ count($paymentRows) ? 'hidden' : '' }} rounded-lg border border-dashed border-gray-200 bg-gray-50/90 px-2.5 py-2 text-center text-[11px] leading-snug text-gray-500">
                                 {{ __('vendor.payment_history_empty') }}
                             </div>
-                            <ul id="payment-history-list" class="space-y-2 {{ count($paymentRows) ? '' : 'hidden' }}">
+                            <ul id="payment-history-list" class="space-y-1.5 {{ count($paymentRows) ? '' : 'hidden' }}">
                                 @foreach($paymentRows as $idx => $p)
                                     @php
                                         $pIsRefund = (($p['entry_kind'] ?? 'payment') === 'refund');
                                     @endphp
-                                    <li class="flex items-start gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2.5 shadow-sm ring-1 ring-gray-100/80">
+                                    <li class="flex items-start gap-2 rounded-lg border border-gray-100 bg-white px-2.5 py-2 text-xs shadow-sm ring-1 ring-gray-100/80">
                                         <div class="min-w-0 flex-1">
                                             <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                                                 @if($pIsRefund)
-                                                    <span class="text-sm font-bold tabular-nums text-rose-700">−₹{{ number_format((float) ($p['amount'] ?? 0), 2) }}</span>
+                                                    <span class="text-xs font-bold tabular-nums text-rose-700">−₹{{ number_format((float) ($p['amount'] ?? 0), 2) }}</span>
                                                 @else
-                                                    <span class="text-sm font-bold tabular-nums text-gray-900">₹{{ number_format((float) ($p['amount'] ?? 0), 2) }}</span>
+                                                    <span class="text-xs font-bold tabular-nums text-gray-900">₹{{ number_format((float) ($p['amount'] ?? 0), 2) }}</span>
                                                 @endif
                                                 @if(($p['payment_for'] ?? '') === 'security_deposit')
                                                     <span class="inline-flex rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 ring-1 ring-violet-100">{{ __('vendor.payment_for_deposit_short') }}</span>
@@ -1216,6 +1345,107 @@ function orderPageData() {
                     }
                     const npRecordPaymentUrl = @json(route('vendor.orders.payment', $order));
                     var extraChargePostUrl = @json(route('vendor.orders.extra-charges', $order));
+                    @php
+                        $__ecdDestroy0 = route('vendor.orders.extra-charges.destroy', ['order' => $order, 'lineIndex' => 0]);
+                        $__ecdDestroyPrefix = preg_replace('#/0$#', '', $__ecdDestroy0);
+                    @endphp
+                    var extraChargeDeleteUrlPrefix = @json($__ecdDestroyPrefix);
+                    var orderShowReadOnly = @json($orderReadOnly);
+                    var removeExtraChargeTitle = @json(__('vendor.remove_extra_charge'));
+                    var rentalStatusUrl = @json(route('vendor.orders.rental-status', $order));
+                    var rentalStatusLabels = {
+                        notDelivered: @json(__('vendor.not_delivered_yet')),
+                        notReturned: @json(__('vendor.not_returned_yet')),
+                    };
+                    function applyRentalStatusToUi(rs) {
+                        if (!rs) return;
+                        var dText = document.getElementById('rs-delivered-summary');
+                        var rText = document.getElementById('rs-returned-summary');
+                        if (dText) dText.textContent = rs.delivered_at_display || rentalStatusLabels.notDelivered;
+                        if (rText) rText.textContent = rs.returned_at_display || rentalStatusLabels.notReturned;
+                        var hasD = !!(rs.delivered_at);
+                        var hasR = !!(rs.returned_at);
+                        var bdm = document.getElementById('rs-btn-deliver-mark');
+                        var bdc = document.getElementById('rs-btn-deliver-clear');
+                        var brm = document.getElementById('rs-btn-return-mark');
+                        var brc = document.getElementById('rs-btn-return-clear');
+                        if (bdm) bdm.classList.toggle('hidden', hasD);
+                        if (bdc) bdc.classList.toggle('hidden', !hasD);
+                        if (brm) brm.classList.toggle('hidden', hasR);
+                        if (brc) brc.classList.toggle('hidden', !hasR);
+                    }
+                    function patchRentalStatus(payload, triggerBtn) {
+                        if (typeof orderShowReadOnly !== 'undefined' && orderShowReadOnly) return;
+                        var csrf = document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                        if (triggerBtn) triggerBtn.disabled = true;
+                        fetch(rentalStatusUrl, {
+                            method: 'PATCH',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf || '',
+                            },
+                            body: JSON.stringify(payload),
+                        })
+                            .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+                            .then(function (res) {
+                                if (triggerBtn) triggerBtn.disabled = false;
+                                if (res.ok && res.data && res.data.success && res.data.rental_status) {
+                                    applyRentalStatusToUi(res.data.rental_status);
+                                    if (typeof showToast === 'function') showToast(res.data.message || 'OK', 'success');
+                                } else {
+                                    var msg = res.data && res.data.message ? res.data.message : 'Could not update';
+                                    if (res.data && res.data.errors) {
+                                        var first = Object.values(res.data.errors)[0];
+                                        if (first && first[0]) msg = first[0];
+                                    }
+                                    if (typeof showToast === 'function') showToast(msg, 'error');
+                                }
+                            })
+                            .catch(function () {
+                                if (triggerBtn) triggerBtn.disabled = false;
+                                if (typeof showToast === 'function') showToast('Network error', 'error');
+                            });
+                    }
+                    var rentalClearPending = null;
+                    var rentalClearMessages = {
+                        delivered: @json(__('vendor.clear_delivered_confirm_body')),
+                        returned: @json(__('vendor.clear_returned_confirm_body')),
+                    };
+                    function openRentalClearConfirm(kind, btn) {
+                        if (typeof orderShowReadOnly !== 'undefined' && orderShowReadOnly) return;
+                        if (kind !== 'delivered' && kind !== 'returned') return;
+                        rentalClearPending = { kind: kind, btn: btn };
+                        var m = document.getElementById('rentalClearConfirmModal');
+                        var body = document.getElementById('rentalClearConfirmBody');
+                        if (body) body.textContent = rentalClearMessages[kind] || '';
+                        if (m) {
+                            m.classList.remove('hidden');
+                            document.body.style.overflow = 'hidden';
+                        }
+                    }
+                    function closeRentalClearConfirmModal() {
+                        rentalClearPending = null;
+                        var m = document.getElementById('rentalClearConfirmModal');
+                        if (m) m.classList.add('hidden');
+                        document.body.style.overflow = '';
+                    }
+                    function confirmRentalClear() {
+                        var p = rentalClearPending;
+                        if (!p || !p.btn) {
+                            closeRentalClearConfirmModal();
+                            return;
+                        }
+                        var btn = p.btn;
+                        var kind = p.kind;
+                        rentalClearPending = null;
+                        var m = document.getElementById('rentalClearConfirmModal');
+                        if (m) m.classList.add('hidden');
+                        document.body.style.overflow = '';
+                        var payload = kind === 'delivered' ? { delivered: 'clear' } : { returned: 'clear' };
+                        patchRentalStatus(payload, btn);
+                    }
                     var lastOrderCartState = @json($orderCartJson);
                     const npMethodLabels = { card: 'Card', cash: 'Cash', upi: 'UPI', bank_transfer: 'Bank transfer', wallet: 'Wallet', other: 'Other' };
                     const npPayTagRefund = @json(__('vendor.label_refund'));
@@ -1548,14 +1778,14 @@ function orderPageData() {
                                 ? '<span class="inline-flex rounded-md bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700 ring-1 ring-rose-100">' + npPayTagRefund + '</span>'
                                 : '';
                             const amtDisp = entryKind === 'refund'
-                                ? ('<span class="text-sm font-bold tabular-nums text-rose-700">−₹' + amt + '</span>')
-                                : ('<span class="text-sm font-bold tabular-nums text-gray-900">₹' + amt + '</span>');
+                                ? ('<span class="text-xs font-bold tabular-nums text-rose-700">−₹' + amt + '</span>')
+                                : ('<span class="text-xs font-bold tabular-nums text-gray-900">₹' + amt + '</span>');
                             const m = p.method || '';
                             const mLabel = npMethodLabels[m] || (m ? m.charAt(0).toUpperCase() + m.slice(1).replace(/_/g, ' ') : '—');
                             const datePart = p.paid_on
                                 ? ('<span class="text-gray-400"> · </span><span>' + npFormatPaymentListDate(p.paid_on) + '</span>')
                                 : '';
-                            return '<li class="flex items-start gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2.5 shadow-sm ring-1 ring-gray-100/80">'
+                            return '<li class="flex items-start gap-2 rounded-lg border border-gray-100 bg-white px-2.5 py-2 text-xs shadow-sm ring-1 ring-gray-100/80">'
                                 + '<div class="min-w-0 flex-1">'
                                 + '<div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">'
                                 + amtDisp + badge + refundBadge
@@ -1697,10 +1927,6 @@ function orderPageData() {
                             </div>
                         </div>
                     </div>
-                    <p class="flex flex-wrap items-center gap-2 text-sm text-gray-600">
-                        <span class="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-blue-100 px-2 text-xs font-bold text-blue-800 tabular-nums" x-text="filteredItems.length"></span>
-                        <span>{{ __('vendor.items') }}</span>
-                    </p>
                 </div>
 
                 <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-white">
@@ -2292,6 +2518,32 @@ function orderPageData() {
     </div>
 </div>
 
+<!-- Clear delivered / returned confirmation -->
+<div id="rentalClearConfirmModal" class="fixed inset-0 z-[72] hidden" role="dialog" aria-modal="true" aria-labelledby="rentalClearConfirmTitle">
+    <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="closeRentalClearConfirmModal()"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+        <div class="relative w-full max-w-md rounded-xl bg-white shadow-2xl ring-1 ring-gray-200" onclick="event.stopPropagation()">
+            <div class="p-6 text-center">
+                <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+                    <i class="fas fa-undo-alt text-2xl text-amber-700" aria-hidden="true"></i>
+                </div>
+                <h3 id="rentalClearConfirmTitle" class="mb-2 text-lg font-bold text-gray-900">{{ __('vendor.rental_clear_confirm_title') }}</h3>
+                <p id="rentalClearConfirmBody" class="text-sm leading-relaxed text-gray-600"></p>
+            </div>
+            <div class="flex items-center justify-center gap-3 border-t border-gray-100 px-6 pb-6 pt-2">
+                <button type="button" onclick="closeRentalClearConfirmModal()"
+                        class="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50">
+                    <i class="fas fa-times mr-2"></i>{{ __('vendor.cancel') }}
+                </button>
+                <button type="button" onclick="confirmRentalClear()"
+                        class="flex-1 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-700">
+                    <i class="fas fa-check mr-2"></i>{{ __('vendor.rental_clear_confirm_cta') }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
 <style>
@@ -2673,7 +2925,7 @@ const securityDepositState = {
     type: @json($order->security_deposit_type ?? 'none'),
     value: parseFloat(@json($order->security_deposit_value ?? 0)) || 0,
     amount: parseFloat(@json((float) ($order->security_deposit ?? 0))),
-    /** Order total from server (sub + tax − discounts), excludes security deposit */
+    /** Order total from server (sub − discounts + delivery + extras), excludes security deposit */
     orderGrandTotal: parseFloat(@json((float) $order->grand_total)),
     subTotal: parseFloat(@json((float) $order->sub_total)),
 };
@@ -2702,7 +2954,7 @@ function updateSecurityDepositModalCopy() {
 
     const copy = {
         none: ['Security Deposit', 'Choose how to charge security deposit — currently no deposit.'],
-        order_amount: ['Security deposit (order %)', 'Charge a percentage of the order total (after tax and discounts).'],
+        order_amount: ['Security deposit (order %)', 'Charge a percentage of the order total (after discounts).'],
         product_security_deposit: ['Security deposit (product %)', 'Charge a percentage of the order subtotal (product value).'],
         fixed_amount: ['Security deposit (fixed)', 'Charge a fixed amount regardless of order size.'],
     };
@@ -3361,6 +3613,57 @@ document.getElementById('deleteModalCancel').addEventListener('click', closeDele
 document.getElementById('deleteModalOverlay').addEventListener('click', closeDeleteModal);
 document.getElementById('deleteModalConfirm').addEventListener('click', confirmDelete);
 
+function removeExtraChargeLine(lineIndex, button) {
+    if (typeof orderShowReadOnly !== 'undefined' && orderShowReadOnly) {
+        return;
+    }
+    const url = (typeof extraChargeDeleteUrlPrefix === 'string' ? extraChargeDeleteUrlPrefix : '') + '/' + encodeURIComponent(lineIndex);
+    const csrf = document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    if (button) {
+        button.disabled = true;
+    }
+    fetch(url, {
+        method: 'DELETE',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrf || '',
+        },
+    })
+        .then(function (r) {
+            return r.json().then(function (data) {
+                return { ok: r.ok, data: data };
+            });
+        })
+        .then(function (res) {
+            if (button) {
+                button.disabled = false;
+            }
+            if (res.ok && res.data && res.data.success && res.data.order) {
+                if (typeof updateSummary === 'function') {
+                    updateSummary(res.data.order);
+                }
+                if (typeof showToast === 'function') {
+                    showToast(res.data.message || 'Removed', 'success');
+                }
+            } else {
+                const msg = res.data && res.data.message ? res.data.message : 'Could not remove';
+                if (typeof showToast === 'function') {
+                    showToast(msg, 'error');
+                }
+            }
+        })
+        .catch(function () {
+            if (button) {
+                button.disabled = false;
+            }
+            if (typeof showToast === 'function') {
+                showToast('Network error', 'error');
+            }
+        });
+}
+
 function refreshExtraChargesFromCart(cart) {
     const block = document.getElementById('summary-extra-charges-block');
     const ul = document.getElementById('extra-charges-lines-ul');
@@ -3371,19 +3674,31 @@ function refreshExtraChargesFromCart(cart) {
         block.classList.toggle('hidden', total <= 0);
     }
     if (ul) {
+        const ro = typeof orderShowReadOnly !== 'undefined' && orderShowReadOnly;
+        const titleAttr = (typeof removeExtraChargeTitle === 'string' ? removeExtraChargeTitle : 'Remove')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/"/g, '&quot;');
         ul.innerHTML = lines
-            .filter(function (line) {
-                return line && typeof line === 'object';
-            })
-            .map(function (line) {
+            .map(function (line, idx) {
+                if (!line || typeof line !== 'object') {
+                    return '';
+                }
                 const lbl = String(line.label || '—')
                     .replace(/&/g, '&amp;')
                     .replace(/</g, '&lt;')
                     .replace(/>/g, '&gt;');
                 const a = (parseFloat(line.amount) || 0).toFixed(2);
-                return '<li class="flex items-start justify-between gap-2 border-b border-amber-100/80 pb-1.5 last:border-0 last:pb-0">'
+                const removeBtn = ro
+                    ? ''
+                    : '<button type="button" onclick="removeExtraChargeLine(' + idx + ', this)" class="rounded p-0.5 text-red-500 transition hover:bg-red-100 hover:text-red-700" title="' + titleAttr + '">'
+                        + '<i class="fas fa-times-circle text-sm" aria-hidden="true"></i></button>';
+                return '<li class="flex items-start justify-between gap-2 border-b border-amber-100/80 pb-1 text-xs last:border-0 last:pb-0">'
                     + '<span class="min-w-0 flex-1 leading-snug">' + lbl + '</span>'
-                    + '<span class="shrink-0 font-semibold tabular-nums text-gray-900">₹' + a + '</span></li>';
+                    + '<div class="flex shrink-0 items-start gap-1.5">'
+                    + '<span class="font-semibold tabular-nums text-gray-900">₹' + a + '</span>'
+                    + removeBtn
+                    + '</div></li>';
             })
             .join('');
     }
@@ -3484,14 +3799,12 @@ function updateSummary(cart) {
     refreshExtraChargesFromCart(cart);
 
     const subTotalEl = document.querySelector('[data-sub-total]');
-    const taxTotalEl = document.querySelector('[data-tax-total]');
     const discountAmountEl = document.querySelector('[data-discount-amount]');
     const couponDiscountEl = document.querySelector('[data-coupon-discount]');
     const discountTotalEl = document.querySelector('[data-discount-total]');
     const orderTotalEl = document.querySelector('[data-order-total]');
 
     if (subTotalEl) subTotalEl.textContent = '₹' + parseFloat(cart.sub_total).toFixed(2);
-    if (taxTotalEl) taxTotalEl.textContent = '₹' + parseFloat(cart.tax_total).toFixed(2);
     if (discountAmountEl) discountAmountEl.textContent = '-₹' + parseFloat(cart.discount_amount).toFixed(2);
     if (couponDiscountEl) couponDiscountEl.textContent = '-₹' + parseFloat(cart.coupon_discount).toFixed(2);
     if (discountTotalEl) discountTotalEl.textContent = '-₹' + parseFloat(cart.discount_total).toFixed(2);
@@ -3526,6 +3839,14 @@ function updateSummary(cart) {
     applySecurityDepositDisplay(cart);
     if (typeof refreshPaymentListFromOrder === 'function') {
         refreshPaymentListFromOrder(cart);
+    }
+    if (cart.delivered_at_display !== undefined && typeof applyRentalStatusToUi === 'function') {
+        applyRentalStatusToUi({
+            delivered_at: cart.delivered_at,
+            delivered_at_display: cart.delivered_at_display,
+            returned_at: cart.returned_at,
+            returned_at_display: cart.returned_at_display,
+        });
     }
 }
 

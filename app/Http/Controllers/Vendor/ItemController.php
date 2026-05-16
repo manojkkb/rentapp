@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ItemController extends Controller
 {
@@ -140,23 +141,8 @@ class ItemController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'category_id' => 'required|numeric|exists:categories,id',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'price_type' => ['required', Rule::in(Items::priceTypeKeys())],
-            'stock' => 'required|integer|min:0',
-            'manage_stock' => 'nullable',
-            'is_available' => 'nullable',
-            'is_active' => 'nullable',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-        ]);
-
-        // Convert checkbox values to booleans
-        $manageStock = filter_var($request->input('manage_stock', false), FILTER_VALIDATE_BOOLEAN);
-        $isAvailable = filter_var($request->input('is_available', false), FILTER_VALIDATE_BOOLEAN);
-        $isActive = filter_var($request->input('is_active', false), FILTER_VALIDATE_BOOLEAN);
+        $request->validate($this->itemPayloadValidationRules());
+        $this->validateItemInventoryConsistency($request);
 
         // Generate unique slug
         $slug = Str::slug($request->name);
@@ -171,19 +157,10 @@ class ItemController extends Controller
         }
 
         try {
-            $item = Items::create([
+            $item = Items::create(array_merge([
                 'vendor_id' => $vendor->id,
-                'category_id' => $request->category_id,
-                'name' => $request->name,
                 'slug' => $slug,
-                'description' => $request->description,
-                'price' => $request->price,
-                'price_type' => $request->price_type,
-                'stock' => $request->stock,
-                'manage_stock' => $manageStock,
-                'is_available' => $isAvailable,
-                'is_active' => $isActive,
-            ]);
+            ], $this->itemAttributesFromRequest($request)));
 
             if ($request->hasFile('photo')) {
                 $path = $this->storeItemPhotoOnS3($request->file('photo'), $vendor->id, $item->id);
@@ -236,19 +213,7 @@ class ItemController extends Controller
         if (request()->wantsJson() || request()->ajax()) {
             return response()->json([
                 'success' => true,
-                'item' => [
-                    'id' => $item->id,
-                    'name' => $item->name,
-                    'category_id' => $item->category_id,
-                    'description' => $item->description,
-                    'price' => $item->price,
-                    'price_type' => $item->price_type,
-                    'stock' => $item->stock,
-                    'manage_stock' => $item->manage_stock,
-                    'is_available' => $item->is_available,
-                    'is_active' => $item->is_active,
-                    'photo_url' => $item->photo_url,
-                ],
+                'item' => $this->itemJsonForEditor($item),
             ]);
         }
 
@@ -279,23 +244,8 @@ class ItemController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'category_id' => 'required|numeric|exists:categories,id',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'price_type' => ['required', Rule::in(Items::priceTypeKeys())],
-            'stock' => 'required|integer|min:0',
-            'manage_stock' => 'nullable',
-            'is_available' => 'nullable',
-            'is_active' => 'nullable',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
-        ]);
-
-        // Convert checkbox values to booleans
-        $manageStock = filter_var($request->input('manage_stock', false), FILTER_VALIDATE_BOOLEAN);
-        $isAvailable = filter_var($request->input('is_available', false), FILTER_VALIDATE_BOOLEAN);
-        $isActive = filter_var($request->input('is_active', false), FILTER_VALIDATE_BOOLEAN);
+        $request->validate($this->itemPayloadValidationRules());
+        $this->validateItemInventoryConsistency($request);
 
         // Generate unique slug if name changed
         $slug = Str::slug($request->name);
@@ -315,18 +265,9 @@ class ItemController extends Controller
         }
 
         try {
-            $data = [
-                'category_id' => $request->category_id,
-                'name' => $request->name,
+            $data = array_merge([
                 'slug' => $slug,
-                'description' => $request->description,
-                'price' => $request->price,
-                'price_type' => $request->price_type,
-                'stock' => $request->stock,
-                'manage_stock' => $manageStock,
-                'is_available' => $isAvailable,
-                'is_active' => $isActive,
-            ];
+            ], $this->itemAttributesFromRequest($request));
 
             if ($request->hasFile('photo')) {
                 $this->deleteItemPhotoFromS3($item->photo);
@@ -433,6 +374,133 @@ class ItemController extends Controller
         $status = $item->is_available ? 'available' : 'unavailable';
 
         return back()->with('success', "Item marked as {$status}!");
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function itemPayloadValidationRules(): array
+    {
+        return [
+            'name' => 'required|string|max:255',
+            'category_id' => 'required|numeric|exists:categories,id',
+            'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
+            'price_type' => ['required', Rule::in(Items::priceTypeKeys())],
+            'security_deposit' => 'required|numeric|min:0',
+            'replacement_cost' => 'required|numeric|min:0',
+            'late_fee_per_day' => 'required|numeric|min:0',
+            'is_damage_protection' => 'nullable',
+            'minimum_rental_duration' => 'required|integer|min:1|max:3650',
+            'maximum_rental_duration' => 'required|integer|min:1|max:3650',
+            'weight' => 'required|numeric|min:0',
+            'dimension_length' => 'required|numeric|min:0',
+            'dimension_width' => 'required|numeric|min:0',
+            'dimension_height' => 'required|numeric|min:0',
+            'condition_status' => ['required', Rule::in(Items::CONDITION_STATUSES)],
+            'total_stock' => 'required|integer|min:0',
+            'available_stock' => 'required|integer|min:0',
+            'rented_stock' => 'required|integer|min:0',
+            'damaged_stock' => 'required|integer|min:0',
+            'maintenance_stock' => 'required|integer|min:0',
+            'manage_stock' => 'nullable',
+            'is_available' => 'nullable',
+            'is_active' => 'nullable',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+        ];
+    }
+
+    private function validateItemInventoryConsistency(Request $request): void
+    {
+        $total = (int) $request->input('total_stock');
+        $sum = (int) $request->input('available_stock')
+            + (int) $request->input('rented_stock')
+            + (int) $request->input('damaged_stock')
+            + (int) $request->input('maintenance_stock');
+        if ($sum !== $total) {
+            throw ValidationException::withMessages([
+                'total_stock' => [__('vendor.item_stock_buckets_must_equal_total')],
+            ]);
+        }
+        $min = (int) $request->input('minimum_rental_duration');
+        $max = (int) $request->input('maximum_rental_duration');
+        if ($max < $min) {
+            throw ValidationException::withMessages([
+                'maximum_rental_duration' => [__('vendor.maximum_rental_below_minimum')],
+            ]);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function itemAttributesFromRequest(Request $request): array
+    {
+        $available = (int) $request->input('available_stock');
+
+        return [
+            'category_id' => $request->category_id,
+            'name' => $request->name,
+            'description' => $request->description,
+            'price' => $request->price,
+            'price_type' => $request->price_type,
+            'security_deposit' => round((float) $request->security_deposit, 2),
+            'replacement_cost' => round((float) $request->replacement_cost, 2),
+            'late_fee_per_day' => round((float) $request->late_fee_per_day, 2),
+            'is_damage_protection' => $request->boolean('is_damage_protection'),
+            'minimum_rental_duration' => (int) $request->minimum_rental_duration,
+            'maximum_rental_duration' => (int) $request->maximum_rental_duration,
+            'weight' => round((float) $request->weight, 3),
+            'dimension_length' => round((float) $request->dimension_length, 2),
+            'dimension_width' => round((float) $request->dimension_width, 2),
+            'dimension_height' => round((float) $request->dimension_height, 2),
+            'condition_status' => $request->condition_status,
+            'total_stock' => (int) $request->input('total_stock'),
+            'available_stock' => $available,
+            'rented_stock' => (int) $request->input('rented_stock'),
+            'damaged_stock' => (int) $request->input('damaged_stock'),
+            'maintenance_stock' => (int) $request->input('maintenance_stock'),
+            'stock' => $available,
+            'manage_stock' => $request->boolean('manage_stock', true),
+            'is_available' => $request->boolean('is_available', true),
+            'is_active' => $request->boolean('is_active', true),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function itemJsonForEditor(Items $item): array
+    {
+        return [
+            'id' => $item->id,
+            'name' => $item->name,
+            'category_id' => $item->category_id,
+            'description' => $item->description,
+            'price' => (float) $item->price,
+            'price_type' => $item->price_type,
+            'stock' => (int) $item->stock,
+            'security_deposit' => (float) $item->security_deposit,
+            'replacement_cost' => (float) $item->replacement_cost,
+            'late_fee_per_day' => (float) $item->late_fee_per_day,
+            'is_damage_protection' => (bool) $item->is_damage_protection,
+            'minimum_rental_duration' => (int) $item->minimum_rental_duration,
+            'maximum_rental_duration' => (int) $item->maximum_rental_duration,
+            'weight' => (float) $item->weight,
+            'dimension_length' => (float) $item->dimension_length,
+            'dimension_width' => (float) $item->dimension_width,
+            'dimension_height' => (float) $item->dimension_height,
+            'condition_status' => $item->condition_status,
+            'total_stock' => (int) $item->total_stock,
+            'available_stock' => (int) $item->available_stock,
+            'rented_stock' => (int) $item->rented_stock,
+            'damaged_stock' => (int) $item->damaged_stock,
+            'maintenance_stock' => (int) $item->maintenance_stock,
+            'manage_stock' => (bool) $item->manage_stock,
+            'is_available' => (bool) $item->is_available,
+            'is_active' => (bool) $item->is_active,
+            'photo_url' => $item->photo_url,
+        ];
     }
 
     private function storeItemPhotoOnS3(UploadedFile $file, int $vendorId, int $itemId): string

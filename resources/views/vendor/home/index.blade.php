@@ -3,617 +3,346 @@
 @section('title', __('vendor.title'))
 @section('page-title', __('vendor.home'))
 
+@php
+    $s = $dashboard['stats'];
+    $ost = $dashboard['order_status_counts'] ?? [];
+    $rc = $dashboard['resource_counts'] ?? ['items' => 0, 'staff' => 0, 'customers' => 0];
+    $log = $dashboard['logistics'] ?? ['outgoing_count' => 0, 'outgoing_orders' => [], 'return_count' => 0, 'return_orders' => []];
+    $recent = $dashboard['recent_activities'];
+    $popular = $dashboard['popular_items'];
+    $vendorName = Auth::user()->currentVendor()->name ?? 'Vendor';
+@endphp
+
 @section('content')
-{{-- Mobile PWA install: full-width strip at top of dashboard (not a floating popup) --}}
+{{-- Mobile PWA install strip --}}
 <div x-data="vendorDashboardPwaInstall()"
      x-show="show"
      x-transition.opacity.duration.200ms
      x-cloak
-     class="md:hidden -mx-4 -mt-4 mb-4 border-b border-emerald-200/80 bg-gradient-to-b from-emerald-50 to-white px-4 py-3"
+     class="md:hidden -mx-4 -mt-4 mb-3 border-b border-emerald-200/80 bg-gradient-to-b from-emerald-50 to-white px-4 py-2.5"
      style="display: none;">
-    <div class="flex gap-3 items-start max-w-6xl mx-auto">
-        <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700">
-            <i class="fas fa-mobile-screen-button text-base" aria-hidden="true"></i>
+    <div class="mx-auto flex max-w-6xl items-start gap-2.5">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+            <i class="fas fa-mobile-screen-button text-sm" aria-hidden="true"></i>
         </div>
-        <div class="flex-1 min-w-0">
-            <p class="font-semibold text-gray-900 text-sm leading-snug">{{ __('vendor.install_app_title') }}</p>
-            <p class="text-xs text-gray-600 mt-0.5 leading-relaxed">{{ __('vendor.install_app_body') }}</p>
-            <p class="text-xs text-gray-500 mt-1.5 leading-relaxed" x-show="isIOS">{{ __('vendor.install_app_ios_help') }}</p>
-            <p class="text-xs text-gray-500 mt-1.5 leading-relaxed" x-show="!isIOS && !canPrompt">{{ __('vendor.install_app_android_hint') }}</p>
+        <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold leading-snug text-gray-900">{{ __('vendor.install_app_title') }}</p>
+            <p class="mt-0.5 text-[11px] leading-snug text-gray-600">{{ __('vendor.install_app_body') }}</p>
+            <p class="mt-1 text-[11px] leading-snug text-gray-500" x-show="isIOS">{{ __('vendor.install_app_ios_help') }}</p>
+            <p class="mt-1 text-[11px] leading-snug text-gray-500" x-show="!isIOS && !canPrompt">{{ __('vendor.install_app_android_hint') }}</p>
         </div>
         <button type="button"
                 x-show="!isIOS && canPrompt"
                 @click="install()"
-                class="flex-shrink-0 self-center inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 active:bg-emerald-800 transition-colors">
+                class="inline-flex shrink-0 items-center justify-center self-center rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-700 active:bg-emerald-800">
             {{ __('vendor.install_app_cta') }}
         </button>
     </div>
 </div>
 
-<!-- Shimmer Loading Indicator -->
-<div id="dashboardLoadingIndicator" class="">
-    <style>
-        @keyframes shimmer {
-            0% { background-position: -1000px 0; }
-            100% { background-position: 1000px 0; }
-        }
-        .shimmer {
-            animation: shimmer 2s infinite linear;
-            background: linear-gradient(to right, #f0f0f0 8%, #e0e0e0 18%, #f0f0f0 33%);
-            background-size: 1000px 100%;
-        }
-    </style>
-    
-    <!-- Shimmer Stats Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div class="flex items-center justify-between mb-4">
-                <div class="w-12 h-12 bg-gray-200 rounded-lg shimmer"></div>
-                <div class="w-16 h-6 bg-gray-200 rounded-full shimmer"></div>
-            </div>
-            <div class="h-4 bg-gray-200 rounded shimmer mb-3 w-24"></div>
-            <div class="h-8 bg-gray-200 rounded shimmer mb-2 w-20"></div>
-            <div class="h-3 bg-gray-200 rounded shimmer w-32"></div>
-        </div>
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div class="flex items-center justify-between mb-4">
-                <div class="w-12 h-12 bg-gray-200 rounded-lg shimmer"></div>
-                <div class="w-16 h-6 bg-gray-200 rounded-full shimmer"></div>
-            </div>
-            <div class="h-4 bg-gray-200 rounded shimmer mb-3 w-24"></div>
-            <div class="h-8 bg-gray-200 rounded shimmer mb-2 w-20"></div>
-            <div class="h-3 bg-gray-200 rounded shimmer w-32"></div>
-        </div>
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div class="flex items-center justify-between mb-4">
-                <div class="w-12 h-12 bg-gray-200 rounded-lg shimmer"></div>
-                <div class="w-16 h-6 bg-gray-200 rounded-full shimmer"></div>
-            </div>
-            <div class="h-4 bg-gray-200 rounded shimmer mb-3 w-24"></div>
-            <div class="h-8 bg-gray-200 rounded shimmer mb-2 w-20"></div>
-            <div class="h-3 bg-gray-200 rounded shimmer w-32"></div>
-        </div>
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div class="flex items-center justify-between mb-4">
-                <div class="w-12 h-12 bg-gray-200 rounded-lg shimmer"></div>
-                <div class="w-16 h-6 bg-gray-200 rounded-full shimmer"></div>
-            </div>
-            <div class="h-4 bg-gray-200 rounded shimmer mb-3 w-24"></div>
-            <div class="h-8 bg-gray-200 rounded shimmer mb-2 w-20"></div>
-            <div class="h-3 bg-gray-200 rounded shimmer w-32"></div>
-        </div>
-    </div>
-    
-    <!-- Shimmer Activity & Popular Items -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <!-- Quick Actions Shimmer -->
-        <div class="lg:col-span-1">
-            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                <div class="h-6 bg-gray-200 rounded shimmer mb-4 w-32"></div>
-                <div class="space-y-3">
-                    <div class="flex items-center p-3 rounded-lg border border-gray-100">
-                        <div class="w-10 h-10 bg-gray-200 rounded-lg shimmer"></div>
-                        <div class="ml-3 flex-1">
-                            <div class="h-4 bg-gray-200 rounded shimmer mb-2 w-24"></div>
-                            <div class="h-3 bg-gray-200 rounded shimmer w-32"></div>
-                        </div>
-                    </div>
-                    <div class="flex items-center p-3 rounded-lg border border-gray-100">
-                        <div class="w-10 h-10 bg-gray-200 rounded-lg shimmer"></div>
-                        <div class="ml-3 flex-1">
-                            <div class="h-4 bg-gray-200 rounded shimmer mb-2 w-24"></div>
-                            <div class="h-3 bg-gray-200 rounded shimmer w-32"></div>
-                        </div>
-                    </div>
-                    <div class="flex items-center p-3 rounded-lg border border-gray-100">
-                        <div class="w-10 h-10 bg-gray-200 rounded-lg shimmer"></div>
-                        <div class="ml-3 flex-1">
-                            <div class="h-4 bg-gray-200 rounded shimmer mb-2 w-24"></div>
-                            <div class="h-3 bg-gray-200 rounded shimmer w-32"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Recent Activity Shimmer -->
-        <div class="lg:col-span-2">
-            <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="h-6 bg-gray-200 rounded shimmer w-40"></div>
-                    <div class="h-4 bg-gray-200 rounded shimmer w-20"></div>
-                </div>
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-gray-200 rounded-full shimmer"></div>
-                            <div>
-                                <div class="h-4 bg-gray-200 rounded shimmer mb-2 w-32"></div>
-                                <div class="h-3 bg-gray-200 rounded shimmer w-40"></div>
-                            </div>
-                        </div>
-                        <div class="h-6 bg-gray-200 rounded-full shimmer w-20"></div>
-                    </div>
-                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-gray-200 rounded-full shimmer"></div>
-                            <div>
-                                <div class="h-4 bg-gray-200 rounded shimmer mb-2 w-32"></div>
-                                <div class="h-3 bg-gray-200 rounded shimmer w-40"></div>
-                            </div>
-                        </div>
-                        <div class="h-6 bg-gray-200 rounded-full shimmer w-20"></div>
-                    </div>
-                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-gray-200 rounded-full shimmer"></div>
-                            <div>
-                                <div class="h-4 bg-gray-200 rounded shimmer mb-2 w-32"></div>
-                                <div class="h-3 bg-gray-200 rounded shimmer w-40"></div>
-                            </div>
-                        </div>
-                        <div class="h-6 bg-gray-200 rounded-full shimmer w-20"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Shimmer Performance & Popular Items -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Performance Shimmer -->
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div class="flex items-center justify-between mb-4">
-                <div class="h-6 bg-gray-200 rounded shimmer w-48"></div>
-                <div class="h-8 bg-gray-200 rounded-lg shimmer w-32"></div>
-            </div>
-            <div class="h-64 bg-gray-200 rounded-lg shimmer"></div>
-        </div>
-        
-        <!-- Popular Items Shimmer -->
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div class="flex items-center justify-between mb-4">
-                <div class="h-6 bg-gray-200 rounded shimmer w-32"></div>
-                <div class="h-4 bg-gray-200 rounded shimmer w-20"></div>
-            </div>
-            <div class="space-y-3">
-                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-12 h-12 bg-gray-200 rounded-lg shimmer"></div>
-                        <div>
-                            <div class="h-4 bg-gray-200 rounded shimmer mb-2 w-32"></div>
-                            <div class="h-3 bg-gray-200 rounded shimmer w-20"></div>
-                        </div>
-                    </div>
-                    <div class="h-6 bg-gray-200 rounded shimmer w-12"></div>
-                </div>
-                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-12 h-12 bg-gray-200 rounded-lg shimmer"></div>
-                        <div>
-                            <div class="h-4 bg-gray-200 rounded shimmer mb-2 w-32"></div>
-                            <div class="h-3 bg-gray-200 rounded shimmer w-20"></div>
-                        </div>
-                    </div>
-                    <div class="h-6 bg-gray-200 rounded shimmer w-12"></div>
-                </div>
-                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-12 h-12 bg-gray-200 rounded-lg shimmer"></div>
-                        <div>
-                            <div class="h-4 bg-gray-200 rounded shimmer mb-2 w-32"></div>
-                            <div class="h-3 bg-gray-200 rounded shimmer w-20"></div>
-                        </div>
-                    </div>
-                    <div class="h-6 bg-gray-200 rounded shimmer w-12"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div id="dashboardContent" class="hidden">
-<!-- Welcome Section -->
-<div class="mb-6">
-    <div class="bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl p-6 md:p-8 text-white shadow-lg">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-            <div class="mb-4 md:mb-0">
-                <h1 class="text-2xl md:text-3xl font-bold mb-2">
-                    {{ __('vendor.welcome_back', ['name' => Auth::user()->currentVendor()->name ?? 'Vendor']) }} 👋
+<div class="mx-auto max-w-6xl space-y-3 pb-4 md:space-y-4">
+    {{-- Welcome + primary actions (single compact row) --}}
+    <div class="overflow-hidden rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-3 py-3 text-white shadow-md sm:px-4 sm:py-3.5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="min-w-0 flex-1">
+                <h1 class="truncate text-base font-bold leading-tight sm:text-lg md:text-xl">
+                    {{ __('vendor.welcome_back', ['name' => $vendorName]) }}
                 </h1>
-                <p class="text-emerald-50 text-sm md:text-base">
-                    {{ __('vendor.today_summary') }}
-                </p>
+                <p class="mt-0.5 text-[11px] text-emerald-50/95 sm:text-xs">{{ __('vendor.today_summary') }}</p>
             </div>
-            <div class="flex space-x-3">
-                <a href="{{ route('vendor.items.create') }}" class="bg-white text-emerald-600 px-4 py-2 rounded-lg font-medium text-sm hover:bg-emerald-50 transition-colors flex items-center">
-                    <i class="fas fa-plus mr-2"></i>
+            <div class="flex shrink-0 flex-wrap items-center gap-1.5 sm:gap-2">
+                <a href="{{ route('vendor.items.create') }}"
+                   class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-white/95 px-2.5 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-white sm:px-3 sm:text-sm">
+                    <i class="fas fa-plus text-[11px]" aria-hidden="true"></i>
                     {{ __('vendor.add_item') }}
                 </a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Stats Cards -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
-    <!-- Total Items -->
-    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <i class="fas fa-box text-blue-600 text-xl"></i>
-            </div>
-            <span class="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                <i class="fas fa-arrow-up text-[10px]"></i> 12%
-            </span>
-        </div>
-        <h3 class="text-gray-600 text-sm font-medium mb-1">{{ __('vendor.total_items') }}</h3>
-        <p class="text-3xl font-bold text-gray-900" id="stat-total-items">0</p>
-        <p class="text-xs text-gray-500 mt-2"><span id="stat-active-items">0</span> {{ __('vendor.active_listings') }}</p>
-    </div>
-
-    <!-- Orders -->
-    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <i class="fas fa-receipt text-purple-600 text-xl"></i>
-            </div>
-            <span class="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                <i class="fas fa-arrow-up text-[10px]"></i> 8%
-            </span>
-        </div>
-        <h3 class="text-gray-600 text-sm font-medium mb-1">{{ __('vendor.total_orders') }}</h3>
-        <p class="text-3xl font-bold text-gray-900" id="stat-total-orders">0</p>
-        <p class="text-xs text-gray-500 mt-2"><span id="stat-monthly-orders">0</span> {{ __('vendor.this_month') }}</p>
-    </div>
-
-    <!-- Revenue -->
-    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <i class="fas fa-rupee-sign text-emerald-600 text-xl"></i>
-            </div>
-            <span class="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                <i class="fas fa-arrow-up text-[10px]"></i> 23%
-            </span>
-        </div>
-        <h3 class="text-gray-600 text-sm font-medium mb-1">{{ __('vendor.revenue') }}</h3>
-        <p class="text-3xl font-bold text-gray-900" id="stat-revenue">₹0</p>
-        <p class="text-xs text-gray-500 mt-2"><span id="stat-monthly-revenue">₹0</span> {{ __('vendor.this_month') }}</p>
-    </div>
-
-    <!-- Reviews -->
-    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <i class="fas fa-star text-yellow-600 text-xl"></i>
-            </div>
-            <span class="text-xs font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded-full">
-                0.0
-            </span>
-        </div>
-        <h3 class="text-gray-600 text-sm font-medium mb-1">{{ __('vendor.rating') }}</h3>
-        <p class="text-3xl font-bold text-gray-900" id="stat-rating">0.0</p>
-        <p class="text-xs text-gray-500 mt-2">{{ __('vendor.from_reviews', ['count' => '<span id="stat-reviews">0</span>']) }}</p>
-    </div>
-</div>
-
-<!-- Quick Actions & Recent Activity -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-    
-    <!-- Quick Actions -->
-    <div class="lg:col-span-1">
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                <i class="fas fa-bolt text-emerald-600 mr-2"></i>
-                {{ __('vendor.quick_actions') }}
-            </h2>
-            <div class="space-y-3">
-                <a href="{{ route('vendor.items.create') }}" class="flex items-center p-3 rounded-lg hover:bg-emerald-50 transition-colors group border border-gray-100">
-                    <div class="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
-                        <i class="fas fa-plus text-emerald-600"></i>
-                    </div>
-                    <div class="ml-3 flex-1">
-                        <p class="text-sm font-medium text-gray-900">{{ __('vendor.add_new_item') }}</p>
-                        <p class="text-xs text-gray-500">{{ __('vendor.list_rental_item') }}</p>
-                    </div>
-                    <i class="fas fa-chevron-right text-gray-400 group-hover:text-emerald-600"></i>
-                </a>
-
-                <a href="{{ route('vendor.orders.index') }}" class="flex items-center p-3 rounded-lg hover:bg-blue-50 transition-colors group border border-gray-100">
-                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                        <i class="fas fa-receipt text-blue-600"></i>
-                    </div>
-                    <div class="ml-3 flex-1">
-                        <p class="text-sm font-medium text-gray-900">{{ __('vendor.view_orders') }}</p>
-                        <p class="text-xs text-gray-500">{{ __('vendor.manage_orders') }}</p>
-                    </div>
-                    <i class="fas fa-chevron-right text-gray-400 group-hover:text-blue-600"></i>
-                </a>
-
-                <a href="{{ route('vendor.profile') }}" class="flex items-center p-3 rounded-lg hover:bg-purple-50 transition-colors group border border-gray-100">
-                    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
-                        <i class="fas fa-user text-purple-600"></i>
-                    </div>
-                    <div class="ml-3 flex-1">
-                        <p class="text-sm font-medium text-gray-900">{{ __('vendor.edit_profile') }}</p>
-                        <p class="text-xs text-gray-500">{{ __('vendor.update_information') }}</p>
-                    </div>
-                    <i class="fas fa-chevron-right text-gray-400 group-hover:text-purple-600"></i>
-                </a>
-
-                <a href="{{ route('vendor.items.index') }}" class="flex items-center p-3 rounded-lg hover:bg-orange-50 transition-colors group border border-gray-100">
-                    <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center group-hover:bg-orange-200 transition-colors">
-                        <i class="fas fa-chart-line text-orange-600"></i>
-                    </div>
-                    <div class="ml-3 flex-1">
-                        <p class="text-sm font-medium text-gray-900">{{ __('vendor.view_analytics') }}</p>
-                        <p class="text-xs text-gray-500">{{ __('vendor.check_statistics') }}</p>
-                    </div>
-                    <i class="fas fa-chevron-right text-gray-400 group-hover:text-orange-600"></i>
+                <a href="{{ route('vendor.orders.create') }}"
+                   class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-900/25 px-2.5 text-xs font-semibold text-white ring-1 ring-white/30 transition hover:bg-emerald-900/35 sm:px-3 sm:text-sm">
+                    <i class="fas fa-file-circle-plus text-[11px]" aria-hidden="true"></i>
+                    {{ __('vendor.create_order') }}
                 </a>
             </div>
         </div>
     </div>
 
-    <!-- Recent Activity -->
-    <div class="lg:col-span-2">
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-bold text-gray-900 flex items-center">
-                    <i class="fas fa-clock text-emerald-600 mr-2"></i>
-                    {{ __('vendor.recent_activity') }}
-                </h2>
-                <a href="{{ route('vendor.orders.index') }}" class="text-sm text-emerald-600 hover:text-emerald-700 font-medium">{{ __('vendor.view_all') }}</a>
+    {{-- Stats: compact cards — minimal vertical space --}}
+    <div class="grid grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-4">
+        <div class="rounded-lg border border-gray-200/90 bg-white px-2 py-1.5 shadow-sm ring-1 ring-gray-100/80 sm:px-2.5 sm:py-2">
+            <div class="mb-0.5 flex items-center gap-1.5">
+                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-600">
+                    <i class="fas fa-box text-[10px]" aria-hidden="true"></i>
+                </div>
+                <h3 class="min-w-0 truncate text-[10px] font-semibold uppercase leading-tight tracking-wide text-gray-500">{{ __('vendor.total_items') }}</h3>
             </div>
+            <p class="text-lg font-bold leading-none tabular-nums text-gray-900 sm:text-xl">{{ (int) $s['total_items'] }}</p>
+            <p class="mt-0.5 truncate text-[10px] leading-tight text-gray-500">{{ (int) $s['active_items'] }} {{ __('vendor.active_listings') }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200/90 bg-white px-2 py-1.5 shadow-sm ring-1 ring-gray-100/80 sm:px-2.5 sm:py-2">
+            <div class="mb-0.5 flex items-center gap-1.5">
+                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-purple-100 text-purple-600">
+                    <i class="fas fa-receipt text-[10px]" aria-hidden="true"></i>
+                </div>
+                <h3 class="min-w-0 truncate text-[10px] font-semibold uppercase leading-tight tracking-wide text-gray-500">{{ __('vendor.total_orders') }}</h3>
+            </div>
+            <p class="text-lg font-bold leading-none tabular-nums text-gray-900 sm:text-xl">{{ (int) $s['total_orders'] }}</p>
+            <p class="mt-0.5 truncate text-[10px] leading-tight text-gray-500">{{ (int) $s['monthly_orders'] }} {{ __('vendor.this_month') }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200/90 bg-white px-2 py-1.5 shadow-sm ring-1 ring-gray-100/80 sm:px-2.5 sm:py-2">
+            <div class="mb-0.5 flex items-center gap-1.5">
+                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-emerald-600">
+                    <i class="fas fa-rupee-sign text-[10px]" aria-hidden="true"></i>
+                </div>
+                <h3 class="min-w-0 truncate text-[10px] font-semibold uppercase leading-tight tracking-wide text-gray-500">{{ __('vendor.revenue') }}</h3>
+            </div>
+            <p class="text-lg font-bold leading-none tabular-nums text-gray-900 sm:text-xl">₹{{ number_format((int) round($s['total_revenue']), 0, '.', ',') }}</p>
+            <p class="mt-0.5 truncate text-[10px] leading-tight text-gray-500">₹{{ number_format((int) round($s['monthly_revenue']), 0, '.', ',') }} {{ __('vendor.this_month') }}</p>
+        </div>
+        <div class="rounded-lg border border-gray-200/90 bg-white px-2 py-1.5 shadow-sm ring-1 ring-gray-100/80 sm:px-2.5 sm:py-2">
+            <div class="mb-0.5 flex items-center gap-1.5">
+                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-600">
+                    <i class="fas fa-star text-[10px]" aria-hidden="true"></i>
+                </div>
+                <h3 class="min-w-0 truncate text-[10px] font-semibold uppercase leading-tight tracking-wide text-gray-500">{{ __('vendor.rating') }}</h3>
+            </div>
+            <p class="text-lg font-bold leading-none tabular-nums text-gray-900 sm:text-xl">{{ number_format((float) $s['average_rating'], 1) }}</p>
+            <p class="mt-0.5 truncate text-[10px] leading-tight text-gray-500">{!! __('vendor.from_reviews', ['count' => '<span class="font-semibold text-gray-700">'.(int) $s['total_reviews'].'</span>']) !!}</p>
+        </div>
+    </div>
 
-            <div class="space-y-4" id="recent-activities-container">
-                <!-- Empty State -->
-                <div class="text-center py-12" id="activities-empty-state">
-                    <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-inbox text-gray-400 text-3xl"></i>
-                    </div>
-                    <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('vendor.no_activity') }}</h3>
-                    <p class="text-sm text-gray-500 mb-6">{{ __('vendor.start_adding_items') }}</p>
-                    <a href="{{ route('vendor.items.create') }}" class="inline-block bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-lg font-medium text-sm transition-colors">
-                        <i class="fas fa-plus mr-2"></i>{{ __('vendor.add_first_item') }}
+    {{-- Order status + Items / Staff / Customers (one row on sm+) --}}
+    <div class="flex flex-col gap-2 rounded-lg border border-gray-200/90 bg-white px-2 py-1.5 shadow-sm ring-1 ring-gray-100/80 sm:flex-row sm:items-stretch sm:gap-2 sm:px-2.5 sm:py-2">
+        <div class="min-w-0 flex-1">
+            <p class="mb-1 text-[10px] font-bold uppercase tracking-wide text-gray-400">{{ __('vendor.order_status') }}</p>
+            <div class="flex flex-wrap gap-1 sm:gap-1.5">
+                @foreach (\App\Models\Order::STATUSES as $st)
+                    @php
+                        $n = (int) ($ost[$st] ?? 0);
+                        $chip = match ($st) {
+                            'pending' => 'border-amber-200/90 bg-amber-50 text-amber-900 hover:bg-amber-100/90',
+                            'confirmed' => 'border-sky-200/90 bg-sky-50 text-sky-900 hover:bg-sky-100/90',
+                            'ongoing' => 'border-violet-200/90 bg-violet-50 text-violet-900 hover:bg-violet-100/90',
+                            'completed' => 'border-emerald-200/90 bg-emerald-50 text-emerald-900 hover:bg-emerald-100/90',
+                            'cancelled' => 'border-rose-200/90 bg-rose-50 text-rose-900 hover:bg-rose-100/90',
+                            default => 'border-gray-200 bg-gray-50 text-gray-800',
+                        };
+                        $label = match ($st) {
+                            'pending' => __('vendor.pending'),
+                            'confirmed' => __('vendor.confirmed'),
+                            'ongoing' => __('vendor.ongoing'),
+                            'completed' => __('vendor.completed'),
+                            'cancelled' => __('vendor.cancelled'),
+                            default => $st,
+                        };
+                    @endphp
+                    <a href="{{ route('vendor.orders.index', ['status' => $st]) }}"
+                       class="inline-flex min-h-[32px] items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold leading-tight shadow-sm transition sm:min-h-0 sm:px-2.5 sm:py-1 sm:text-[11px] {{ $chip }}">
+                        <span class="max-w-[5.5rem] truncate sm:max-w-none">{{ $label }}</span>
+                        <span class="rounded bg-white/80 px-1 py-px text-[10px] font-bold tabular-nums text-current ring-1 ring-black/5 sm:text-[11px]">{{ $n }}</span>
                     </a>
+                @endforeach
+            </div>
+        </div>
+        <div class="grid shrink-0 grid-cols-3 gap-1.5 border-t border-gray-100 pt-2 sm:w-[13.5rem] sm:border-l sm:border-t-0 sm:pl-2 sm:pt-0 md:w-[15rem]">
+            <a href="{{ route('vendor.items.index') }}" class="flex flex-col items-center justify-center rounded-md border border-orange-200/80 bg-orange-50/90 px-1 py-1.5 text-center shadow-sm ring-1 ring-orange-100/80 transition hover:bg-orange-100/90 sm:py-2">
+                <span class="text-[9px] font-bold uppercase leading-tight tracking-wide text-orange-800/90">{{ __('vendor.items') }}</span>
+                <span class="mt-0.5 text-lg font-bold tabular-nums leading-none text-orange-950 sm:text-xl">{{ (int) ($rc['items'] ?? 0) }}</span>
+            </a>
+            <a href="{{ route('vendor.staff.index') }}" class="flex flex-col items-center justify-center rounded-md border border-indigo-200/80 bg-indigo-50/90 px-1 py-1.5 text-center shadow-sm ring-1 ring-indigo-100/80 transition hover:bg-indigo-100/90 sm:py-2">
+                <span class="text-[9px] font-bold uppercase leading-tight tracking-wide text-indigo-800/90">{{ __('vendor.staff') }}</span>
+                <span class="mt-0.5 text-lg font-bold tabular-nums leading-none text-indigo-950 sm:text-xl">{{ (int) ($rc['staff'] ?? 0) }}</span>
+            </a>
+            <a href="{{ route('vendor.customers.index') }}" class="flex flex-col items-center justify-center rounded-md border border-teal-200/80 bg-teal-50/90 px-1 py-1.5 text-center shadow-sm ring-1 ring-teal-100/80 transition hover:bg-teal-100/90 sm:py-2">
+                <span class="text-[9px] font-bold uppercase leading-tight tracking-wide text-teal-800/90">{{ __('vendor.customers') }}</span>
+                <span class="mt-0.5 text-lg font-bold tabular-nums leading-none text-teal-950 sm:text-xl">{{ (int) ($rc['customers'] ?? 0) }}</span>
+            </a>
+        </div>
+    </div>
+
+    {{-- Upcoming delivery & returns (before recent activity) --}}
+    <section class="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-sm ring-1 ring-gray-100/80">
+        <div class="flex flex-col gap-2 border-b border-gray-100 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <h2 class="flex items-center gap-1.5 text-sm font-bold text-gray-900">
+                <i class="fas fa-truck-fast text-sky-600 text-xs" aria-hidden="true"></i>
+                {{ __('vendor.dashboard_upcoming_title') }}
+            </h2>
+            <div class="flex flex-wrap items-center gap-1.5">
+                <span class="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-800 ring-1 ring-sky-100">
+                    @choice('vendor.dashboard_outgoing_choice', (int) $log['outgoing_count'])
+                </span>
+                <span class="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-800 ring-1 ring-violet-100">
+                    @choice('vendor.dashboard_returns_choice', (int) $log['return_count'])
+                </span>
+            </div>
+        </div>
+        <div class="grid gap-0 divide-y divide-gray-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+            <div class="flex min-h-0 flex-col p-2">
+                <p class="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-gray-400">{{ __('vendor.dashboard_upcoming_outgoing_heading') }}</p>
+                <div class="max-h-40 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+                    @forelse($log['outgoing_orders'] as $row)
+                        @php $isDel = ($row['fulfillment_type'] ?? 'pickup') === 'delivery'; @endphp
+                        <a href="{{ route('vendor.orders.show', $row['id']) }}"
+                           class="mb-1 flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 last:mb-0 hover:border-gray-100 hover:bg-gray-50/80 @if(! empty($row['is_handoff_today'])) ring-1 ring-emerald-200/80 bg-emerald-50/40 @elseif(! empty($row['is_handoff_tomorrow'])) ring-1 ring-sky-200/70 bg-sky-50/35 @endif">
+                            <div class="min-w-0">
+                                <p class="truncate text-xs font-semibold text-gray-900">{{ $row['customer_name'] }}</p>
+                                <p class="truncate text-[10px] leading-snug text-gray-500">
+                                    <span class="text-gray-400">#{{ $row['order_number'] }}</span>
+                                    <span class="mx-1 text-gray-300">·</span>
+                                    <span class="font-semibold text-gray-800">{{ $row['day_line'] ?? ($row['when_label'] ?? '—') }}</span>
+                                    @if(! empty($row['time_line']))
+                                        <span class="mx-1 text-gray-300">·</span>
+                                        <span class="inline-block rounded px-1.5 py-0.5 text-[11px] font-bold tabular-nums tracking-tight text-emerald-900 ring-1 ring-emerald-300/70 bg-emerald-100">{{ $row['time_line'] }}</span>
+                                    @endif
+                                </p>
+                            </div>
+                            <span class="shrink-0 self-start rounded-md px-1.5 py-0.5 text-[10px] font-semibold {{ $isDel ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800' }}">
+                                {{ $isDel ? __('vendor.dashboard_fulfillment_delivery') : __('vendor.dashboard_fulfillment_pickup') }}
+                            </span>
+                        </a>
+                    @empty
+                        <p class="px-2 py-6 text-center text-[11px] text-gray-500">{{ __('vendor.dashboard_outgoing_empty') }}</p>
+                    @endforelse
+                </div>
+            </div>
+            <div class="flex min-h-0 flex-col p-2">
+                <p class="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-wide text-gray-400">{{ __('vendor.dashboard_upcoming_returns_heading') }}</p>
+                <div class="max-h-40 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+                    @forelse($log['return_orders'] as $row)
+                        <a href="{{ route('vendor.orders.show', $row['id']) }}"
+                           class="mb-1 flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 last:mb-0 hover:border-gray-100 hover:bg-gray-50/80 @if(! empty($row['is_return_today'])) ring-1 ring-violet-200/80 bg-violet-50/40 @elseif(! empty($row['is_return_tomorrow'])) ring-1 ring-violet-200/50 bg-violet-50/25 @endif">
+                            <div class="min-w-0">
+                                <p class="truncate text-xs font-semibold text-gray-900">{{ $row['customer_name'] }}</p>
+                                <p class="truncate text-[10px] leading-snug text-gray-500">
+                                    <span class="text-gray-400">#{{ $row['order_number'] }}</span>
+                                    <span class="mx-1 text-gray-300">·</span>
+                                    <span class="font-semibold text-gray-800">{{ $row['day_line'] ?? ($row['when_label'] ?? '—') }}</span>
+                                    @if(! empty($row['time_line']))
+                                        <span class="mx-1 text-gray-300">·</span>
+                                        <span class="inline-block rounded px-1.5 py-0.5 text-[11px] font-bold tabular-nums tracking-tight text-violet-900 ring-1 ring-violet-300/70 bg-violet-100">{{ $row['time_line'] }}</span>
+                                    @endif
+                                </p>
+                            </div>
+                            <span class="shrink-0 self-start rounded-md bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">
+                                <i class="fas fa-rotate-left mr-0.5 text-[9px]" aria-hidden="true"></i>{{ __('vendor.dashboard_return_badge') }}
+                            </span>
+                        </a>
+                    @empty
+                        <p class="px-2 py-6 text-center text-[11px] text-gray-500">{{ __('vendor.dashboard_returns_empty') }}</p>
+                    @endforelse
                 </div>
             </div>
         </div>
+    </section>
+
+    {{-- Recent orders + popular items: side by side, scroll inside --}}
+    <div class="grid gap-3 lg:grid-cols-2">
+        <section class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-sm ring-1 ring-gray-100/80">
+            <div class="flex items-center justify-between border-b border-gray-100 px-3 py-2">
+                <h2 class="flex items-center gap-1.5 text-sm font-bold text-gray-900">
+                    <i class="fas fa-clock text-emerald-600 text-xs" aria-hidden="true"></i>
+                    {{ __('vendor.recent_activity') }}
+                </h2>
+                <a href="{{ route('vendor.orders.index') }}" class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700">{{ __('vendor.view_all') }}</a>
+            </div>
+            <div class="max-h-56 overflow-y-auto overscroll-y-contain p-2 [-webkit-overflow-scrolling:touch]">
+                @forelse($recent as $activity)
+                    @php
+                        $st = $activity['status'] ?? '';
+                        $badge = match ($st) {
+                            'pending' => 'bg-amber-100 text-amber-800',
+                            'confirmed' => 'bg-blue-100 text-blue-800',
+                            'ongoing' => 'bg-indigo-100 text-indigo-800',
+                            'completed' => 'bg-emerald-100 text-emerald-800',
+                            'cancelled' => 'bg-red-100 text-red-800',
+                            default => 'bg-gray-100 text-gray-700',
+                        };
+                    @endphp
+                    <a href="{{ route('vendor.orders.show', $activity['id']) }}"
+                       class="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 last:mb-0 hover:border-gray-100 hover:bg-gray-50/80">
+                        <div class="min-w-0 flex items-center gap-2">
+                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                                <i class="fas fa-user text-xs" aria-hidden="true"></i>
+                            </span>
+                            <div class="min-w-0">
+                                <p class="truncate text-xs font-semibold text-gray-900">{{ $activity['customer_name'] }}</p>
+                                <p class="truncate text-[10px] text-gray-500">{{ __('vendor.total_items_count', ['count' => (int) $activity['items_count']]) }} · ₹{{ number_format((int) round($activity['total_amount']), 0, '.', ',') }}</p>
+                            </div>
+                        </div>
+                        <div class="flex shrink-0 flex-col items-end gap-0.5">
+                            <span class="rounded-full px-1.5 py-0.5 text-[10px] font-semibold capitalize {{ $badge }}">{{ str_replace('_', ' ', $st) }}</span>
+                            <span class="text-[10px] text-gray-400">{{ $activity['created_at'] }}</span>
+                        </div>
+                    </a>
+                @empty
+                    <div class="flex flex-col items-center justify-center py-8 text-center">
+                        <div class="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                            <i class="fas fa-inbox text-lg" aria-hidden="true"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-gray-800">{{ __('vendor.no_activity') }}</p>
+                        <p class="mt-0.5 max-w-xs text-[11px] text-gray-500">{{ __('vendor.start_adding_items') }}</p>
+                        <a href="{{ route('vendor.items.create') }}" class="mt-3 inline-flex h-9 items-center rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-700">
+                            <i class="fas fa-plus mr-1.5 text-[10px]" aria-hidden="true"></i>{{ __('vendor.add_first_item') }}
+                        </a>
+                    </div>
+                @endforelse
+            </div>
+        </section>
+
+        <section class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-sm ring-1 ring-gray-100/80">
+            <div class="flex items-center justify-between border-b border-gray-100 px-3 py-2">
+                <h2 class="flex items-center gap-1.5 text-sm font-bold text-gray-900">
+                    <i class="fas fa-fire text-orange-500 text-xs" aria-hidden="true"></i>
+                    {{ __('vendor.popular_items') }}
+                </h2>
+                <a href="{{ route('vendor.items.index') }}" class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700">{{ __('vendor.view_all') }}</a>
+            </div>
+            <div class="max-h-56 overflow-y-auto overscroll-y-contain p-2 [-webkit-overflow-scrolling:touch]">
+                @forelse($popular as $index => $item)
+                    <a href="{{ route('vendor.items.edit', $item['id']) }}"
+                       class="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 last:mb-0 hover:border-gray-100 hover:bg-gray-50/80">
+                        <div class="flex min-w-0 items-center gap-2">
+                            @if(! empty($item['image']))
+                                <img src="{{ $item['image'] }}" alt="" class="h-8 w-8 shrink-0 rounded-md object-cover ring-1 ring-gray-100">
+                            @else
+                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-emerald-400 to-green-600 text-[10px] font-bold text-white">#{{ $index + 1 }}</span>
+                            @endif
+                            <div class="min-w-0">
+                                <p class="truncate text-xs font-semibold text-gray-900">{{ $item['name'] }}</p>
+                                <p class="text-[10px] text-gray-500">₹{{ number_format((int) round($item['price']), 0, '.', ',') }}</p>
+                            </div>
+                        </div>
+                        <div class="shrink-0 text-right">
+                            <p class="text-xs font-bold tabular-nums text-emerald-700">{{ (int) $item['orders_count'] }}</p>
+                            <p class="text-[10px] text-gray-400">{{ __('vendor.orders') }}</p>
+                        </div>
+                    </a>
+                @empty
+                    <div class="flex flex-col items-center justify-center py-8 text-center">
+                        <div class="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                            <i class="fas fa-box-open text-lg" aria-hidden="true"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-gray-800">{{ __('vendor.no_items_yet') }}</p>
+                        <p class="mt-0.5 max-w-xs text-[11px] text-gray-500">{{ __('vendor.add_items_see_popular') }}</p>
+                    </div>
+                @endforelse
+            </div>
+        </section>
     </div>
 </div>
 
-<!-- Performance Overview & Popular Items -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    
-    <!-- Performance Chart -->
-    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-bold text-gray-900 flex items-center">
-                <i class="fas fa-chart-bar text-emerald-600 mr-2"></i>
-                {{ __('vendor.performance_overview') }}
-            </h2>
-            <select class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                <option>{{ __('vendor.last_7_days') }}</option>
-                <option>{{ __('vendor.last_30_days') }}</option>
-                <option>{{ __('vendor.last_3_months') }}</option>
-            </select>
-        </div>
-        
-        <!-- Chart Placeholder -->
-        <div class="h-64 flex items-center justify-center bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg border border-emerald-100">
-            <div class="text-center">
-                <i class="fas fa-chart-line text-emerald-300 text-5xl mb-4"></i>
-                <p class="text-gray-600 font-medium">{{ __('vendor.chart_coming_soon') }}</p>
-                <p class="text-sm text-gray-500 mt-1">{{ __('vendor.performance_data_here') }}</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Popular Items -->
-    <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-bold text-gray-900 flex items-center">
-                <i class="fas fa-fire text-emerald-600 mr-2"></i>
-                {{ __('vendor.popular_items') }}
-            </h2>
-            <a href="{{ route('vendor.items.index') }}" class="text-sm text-emerald-600 hover:text-emerald-700 font-medium">{{ __('vendor.view_all') }}</a>
-        </div>
-
-        <div id="popular-items-container">
-            <!-- Empty State -->
-            <div class="h-64 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200" id="items-empty-state">
-            <div class="text-center px-4">
-                <i class="fas fa-box-open text-gray-300 text-5xl mb-4"></i>
-                <p class="text-gray-600 font-medium">{{ __('vendor.no_items_yet') }}</p>
-                <p class="text-sm text-gray-500 mt-1">{{ __('vendor.add_items_see_popular') }}</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-</div><!-- End dashboardContent -->
-
-<!-- Success Message -->
 @if (session('success'))
-    <div x-data="{ show: true }" 
-         x-show="show" 
+    <div x-data="{ show: true }"
+         x-show="show"
          x-transition
          x-init="setTimeout(() => show = false, 5000)"
-         class="fixed bottom-20 md:bottom-4 right-4 bg-emerald-500 text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 z-50">
-        <i class="fas fa-check-circle text-2xl"></i>
-        <div>
-            <p class="font-medium">{{ __('vendor.success') }}!</p>
-            <p class="text-sm text-emerald-50">{{ session('success') }}</p>
+         class="fixed bottom-20 right-4 z-50 flex max-w-sm items-center space-x-3 rounded-lg bg-emerald-500 px-4 py-3 text-white shadow-lg md:bottom-4">
+        <i class="fas fa-check-circle text-xl shrink-0" aria-hidden="true"></i>
+        <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium">{{ __('vendor.success') }}!</p>
+            <p class="truncate text-xs text-emerald-50">{{ session('success') }}</p>
         </div>
-        <button @click="show = false" class="ml-4 text-white hover:text-emerald-100">
+        <button type="button" @click="show = false" class="shrink-0 text-white hover:text-emerald-100" aria-label="Close">
             <i class="fas fa-times"></i>
         </button>
     </div>
 @endif
-
-@endsection
-
-@section('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    fetchDashboardStats();
-});
-
-function fetchDashboardStats() {
-    const loader = document.getElementById('dashboardLoadingIndicator');
-    const content = document.getElementById('dashboardContent');
-    
-    // Show loader
-    loader.classList.remove('hidden');
-    content.classList.add('hidden');
-    
-    fetch('{{ route("vendor.dashboard.stats") }}', {
-        method: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Populate stats cards
-            document.getElementById('stat-total-items').textContent = data.data.stats.total_items || 0;
-            document.getElementById('stat-active-items').textContent = data.data.stats.active_items || 0;
-            document.getElementById('stat-total-orders').textContent = data.data.stats.total_orders || 0;
-            document.getElementById('stat-monthly-orders').textContent = data.data.stats.monthly_orders || 0;
-            document.getElementById('stat-revenue').textContent = '₹' + (data.data.stats.total_revenue || 0).toLocaleString('en-IN');
-            document.getElementById('stat-monthly-revenue').textContent = '₹' + (data.data.stats.monthly_revenue || 0).toLocaleString('en-IN');
-            document.getElementById('stat-rating').textContent = (data.data.stats.average_rating || 0).toFixed(1);
-            document.getElementById('stat-reviews').textContent = data.data.stats.total_reviews || 0;
-            
-            // Populate recent activities
-            populateRecentActivities(data.data.recent_activities);
-            
-            // Populate popular items
-            populatePopularItems(data.data.popular_items);
-        }
-    })
-    .catch(error => {
-        console.error('Error fetching dashboard stats:', error);
-        showToast('{{ __("vendor.error_loading_dashboard") }}', 'error');
-    })
-    .finally(() => {
-        // Hide loader and show content
-        loader.classList.add('hidden');
-        content.classList.remove('hidden');
-    });
-}
-
-function populateRecentActivities(activities) {
-    const container = document.getElementById('recent-activities-container');
-    const emptyState = document.getElementById('activities-empty-state');
-    
-    if (!activities || activities.length === 0) {
-        emptyState.classList.remove('hidden');
-        return;
-    }
-    
-    emptyState.classList.add('hidden');
-    
-    const activitiesHtml = activities.map(activity => {
-        const statusColors = {
-            'pending': 'bg-yellow-100 text-yellow-700',
-            'confirmed': 'bg-blue-100 text-blue-700',
-            'processing': 'bg-purple-100 text-purple-700',
-            'completed': 'bg-green-100 text-green-700',
-            'cancelled': 'bg-red-100 text-red-700'
-        };
-        
-        const statusColor = statusColors[activity.status] || 'bg-gray-100 text-gray-700';
-        
-        return `
-            <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <div class="flex items-center space-x-4">
-                    <div class="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
-                        <i class="fas fa-user text-emerald-600"></i>
-                    </div>
-                    <div>
-                        <p class="font-medium text-gray-900">${activity.customer_name || 'Guest'}</p>
-                        <p class="text-sm text-gray-500">${activity.items_count} ${activity.items_count === 1 ? 'item' : 'items'} • ₹${activity.total_amount.toLocaleString('en-IN')}</p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-3">
-                    <span class="px-3 py-1 rounded-full text-xs font-medium ${statusColor}">
-                        ${activity.status}
-                    </span>
-                    <span class="text-xs text-gray-500">${activity.created_at}</span>
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    container.innerHTML = activitiesHtml;
-}
-
-function populatePopularItems(items) {
-    const container = document.getElementById('popular-items-container');
-    const emptyState = document.getElementById('items-empty-state');
-    
-    if (!items || items.length === 0) {
-        emptyState.classList.remove('hidden');
-        return;
-    }
-    
-    emptyState.classList.add('hidden');
-    
-    const itemsHtml = `
-        <div class="space-y-3">
-            ${items.map((item, index) => `
-                <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div class="flex items-center space-x-3">
-                        <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-emerald-400 to-green-500 rounded-lg flex items-center justify-center text-white font-bold">
-                            #${index + 1}
-                        </div>
-                        ${item.image ? `
-                            <img src="${item.image}" alt="${item.name}" class="w-12 h-12 object-cover rounded-lg">
-                        ` : ''}
-                        <div>
-                            <p class="font-medium text-gray-900">${item.name}</p>
-                            <p class="text-sm text-gray-500">₹${item.price.toLocaleString('en-IN')}</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="font-semibold text-emerald-600">${item.orders_count}</p>
-                        <p class="text-xs text-gray-500">orders</p>
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-    
-    container.innerHTML = itemsHtml;
-}
-
-function showToast(message, type = 'success') {
-    const bgColor = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
-    const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
-    
-    const toast = document.createElement('div');
-    toast.className = `fixed bottom-20 md:bottom-4 right-4 ${bgColor} text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 z-50`;
-    toast.innerHTML = `
-        <i class="fas ${icon} text-2xl"></i>
-        <div>
-            <p class="font-medium">${message}</p>
-        </div>
-        <button onclick="this.parentElement.remove()" class="ml-4 text-white hover:text-gray-100">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-    
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.remove();
-    }, 5000);
-}
-</script>
 @endsection

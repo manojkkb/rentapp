@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\View;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Language;
+use App\Support\VendorAccess;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -45,5 +47,16 @@ class AppServiceProvider extends ServiceProvider
                 'currentLanguage' => $currentLanguage,
             ]);
         });
+
+        View::composer(['vendor.layouts.*', 'vendor.*'], function ($view) {
+            $access = VendorAccess::current();
+            $view->with('vendorAccess', $access);
+            $view->with('vendorCan', fn (string $permission) => $access?->can($permission) ?? false);
+            $view->with('vendorCanAny', fn (array $permissions) => $access?->canAny($permissions) ?? false);
+            $view->with('vendorIsOwner', $access?->isOwner() ?? false);
+        });
+
+        Blade::if('vendorCan', fn (string $permission) => VendorAccess::current()?->can($permission) ?? false);
+        Blade::if('vendorCanAny', fn (...$permissions) => VendorAccess::current()?->canAny($permissions) ?? false);
     }
 }

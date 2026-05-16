@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\Vendor;
+use App\Models\VendorCustomer;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -17,7 +20,185 @@ class VendorController extends Controller
      */
     public function home()
     {
-        return view('vendor.home.index');
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+        }
+
+        return view('vendor.home.index', [
+            'dashboard' => $this->buildDashboardPayload($vendor),
+        ]);
+    }
+
+    /**
+     * @return array{stats: array<string, mixed>, order_status_counts: array<string, int>, resource_counts: array{items: int, staff: int, customers: int}, logistics: array<string, mixed>, recent_activities: list<array<string, mixed>>, popular_items: list<array<string, mixed>>}
+     */
+    private function buildDashboardPayload(Vendor $vendor): array
+    {
+        $totalItems = $vendor->items()->count();
+        $activeItems = $vendor->items()->where('is_active', true)->count();
+        $totalOrders = $vendor->orders()->count();
+        $monthlyOrders = $vendor->orders()
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->count();
+        $totalRevenue = (float) $vendor->orders()->where('status', 'completed')->sum('grand_total');
+        $monthlyRevenue = (float) $vendor->orders()
+            ->where('status', 'completed')
+            ->whereYear('created_at', now()->year)
+            ->whereMonth('created_at', now()->month)
+            ->sum('grand_total');
+        $averageRating = (float) ($vendor->reviews()->avg('rating') ?? 0);
+        $totalReviews = $vendor->reviews()->count();
+
+        $statusCountRows = $vendor->orders()
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status')
+            ->all();
+        $orderStatusCounts = [];
+        foreach (Order::STATUSES as $status) {
+            $orderStatusCounts[$status] = (int) ($statusCountRows[$status] ?? 0);
+        }
+
+        $staffCount = $vendor->users()->count();
+        $customerCount = VendorCustomer::where('vendor_id', $vendor->id)->count();
+
+        $recentActivities = $vendor->orders()
+            ->with(['customer', 'items'])
+            ->latest()
+            ->take(5)
+            ->get()
+            ->map(function ($order) {
+                return [
+                    'id' => $order->id,
+                    'customer_name' => $order->customer->name ?? 'N/A',
+                    'items_count' => $order->items->count(),
+                    'total_amount' => (float) $order->grand_total,
+                    'status' => $order->status,
+                    'created_at' => $order->created_at->diffForHumans(),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $popularItems = $vendor->items()
+            ->withCount('orderItems')
+            ->orderByDesc('order_items_count')
+            ->take(5)
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'price' => (float) $item->price,
+                    'orders_count' => (int) ($item->order_items_count ?? 0),
+                    'image' => $item->photo_url,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $outgoingQuery = $vendor->orders()
+            ->whereNull('delivered_at')
+            ->whereIn('status', ['confirmed', 'ongoing']);
+
+        $outgoingCount = (clone $outgoingQuery)->count();
+
+        $today = now()->toDateString();
+        $now = now()->format('Y-m-d H:i:s');
+
+        $outgoingOrders = (clone $outgoingQuery)
+            ->with('customer')
+            ->orderByRaw('case
+                when (start_at is not null and date(start_at) = ?)
+                    or (pickup_at is not null and date(pickup_at) = ?)
+                then 0
+                when coalesce(start_at, pickup_at, created_at) < ?
+                then 1
+                else 2
+            end asc, coalesce(start_at, pickup_at, created_at) asc', [$today, $today, $now])
+            ->take(5)
+            ->get()
+            ->map(function ($order) {
+                $handoffAt = $order->start_at ?? $order->pickup_at;
+                $sched = $this->dashboardLogisticsDayTime($handoffAt);
+
+                return [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'customer_name' => $order->customer->name ?? 'N/A',
+                    'fulfillment_type' => $order->fulfillment_type ?? 'pickup',
+                    'day_line' => $sched['day_line'],
+                    'time_line' => $sched['time_line'],
+                    'when_label' => trim($sched['day_line'].($sched['time_line'] !== '' ? ' '.$sched['time_line'] : '')),
+                    'is_handoff_today' => $sched['is_today'],
+                    'is_handoff_tomorrow' => $sched['is_tomorrow'],
+                ];
+            })
+            ->values()
+            ->all();
+
+        $returnsQuery = $vendor->orders()
+            ->whereNull('returned_at')
+            ->whereNotNull('delivered_at')
+            ->whereIn('status', ['confirmed', 'ongoing']);
+
+        $returnCount = (clone $returnsQuery)->count();
+
+        $returnOrders = (clone $returnsQuery)
+            ->with('customer')
+            ->orderByRaw('case
+                when end_at is not null and date(end_at) = ? then 0
+                when coalesce(end_at, created_at) < ? then 1
+                else 2
+            end asc, coalesce(end_at, created_at) asc', [$today, $now])
+            ->take(5)
+            ->get()
+            ->map(function ($order) {
+                $sched = $this->dashboardLogisticsDayTime($order->end_at);
+
+                return [
+                    'id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'customer_name' => $order->customer->name ?? 'N/A',
+                    'day_line' => $sched['day_line'],
+                    'time_line' => $sched['time_line'],
+                    'when_label' => trim($sched['day_line'].($sched['time_line'] !== '' ? ' '.$sched['time_line'] : '')),
+                    'is_return_today' => $sched['is_today'],
+                    'is_return_tomorrow' => $sched['is_tomorrow'],
+                ];
+            })
+            ->values()
+            ->all();
+
+        return [
+            'stats' => [
+                'total_items' => $totalItems,
+                'active_items' => $activeItems,
+                'total_orders' => $totalOrders,
+                'monthly_orders' => $monthlyOrders,
+                'total_revenue' => $totalRevenue,
+                'monthly_revenue' => $monthlyRevenue,
+                'average_rating' => round($averageRating, 1),
+                'total_reviews' => $totalReviews,
+            ],
+            'order_status_counts' => $orderStatusCounts,
+            'resource_counts' => [
+                'items' => $totalItems,
+                'staff' => $staffCount,
+                'customers' => $customerCount,
+            ],
+            'logistics' => [
+                'outgoing_count' => $outgoingCount,
+                'outgoing_orders' => $outgoingOrders,
+                'return_count' => $returnCount,
+                'return_orders' => $returnOrders,
+            ],
+            'recent_activities' => $recentActivities,
+            'popular_items' => $popularItems,
+        ];
     }
 
     /**
@@ -34,71 +215,9 @@ class VendorController extends Controller
             ], 404);
         }
 
-        // Simulate delay for demo (remove in production)
-        // sleep(1);
-
-        // Get statistics
-        $totalItems = $vendor->items()->count();
-        $activeItems = $vendor->items()->where('is_active', true)->count();
-        $totalOrders = $vendor->orders()->count();
-        $monthlyOrders = $vendor->orders()->whereMonth('created_at', now()->month)->count();
-        $totalRevenue = $vendor->orders()->where('status', 'completed')->sum('total_amount');
-        $monthlyRevenue = $vendor->orders()
-            ->where('status', 'completed')
-            ->whereMonth('created_at', now()->month)
-            ->sum('total_amount');
-        $averageRating = $vendor->reviews()->avg('rating') ?? 0;
-        $totalReviews = $vendor->reviews()->count();
-
-        // Get recent activities (latest orders)
-        $recentActivities = $vendor->orders()
-            ->with(['customer', 'items'])
-            ->latest()
-            ->take(5)
-            ->get()
-            ->map(function ($order) {
-                return [
-                    'id' => $order->id,
-                    'customer_name' => $order->customer->name ?? 'N/A',
-                    'items_count' => $order->items->count(),
-                    'total_amount' => $order->total_amount,
-                    'status' => $order->status,
-                    'created_at' => $order->created_at->diffForHumans(),
-                ];
-            });
-
-        // Get popular items
-        $popularItems = $vendor->items()
-            ->withCount('orders')
-            ->orderBy('orders_count', 'desc')
-            ->take(5)
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'id' => $item->id,
-                    'name' => $item->name,
-                    'price' => $item->price,
-                    'orders_count' => $item->orders_count ?? 0,
-                    'image' => $item->image_url ?? null,
-                ];
-            });
-
         return response()->json([
             'success' => true,
-            'data' => [
-                'stats' => [
-                    'total_items' => $totalItems,
-                    'active_items' => $activeItems,
-                    'total_orders' => $totalOrders,
-                    'monthly_orders' => $monthlyOrders,
-                    'total_revenue' => $totalRevenue,
-                    'monthly_revenue' => $monthlyRevenue,
-                    'average_rating' => round($averageRating, 1),
-                    'total_reviews' => $totalReviews,
-                ],
-                'recent_activities' => $recentActivities,
-                'popular_items' => $popularItems,
-            ],
+            'data' => $this->buildDashboardPayload($vendor),
         ]);
     }
 
@@ -307,6 +426,51 @@ class VendorController extends Controller
         if (Storage::disk('public')->exists($path)) {
             Storage::disk('public')->delete($path);
         }
+    }
+
+    /**
+     * @return array{day_line: string, time_line: string, is_today: bool, is_tomorrow: bool}
+     */
+    private function dashboardLogisticsDayTime(?Carbon $at): array
+    {
+        if ($at === null) {
+            return [
+                'day_line' => '—',
+                'time_line' => '',
+                'is_today' => false,
+                'is_tomorrow' => false,
+            ];
+        }
+
+        $at = $at->copy()->timezone((string) config('app.timezone'));
+        $now = now()->timezone((string) config('app.timezone'));
+
+        $isToday = $at->isSameDay($now);
+        $isTomorrow = $at->isSameDay($now->copy()->addDay());
+
+        if ($isToday) {
+            $dayLine = __('vendor.dashboard_handoff_today');
+        } elseif ($isTomorrow) {
+            $dayLine = __('vendor.dashboard_handoff_tomorrow');
+        } elseif ($at->greaterThan($now)) {
+            $daysUntil = (int) $now->copy()->startOfDay()->diffInDays($at->copy()->startOfDay(), false);
+            if ($daysUntil > 0 && $daysUntil <= 6) {
+                $dayLine = $at->translatedFormat('l');
+            } else {
+                $dayLine = $at->translatedFormat('d M Y');
+            }
+        } else {
+            $dayLine = $at->translatedFormat('d M Y');
+        }
+
+        $timeLine = $at->format('g:i A');
+
+        return [
+            'day_line' => $dayLine,
+            'time_line' => $timeLine,
+            'is_today' => $isToday,
+            'is_tomorrow' => $isTomorrow,
+        ];
     }
 
     private function storeUserAvatarOnS3(UploadedFile $file, int $userId): string

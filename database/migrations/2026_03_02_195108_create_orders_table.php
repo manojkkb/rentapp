@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table) {
             $table->bigIncrements('id');
 
-            $table->string('order_number')->unique(); // invoice reference
+            $table->string('order_number')->unique();
+            $table->string('event_name', 255)->nullable();
 
             $table->foreignId('customer_id')
                 ->constrained('vendor_customers')
@@ -24,17 +25,43 @@ return new class extends Migration
                 ->constrained()
                 ->onDelete('cascade');
 
-            // Rental duration (date + time)
             $table->timestamp('start_at')->nullable();
             $table->timestamp('end_at')->nullable();
 
-            // Financial summary
+            $table->string('fulfillment_type', 20)->default('pickup');
+            $table->text('delivery_address')->nullable();
+            $table->timestamp('pickup_at')->nullable();
+            $table->decimal('delivery_charge', 12, 2)->default(0);
+
+            $table->string('discount_type', 32)->nullable();
+            $table->decimal('discount_value', 12, 2)->nullable();
+            $table->decimal('discount_amount', 12, 2)->default(0);
+
+            $table->unsignedBigInteger('coupon_id')->nullable();
+            $table->string('coupon_code', 64)->nullable();
+            $table->decimal('coupon_discount', 12, 2)->default(0);
+
+            $table->decimal('security_deposit', 12, 2)->default(0);
+            $table->string('security_deposit_type', 32)->default('none');
+            $table->decimal('security_deposit_value', 12, 2)->nullable();
+
+            $table->decimal('token_amount', 12, 2)->default(0);
+            $table->json('payment_detail')->nullable();
+
             $table->decimal('sub_total', 12, 2);
             $table->decimal('tax_total', 12, 2)->default(0);
             $table->decimal('discount_total', 12, 2)->default(0);
             $table->decimal('grand_total', 12, 2);
 
-            // Payment tracking
+            $table->decimal('extra_charges_total', 12, 2)->default(0);
+            $table->json('extra_charges_lines')->nullable();
+
+            $table->decimal('late_fees_total', 12, 2)->default(0);
+            $table->decimal('damage_fees_total', 12, 2)->default(0);
+            $table->decimal('lost_fees_total', 12, 2)->default(0);
+            $table->decimal('refunds_total', 12, 2)->default(0);
+            $table->text('internal_notes')->nullable();
+
             $table->decimal('paid_amount', 12, 2)->default(0);
 
             $table->enum('status', [
@@ -45,10 +72,12 @@ return new class extends Migration
                 'completed',
             ])->default('pending')->index();
 
+            $table->timestamp('delivered_at')->nullable();
+            $table->timestamp('returned_at')->nullable();
+
             $table->timestamps();
             $table->softDeletes();
 
-            // Performance indexes
             $table->index('customer_id');
             $table->index('vendor_id');
             $table->index('created_at');

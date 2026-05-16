@@ -12,20 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('vendors', function (Blueprint $table) {
-            
-           $table->bigIncrements('id');
+            $table->bigIncrements('id');
 
             $table->foreignId('user_id')
                 ->constrained()
                 ->onDelete('cascade');
 
-            // Basic Info
-            $table->string('name'); // Business Name
+            $table->string('name');
+            $table->string('owner_name')->nullable();
             $table->string('slug')->unique();
-            $table->string('logo')->nullable(); // Store logo path
+            $table->string('logo')->nullable();
             $table->unsignedBigInteger('business_category_id')->nullable();
 
-            // Address Info
             $table->string('address_line1')->nullable();
             $table->string('address_line2')->nullable();
             $table->string('city')->nullable();
@@ -34,11 +32,12 @@ return new class extends Migration
             $table->string('country')->nullable();
             $table->decimal('latitude', 10, 7)->nullable();
             $table->decimal('longitude', 10, 7)->nullable();
-            // Business Details
+
             $table->string('gst_number')->nullable();
+            $table->string('language', 10)->default('en');
+
             $table->boolean('is_verified')->default(false)->index();
 
-            // Rating System
             $table->decimal('rating', 3, 2)->default(0);
             $table->integer('total_reviews')->default(0);
 
@@ -48,9 +47,7 @@ return new class extends Migration
             $table->softDeletesTz();
 
             $table->index(['is_active', 'is_verified']);
-
         });
-        
     }
 
     /**

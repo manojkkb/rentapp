@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\OtpVerification;
 use App\Models\User;
 use App\Models\Vendor;
+use App\Models\VendorUser;
+use App\Services\VendorRoleProvisioner;
+use App\Support\VendorAccess;
 use App\Services\OtpService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -207,8 +210,10 @@ class AuthVendorCtrl extends Controller
         $ownedVendors = Vendor::where('user_id', $user->id)->get();
         
         // Ensure vendor_users pivot entries exist for owned vendors
+        $provisioner = app(VendorRoleProvisioner::class);
+
         foreach ($ownedVendors as $vendor) {
-            if (!$user->vendors()->where('vendors.id', $vendor->id)->exists()) {
+            if (! $user->vendors()->where('vendors.id', $vendor->id)->exists()) {
                 $user->vendors()->attach($vendor->id, [
                     'is_owner' => true,
                     'role' => 'owner',
@@ -216,6 +221,8 @@ class AuthVendorCtrl extends Controller
                     'last_login_at' => now(),
                 ]);
             }
+
+            $provisioner->ensureDefaultRoles($vendor, $user->id);
         }
         
         // Check if user has any vendors (through vendor_users pivot)
@@ -249,18 +256,23 @@ class AuthVendorCtrl extends Controller
         }
         
         $user = Auth::user();
-        
-        // Get vendors through vendor_users pivot
-        $vendors = $user->vendors()->get();
-        
-        if ($vendors->isEmpty()) {
+
+        $memberships = VendorUser::query()
+            ->where('user_id', $user->id)
+            ->where('is_active', true)
+            ->with(['vendor', 'vendorRole'])
+            ->get()
+            ->filter(fn (VendorUser $membership) => $membership->vendor !== null)
+            ->sortByDesc('is_owner')
+            ->values();
+
+        if ($memberships->isEmpty()) {
             return redirect()->route('vendor.create');
         }
-        
-        // Check if switching vendors (already logged in)
+
         $isSwitching = Session::has('current_vendor_id');
-        
-        return view('vendor.auth.select', compact('vendors', 'isSwitching'));
+
+        return view('vendor.auth.select', compact('memberships', 'isSwitching'));
     }
     
     /**
@@ -304,7 +316,10 @@ class AuthVendorCtrl extends Controller
         
         // Store only vendor ID in session
         Session::put('current_vendor_id', $vendor->id);
-        
+        VendorAccess::flush();
+
+        app(VendorRoleProvisioner::class)->ensureDefaultRoles($vendor, $user->id);
+
         // Set language in session
         Session::put('language', $vendor->language ?? $user->language ?? 'en');
         
@@ -395,16 +410,19 @@ class AuthVendorCtrl extends Controller
             'language' => $request->language,
         ]);
         
-        // Add user to vendor_users pivot table as owner
+        // Add user to vendor_users pivot table as owner (full access; never role-gated)
         $user->vendors()->attach($vendor->id, [
             'is_owner' => true,
             'role' => 'owner',
             'is_active' => true,
             'last_login_at' => now(),
         ]);
+
+        app(VendorRoleProvisioner::class)->ensureDefaultRoles($vendor, $user->id);
         
         // Store only vendor ID in session
         Session::put('current_vendor_id', $vendor->id);
+        VendorAccess::flush();
         
         // Set language in session
         Session::put('language', $vendor->language ?? 'en');

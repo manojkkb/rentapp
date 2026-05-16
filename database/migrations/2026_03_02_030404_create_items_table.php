@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('items', function (Blueprint $table) {
             $table->bigIncrements('id');
 
-            // Relationships
             $table->foreignId('vendor_id')
                 ->constrained()
                 ->onDelete('cascade');
@@ -23,37 +22,50 @@ return new class extends Migration
                 ->constrained()
                 ->onDelete('cascade');
 
-            // Basic Info
             $table->string('name');
             $table->string('slug');
             $table->string('photo')->nullable();
             $table->text('description')->nullable();
 
-            // Pricing
-            $table->decimal('price', 12, 2); // base price
-            $table->enum('price_type', ['per_day', 'per_hour', 'fixed'])
-                ->default('per_day');
+            $table->decimal('price', 12, 2);
+            $table->string('price_type', 30)->default('per_day');
 
-            // Inventory
+            $table->decimal('security_deposit', 12, 2)->default(0);
+            $table->decimal('replacement_cost', 12, 2)->default(0);
+            $table->decimal('late_fee_per_day', 12, 2)->default(0);
+            $table->boolean('is_damage_protection')->default(false);
+
+            $table->unsignedInteger('minimum_rental_duration')->default(1)->comment('Days');
+            $table->unsignedInteger('maximum_rental_duration')->default(90)->comment('Days');
+
+            $table->decimal('weight', 10, 3)->default(0)->comment('kg');
+            $table->decimal('dimension_length', 10, 2)->default(0)->comment('cm');
+            $table->decimal('dimension_width', 10, 2)->default(0)->comment('cm');
+            $table->decimal('dimension_height', 10, 2)->default(0)->comment('cm');
+
+            $table->string('condition_status', 32)->default('good');
+
+            $table->unsignedInteger('total_stock')->default(1);
+            $table->unsignedInteger('available_stock')->default(1);
+            $table->unsignedInteger('rented_stock')->default(0);
+            $table->unsignedInteger('damaged_stock')->default(0);
+            $table->unsignedInteger('maintenance_stock')->default(0);
+
             $table->integer('stock')->default(1);
             $table->boolean('manage_stock')->default(true);
 
-            // Availability
             $table->boolean('is_available')->default(true)->index();
 
-            // Optional SEO
             $table->string('meta_title')->nullable();
             $table->text('meta_description')->nullable();
 
-            // Status
             $table->boolean('is_active')->default(true)->index();
 
             $table->timestampsTz();
             $table->softDeletesTz();
 
-            // Important indexes for performance
             $table->index(['vendor_id', 'category_id']);
-            $table->unique(['vendor_id', 'slug']);      
+            $table->unique(['vendor_id', 'slug']);
         });
     }
 

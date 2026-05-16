@@ -373,7 +373,6 @@
                     <div class="quote-totals">
                         <div class="quote-totals__box">
                             <div class="quote-totals__row"><span>{{ __('vendor.subtotal') }}</span><span>₹{{ number_format($order->sub_total, 2) }}</span></div>
-                            <div class="quote-totals__row"><span>{{ __('vendor.tax') }}</span><span>₹{{ number_format($order->tax_total, 2) }}</span></div>
                             <div class="quote-totals__row"><span>{{ __('vendor.discount') }}</span><span>−₹{{ number_format($order->discount_total, 2) }}</span></div>
                             @if(($order->fulfillment_type ?? 'pickup') === 'delivery' && (float) ($order->delivery_charge ?? 0) > 0)
                                 <div class="quote-totals__row"><span>{{ __('vendor.delivery_charge') }}</span><span>₹{{ number_format((float) $order->delivery_charge, 2) }}</span></div>

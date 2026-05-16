@@ -81,23 +81,30 @@
 
             <!-- Role -->
             <div class="mb-5">
-                <label for="role" class="block text-sm font-semibold text-gray-700 mb-2">
-                    Role <span class="text-red-500">*</span>
+                <label for="vendor_role_id" class="block text-sm font-semibold text-gray-700 mb-2">
+                    {{ __('vendor.staff_role') }} <span class="text-red-500">*</span>
                 </label>
-                <select id="role" 
-                        name="role" 
-                        class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all @error('role') border-red-500 @enderror"
-                        required>
-                    <option value="">Select role</option>
-                    @foreach($roles as $key => $label)
-                        <option value="{{ $key }}" {{ old('role', $vendorUser->role) == $key ? 'selected' : '' }}>
-                            {{ $label }}
-                        </option>
-                    @endforeach
-                </select>
-                @error('role')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
+                @if($roles->isEmpty())
+                    <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        {{ __('vendor.staff_no_roles_hint') }}
+                        <a href="{{ route('vendor.staff-permissions.index') }}" class="font-semibold underline">{{ __('vendor.staff_permissions') }}</a>
+                    </p>
+                @else
+                    <select id="vendor_role_id"
+                            name="vendor_role_id"
+                            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all @error('vendor_role_id') border-red-500 @enderror"
+                            required>
+                        <option value="">{{ __('vendor.staff_select_role') }}</option>
+                        @foreach($roles as $role)
+                            <option value="{{ $role->id }}" {{ (string) old('vendor_role_id', $vendorUser->vendor_role_id) === (string) $role->id ? 'selected' : '' }}>
+                                {{ $role->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('vendor_role_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                @endif
             </div>
 
             <!-- Status -->
@@ -186,8 +193,9 @@
                    class="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
                     Cancel
                 </a>
-                <button type="submit" 
-                        class="px-5 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium">
+                <button type="submit"
+                        @if($roles->isEmpty()) disabled @endif
+                        class="px-5 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
                     <i class="fas fa-save mr-2"></i>
                     Update Staff Member
                 </button>

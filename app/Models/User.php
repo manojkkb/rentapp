@@ -21,6 +21,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'avatar',
         'mobile',
         'vendor_id',
         'password',
@@ -56,7 +57,7 @@ class User extends Authenticatable
     public function vendors()
     {
         return $this->belongsToMany(Vendor::class, 'vendor_users')
-            ->withPivot('is_owner', 'role', 'is_active', 'last_login_at', 'permissions')
+            ->withPivot('is_owner', 'role', 'vendor_role_id', 'is_active', 'last_login_at', 'permissions')
             ->withTimestamps();
     }
 

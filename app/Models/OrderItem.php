@@ -7,32 +7,91 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OrderItem extends Model
 {
+    /** @var list<string> */
+    public const ITEM_STATUSES = [
+        'reserved',
+        'confirmed',
+        'picked_up',
+        'in_use',
+        'return_requested',
+        'partially_returned',
+        'returned',
+        'damaged',
+        'lost',
+        'cancelled',
+    ];
+
+    /** @var list<string> */
+    public const CONDITION_LEVELS = [
+        'excellent',
+        'good',
+        'average',
+        'damaged',
+    ];
+
     protected $fillable = [
         'order_id',
         'item_id',
         'item_name',
         'price',
         'quantity',
+        'returned_qty',
+        'damaged_qty',
+        'lost_qty',
         'price_type',
+        'rent_type',
         'billing_units',
         'start_at',
         'end_at',
+        'delivered_at',
+        'returned_at',
+        'rental_duration_minutes',
         'rent_days',
         'total_price',
+        'security_deposit',
+        'subtotal',
+        'discount_amount',
+        'tax_amount',
+        'late_fee',
+        'damage_fee',
+        'lost_fee',
+        'refund_amount',
+        'final_amount',
+        'item_status',
+        'condition_out',
+        'condition_in',
+        'damage_notes',
+        'customer_notes',
+        'admin_notes',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'billing_units' => 'decimal:4',
         'total_price' => 'decimal:2',
+        'security_deposit' => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
+        'late_fee' => 'decimal:2',
+        'damage_fee' => 'decimal:2',
+        'lost_fee' => 'decimal:2',
+        'refund_amount' => 'decimal:2',
+        'final_amount' => 'decimal:2',
         'start_at' => 'datetime',
         'end_at' => 'datetime',
+        'delivered_at' => 'datetime',
+        'returned_at' => 'datetime',
+        'rental_duration_minutes' => 'integer',
+        'returned_qty' => 'integer',
+        'damaged_qty' => 'integer',
+        'lost_qty' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
     /**
-     * Line amount from snapshot fields (matches VendorCartItem::lineSubtotal logic).
+     * Line amount from snapshot fields (price × quantity × billing units by price_type).
      */
     public function lineSubtotal(): float
     {
@@ -50,6 +109,29 @@ class OrderItem extends Model
         }
 
         return round($price * $qty * $units, 2);
+    }
+
+    /**
+     * Persist catalog line total and mirror billing snapshot fields used on the line.
+     */
+    public function refreshLineTotals(): void
+    {
+        $this->refresh();
+        $tp = $this->lineSubtotal();
+        $this->total_price = $tp;
+        $this->subtotal = $tp;
+        $this->rent_type = $this->price_type ?: 'per_day';
+        $this->final_amount = round(
+            (float) $tp
+                - (float) ($this->discount_amount ?? 0)
+                + (float) ($this->tax_amount ?? 0)
+                + (float) ($this->late_fee ?? 0)
+                + (float) ($this->damage_fee ?? 0)
+                + (float) ($this->lost_fee ?? 0)
+                - (float) ($this->refund_amount ?? 0),
+            2
+        );
+        $this->save();
     }
 
     /**

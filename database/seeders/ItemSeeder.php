@@ -5,12 +5,34 @@ namespace Database\Seeders;
 use App\Models\Category;
 use App\Models\Items;
 use App\Models\Vendor;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
 class ItemSeeder extends Seeder
 {
+    private function seededItemPolicyDefaults(int $qty): array
+    {
+        return [
+            'security_deposit' => 0,
+            'replacement_cost' => 0,
+            'late_fee_per_day' => 0,
+            'is_damage_protection' => false,
+            'minimum_rental_duration' => 1,
+            'maximum_rental_duration' => 90,
+            'weight' => 1,
+            'dimension_length' => 0,
+            'dimension_width' => 0,
+            'dimension_height' => 0,
+            'condition_status' => 'good',
+            'total_stock' => $qty,
+            'available_stock' => $qty,
+            'rented_stock' => 0,
+            'damaged_stock' => 0,
+            'maintenance_stock' => 0,
+            'stock' => $qty,
+        ];
+    }
+
     /**
      * Run the database seeds.
      */
@@ -20,6 +42,7 @@ class ItemSeeder extends Seeder
 
         if ($vendors->isEmpty()) {
             $this->command->warn('⚠️  No vendors found. Please run VendorSeeder first.');
+
             return;
         }
 
@@ -166,9 +189,10 @@ class ItemSeeder extends Seeder
             // Check if vendor already has items
             if ($vendor->items()->count() > 0) {
                 $this->command->info("ℹ️  Vendor {$vendor->name} already has items. Skipping...");
+
                 continue;
             }
-            
+
             $this->command->info("🏪 Creating items for vendor: {$vendor->name}");
             $itemCount = 0;
 
@@ -179,7 +203,7 @@ class ItemSeeder extends Seeder
                     ->whereNull('parent_id')
                     ->first();
 
-                if (!$mainCategory) {
+                if (! $mainCategory) {
                     continue;
                 }
 
@@ -190,13 +214,13 @@ class ItemSeeder extends Seeder
                         ->where('parent_id', $mainCategory->id)
                         ->first();
 
-                    if (!$subcategory) {
+                    if (! $subcategory) {
                         continue;
                     }
 
                     // Create items for this subcategory
                     foreach ($items as $itemData) {
-                        Items::create([
+                        Items::create(array_merge([
                             'vendor_id' => $vendor->id,
                             'category_id' => $subcategory->id,
                             'name' => $itemData['name'],
@@ -204,11 +228,10 @@ class ItemSeeder extends Seeder
                             'description' => $itemData['description'],
                             'price' => $itemData['price'],
                             'price_type' => $itemData['price_type'],
-                            'stock' => $itemData['stock'],
                             'manage_stock' => true,
                             'is_available' => true,
                             'is_active' => true,
-                        ]);
+                        ], $this->seededItemPolicyDefaults((int) $itemData['stock'])));
                         $itemCount++;
                     }
                 }

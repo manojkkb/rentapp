@@ -209,17 +209,24 @@
                     <!-- Role -->
                     <div class="mb-4">
                         <label class="block text-sm font-semibold text-gray-700 mb-2">
-                            Role <span class="text-red-500">*</span>
+                            {{ __('vendor.staff_role') }} <span class="text-red-500">*</span>
                         </label>
-                        <select name="role" 
-                                id="modal_staff_role" 
-                                class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                required>
-                            <option value="">Select role</option>
-                            <option value="manager">Manager</option>
-                            <option value="staff">Staff</option>
-                            <option value="cashier">Cashier</option>
-                        </select>
+                        @if(($roles ?? collect())->isEmpty())
+                            <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                {{ __('vendor.staff_no_roles_hint') }}
+                                <a href="{{ route('vendor.staff-permissions.index') }}" class="font-semibold underline">{{ __('vendor.staff_permissions') }}</a>
+                            </p>
+                        @else
+                            <select name="vendor_role_id"
+                                    id="modal_staff_role"
+                                    class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    required>
+                                <option value="">{{ __('vendor.staff_select_role') }}</option>
+                                @foreach($roles as $role)
+                                    <option value="{{ $role->id }}">{{ $role->name }}</option>
+                                @endforeach
+                            </select>
+                        @endif
                     </div>
 
                     <!-- Status -->
@@ -243,9 +250,10 @@
                             class="flex-1 sm:flex-none px-6 py-2.5 text-sm font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg transition-all">
                         Cancel
                     </button>
-                    <button type="submit" 
+                    <button type="submit"
                             id="createStaffSubmitBtn"
-                            class="flex-1 sm:flex-none px-6 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg transition-all shadow-sm hover:shadow active:scale-95">
+                            @if(($roles ?? collect())->isEmpty()) disabled @endif
+                            class="flex-1 sm:flex-none px-6 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg transition-all shadow-sm hover:shadow active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="fas fa-plus mr-2"></i>
                         <span id="createStaffSubmitBtnText">Add Staff Member</span>
                     </button>

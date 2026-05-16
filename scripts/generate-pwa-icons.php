@@ -1,6 +1,6 @@
 <?php
 
-$dir = dirname(__DIR__) . '/public/vendor/icons';
+$dir = dirname(__DIR__).'/public/vendor/icons';
 if (! is_dir($dir)) {
     mkdir($dir, 0775, true);
 }
@@ -24,7 +24,7 @@ $make = function (int $size, string $path): void {
     imagedestroy($out);
 };
 
-$make(192, $dir . '/icon-192.png');
-$make(512, $dir . '/icon-512.png');
+$make(192, $dir.'/icon-192.png');
+$make(512, $dir.'/icon-512.png');
 
 echo "Icons written to {$dir}\n";

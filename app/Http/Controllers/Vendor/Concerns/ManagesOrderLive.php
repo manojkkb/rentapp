@@ -32,6 +32,8 @@ trait ManagesOrderLive
             return $row;
         }, $detail);
 
+        $rental = $this->rentalStatusPayload($order);
+
         return [
             'sub_total' => (float) $order->sub_total,
             'tax_total' => (float) $order->tax_total,
@@ -51,6 +53,30 @@ trait ManagesOrderLive
             'pickup_at' => $order->pickup_at?->toIso8601String(),
             'delivery_charge' => (float) ($order->delivery_charge ?? 0),
             'items_count' => $order->items()->count(),
+            'status' => $rental['status'],
+            'delivered_at' => $rental['delivered_at'],
+            'delivered_at_display' => $rental['delivered_at_display'],
+            'returned_at' => $rental['returned_at'],
+            'returned_at_display' => $rental['returned_at_display'],
+        ];
+    }
+
+    /**
+     * @return array{status: string, delivered_at: string|null, delivered_at_display: string|null, returned_at: string|null, returned_at_display: string|null}
+     */
+    protected function rentalStatusPayload(Order $order): array
+    {
+        $tz = config('app.timezone');
+        $format = static function ($dt) use ($tz) {
+            return $dt ? $dt->copy()->timezone($tz)->format('M j, Y g:i A') : null;
+        };
+
+        return [
+            'status' => (string) $order->status,
+            'delivered_at' => $order->delivered_at?->toIso8601String(),
+            'delivered_at_display' => $format($order->delivered_at),
+            'returned_at' => $order->returned_at?->toIso8601String(),
+            'returned_at_display' => $format($order->returned_at),
         ];
     }
 
@@ -203,7 +229,7 @@ trait ManagesOrderLive
                     'rent_days' => $rentDays,
                 ]);
                 $existing->refresh();
-                $existing->update(['total_price' => $existing->lineSubtotal()]);
+                $existing->refreshLineTotals();
             } else {
                 $oi = OrderItem::create([
                     'order_id' => $order->id,
@@ -219,7 +245,7 @@ trait ManagesOrderLive
                     'total_price' => 0,
                 ]);
                 $oi->refresh();
-                $oi->update(['total_price' => $oi->lineSubtotal()]);
+                $oi->refreshLineTotals();
             }
 
             $addedCount++;
@@ -281,7 +307,7 @@ trait ManagesOrderLive
 
         $orderItem->update($updates);
         $orderItem->refresh();
-        $orderItem->update(['total_price' => $orderItem->lineSubtotal()]);
+        $orderItem->refreshLineTotals();
 
         $this->recalculateOrderFinancials($order);
         $order->refresh();
@@ -712,6 +738,102 @@ trait ManagesOrderLive
         ]);
     }
 
+    public function removeOrderExtraCharge(Request $request, Order $order, int $lineIndex)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor || $order->vendor_id !== $vendor->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized access'], 403);
+        }
+
+        try {
+            DB::transaction(function () use ($order, $lineIndex) {
+                $order->refresh();
+                $lines = $order->extra_charges_lines;
+                if (! is_array($lines)) {
+                    $lines = [];
+                }
+                if (! array_key_exists($lineIndex, $lines)) {
+                    throw new \RuntimeException('Extra charge not found.');
+                }
+
+                array_splice($lines, $lineIndex, 1);
+                $lines = array_values($lines);
+                $order->extra_charges_lines = $lines;
+                $order->extra_charges_total = round(array_sum(array_map(
+                    fn ($row) => is_array($row) ? (float) ($row['amount'] ?? 0) : 0.0,
+                    $lines
+                )), 2);
+                $order->save();
+                $this->recalculateOrderFinancials($order);
+            });
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 404);
+        }
+
+        $order->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('vendor.extra_charge_removed'),
+            'order' => $this->orderJsonPayload($order),
+        ]);
+    }
+
+    public function updateOrderRentalStatus(Request $request, Order $order)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor || $order->vendor_id !== $vendor->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized access'], 403);
+        }
+
+        $this->ensureOrderEditable($order);
+
+        $validated = $request->validate([
+            'delivered' => 'nullable|in:mark,clear',
+            'returned' => 'nullable|in:mark,clear',
+        ]);
+
+        if (($validated['delivered'] ?? null) === null && ($validated['returned'] ?? null) === null) {
+            return response()->json(['success' => false, 'message' => 'No action specified.'], 422);
+        }
+
+        DB::transaction(function () use ($order, $validated) {
+            $order->refresh();
+
+            if (($validated['delivered'] ?? null) === 'clear') {
+                $order->delivered_at = null;
+                $order->returned_at = null;
+            } elseif (($validated['delivered'] ?? null) === 'mark') {
+                if (! $order->delivered_at) {
+                    $order->delivered_at = now();
+                }
+            }
+
+            if (($validated['returned'] ?? null) === 'clear') {
+                $order->returned_at = null;
+            } elseif (($validated['returned'] ?? null) === 'mark') {
+                if (! $order->delivered_at) {
+                    $order->delivered_at = now();
+                }
+                $order->returned_at = now();
+            }
+
+            $order->save();
+
+            $this->syncOrderItemsRentalFromOrder($order);
+        });
+
+        $order->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('vendor.rental_status_updated'),
+            'rental_status' => $this->rentalStatusPayload($order),
+        ]);
+    }
+
     public function applyOrderSecurityDeposit(Request $request, Order $order)
     {
         $vendor = Auth::user()->currentVendor();
@@ -799,7 +921,7 @@ trait ManagesOrderLive
                 'rent_days' => $rentDays,
             ]);
             $oi->refresh();
-            $oi->update(['total_price' => $oi->lineSubtotal()]);
+            $oi->refreshLineTotals();
         }
 
         $this->recalculateOrderFinancials($order);
@@ -819,5 +941,28 @@ trait ManagesOrderLive
         }
 
         return 1;
+    }
+
+    /**
+     * Mirror order-level handout/return timestamps onto every line (same UX as order rental buttons).
+     */
+    private function syncOrderItemsRentalFromOrder(Order $order): void
+    {
+        $order->loadMissing('items');
+
+        $delivered = $order->delivered_at;
+        $returned = $order->returned_at;
+
+        $duration = null;
+        if ($delivered && $returned) {
+            $duration = (int) max(0, round($delivered->diffInSeconds($returned) / 60));
+        }
+
+        foreach ($order->items as $line) {
+            $line->delivered_at = $delivered;
+            $line->returned_at = $returned;
+            $line->rental_duration_minutes = $duration;
+            $line->save();
+        }
     }
 }
