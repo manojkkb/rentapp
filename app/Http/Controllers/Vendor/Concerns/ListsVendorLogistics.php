@@ -17,7 +17,7 @@ trait ListsVendorLogistics
         return $vendor->orders()
             ->whereNull('delivered_at')
             ->whereIn('status', ['confirmed', 'ongoing'])
-            ->with('customer')
+            ->with(['customer', 'items.item'])
             ->orderByRaw('case
                 when (start_at is not null and date(start_at) = ?)
                     or (pickup_at is not null and date(pickup_at) = ?)
@@ -40,7 +40,7 @@ trait ListsVendorLogistics
             ->whereNull('returned_at')
             ->whereNotNull('delivered_at')
             ->whereIn('status', ['confirmed', 'ongoing'])
-            ->with('customer')
+            ->with(['customer', 'items.item'])
             ->orderByRaw('case
                 when end_at is not null and date(end_at) = ? then 0
                 when coalesce(end_at, created_at) < ? then 1
@@ -59,15 +59,44 @@ trait ListsVendorLogistics
         $handoffAt = $order->start_at ?? $order->pickup_at;
         $sched = $this->logisticsDayTime($handoffAt);
 
+        $totalUnits = 0;
+        $deliveredUnits = 0;
+        $lines = $order->items->map(function ($line) use (&$totalUnits, &$deliveredUnits) {
+            $qty = max(1, (int) $line->quantity);
+            $totalUnits += $qty;
+            if ($line->delivered_at !== null) {
+                $deliveredUnits += $qty;
+            }
+
+            return [
+                'id' => (int) $line->id,
+                'name' => $line->item?->name ?? $line->item_name ?? __('vendor.item'),
+                'quantity' => $qty,
+                'delivered' => $line->delivered_at !== null,
+            ];
+        })->values()->all();
+
+        $customerName = $order->customer->name ?? 'N/A';
+        $eventName = trim((string) ($order->event_name ?? ''));
+        $titleLine = $eventName !== ''
+            ? ($customerName !== 'N/A' ? $eventName.' ('.$customerName.')' : $eventName)
+            : $customerName;
+
         return [
             'id' => $order->id,
             'order_number' => $order->order_number,
-            'customer_name' => $order->customer->name ?? 'N/A',
+            'event_name' => $eventName !== '' ? $eventName : null,
+            'customer_name' => $customerName,
+            'title_line' => $titleLine,
             'fulfillment_type' => $order->fulfillment_type ?? 'pickup',
             'day_line' => $sched['day_line'],
             'time_line' => $sched['time_line'],
             'is_highlight_today' => $sched['is_today'],
             'is_highlight_tomorrow' => $sched['is_tomorrow'],
+            'total_units' => $totalUnits,
+            'delivered_units' => $deliveredUnits,
+            'lines' => $lines,
+            'lines_b64' => base64_encode(json_encode($lines)),
         ];
     }
 
@@ -78,14 +107,47 @@ trait ListsVendorLogistics
     {
         $sched = $this->logisticsDayTime($order->end_at);
 
+        $totalUnits = 0;
+        $returnedUnits = 0;
+        $lines = $order->items->map(function ($line) use (&$totalUnits, &$returnedUnits) {
+            $qty = max(1, (int) $line->quantity);
+            $returnedQty = min($qty, max(0, (int) ($line->returned_qty ?? 0)));
+            $totalUnits += $qty;
+            $returnedUnits += $returnedQty;
+            $fullyReturned = $line->returned_at !== null || $returnedQty >= $qty;
+
+            return [
+                'id' => (int) $line->id,
+                'name' => $line->item?->name ?? $line->item_name ?? __('vendor.item'),
+                'order_qty' => $qty,
+                'returned_qty' => $returnedQty,
+                'returnable_qty' => max(0, $qty - $returnedQty),
+                'delivered' => $line->delivered_at !== null,
+                'fully_returned' => $fullyReturned,
+            ];
+        })->values()->all();
+
+        $customerName = $order->customer->name ?? 'N/A';
+        $eventName = trim((string) ($order->event_name ?? ''));
+        $titleLine = $eventName !== ''
+            ? ($customerName !== 'N/A' ? $eventName.' ('.$customerName.')' : $eventName)
+            : $customerName;
+
         return [
             'id' => $order->id,
             'order_number' => $order->order_number,
-            'customer_name' => $order->customer->name ?? 'N/A',
+            'event_name' => $eventName !== '' ? $eventName : null,
+            'customer_name' => $customerName,
+            'title_line' => $titleLine,
+            'fulfillment_type' => $order->fulfillment_type ?? 'pickup',
             'day_line' => $sched['day_line'],
             'time_line' => $sched['time_line'],
             'is_highlight_today' => $sched['is_today'],
             'is_highlight_tomorrow' => $sched['is_tomorrow'],
+            'total_units' => $totalUnits,
+            'returned_units' => $returnedUnits,
+            'lines' => $lines,
+            'lines_b64' => base64_encode(json_encode($lines)),
         ];
     }
 

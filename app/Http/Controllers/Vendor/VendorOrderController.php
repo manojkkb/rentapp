@@ -244,6 +244,7 @@ class VendorOrderController extends Controller
                 'id' => $id,
                 'name' => $i->name,
                 'price' => (float) $i->price,
+                'photo_url' => $i->photo_url,
                 'category_id' => $i->category_id,
                 'category' => $i->category ? ['id' => $i->category->id, 'name' => $i->category->name] : null,
                 'stock' => (int) ($i->available_stock ?? $i->stock ?? 0),

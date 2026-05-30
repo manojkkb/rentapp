@@ -83,7 +83,7 @@
 
         <x-order-wizard-actions class="border-t border-gray-200 pt-3 sm:pt-3">
             <a href="{{ route('vendor.orders.create.summary') }}"
-               class="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-4 text-sm font-semibold text-gray-800 transition [touch-action:manipulation] hover:bg-gray-200 sm:w-auto sm:min-w-[6.5rem]">
+               class="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-gray-600 transition hover:text-blue-700 [touch-action:manipulation] sm:mr-auto">
                 <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>
                 {{ __('vendor.back') }}
             </a>

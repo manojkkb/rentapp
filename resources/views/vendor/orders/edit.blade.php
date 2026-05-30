@@ -216,8 +216,8 @@ function orderPageData() {
     
     <div class="mb-3 flex w-full min-w-0 flex-col gap-3 sm:mb-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between md:mb-6">
         <a href="{{ route('vendor.orders.index') }}"
-           class="inline-flex min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/80 hover:text-blue-800 active:scale-[0.98] sm:w-auto sm:justify-start">
-            <i class="fas fa-arrow-left text-blue-600"></i>
+           class="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-gray-600 transition hover:text-blue-700 [touch-action:manipulation]">
+            <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>
             {{ __('vendor.back') }}
         </a>
         @php
@@ -463,13 +463,8 @@ function orderPageData() {
                 <div class="border-b border-gray-100 bg-gradient-to-r from-slate-50 via-white to-blue-50/60 px-4 py-4 sm:px-6 sm:py-5">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="min-w-0">
-                            <h3 class="text-lg font-bold tracking-tight text-gray-900">{{ __('vendor.cart_items') }}</h3>
-                            <p class="mt-1 text-sm text-gray-600">
-                                <span data-items-count class="inline-flex items-center gap-2 font-medium text-gray-800">
-                                    <span class="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-blue-100 px-2 text-xs font-bold text-blue-800 tabular-nums">{{ $order->items->count() }}</span>
-                                    <span>{{ __('vendor.items') }}</span>
-                                </span>
-                            </p>
+                            <h3 class="text-lg font-bold tracking-tight text-gray-900 tabular-nums"
+                                data-items-count>{{ __('vendor.order_items_heading', ['count' => $order->items->count()]) }}</h3>
                         </div>
                         <div class="flex w-full flex-shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
                             <button type="button" @click="showAddItem = true"
@@ -3094,7 +3089,7 @@ function confirmDelete() {
                 const itemsCountEl = document.querySelector('[data-items-count]');
                 if (itemsCountEl) {
                     const c = data.order.items_count;
-                    itemsCountEl.innerHTML = '<span class="inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-full bg-blue-100 px-2 text-xs font-bold text-blue-800 tabular-nums">' + c + '</span> <span class="font-medium text-gray-800">{{ __("vendor.items") }}</span>';
+                    itemsCountEl.textContent = @json(__('vendor.order_items_heading', ['count' => ':count'])).replace(':count', String(c));
                 }
 
                 if (data.order.items_count === 0) {

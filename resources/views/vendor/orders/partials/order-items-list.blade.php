@@ -31,6 +31,10 @@
                     'billing_units' => $cartItem->billing_units,
                     'uses_billing' => $usesBilling,
                 ]));
+                $lineQty = max(1, (int) $cartItem->quantity);
+                $lineDeliveredQty = $cartItem->delivered_at ? $lineQty : 0;
+                $lineReturnedQty = min($lineQty, max(0, (int) ($cartItem->returned_qty ?? 0)));
+                $showLineRentalStatus = in_array($order->status, ['pending', 'confirmed', 'ongoing', 'completed'], true);
             @endphp
             <li data-cart-line="1"
                 class="flex items-center gap-2 py-2.5 first:pt-0 sm:gap-3"
@@ -61,6 +65,24 @@
                         @endif
                         <span class="font-semibold text-gray-800" data-line-total="{{ $cartItem->item_id }}"> = ₹{{ number_format((int) round($lineTotal), 0, '.', ',') }}</span>
                     </p>
+                    @if($showLineRentalStatus)
+                        <p class="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[10px] leading-snug sm:text-[11px]"
+                           data-line-rental-status
+                           @if($lineDeliveredQty === 0 && $lineReturnedQty === 0) hidden @endif>
+                            @if($lineDeliveredQty > 0)
+                                <span class="inline-flex items-center gap-1 font-medium text-teal-800" data-line-delivered-label>
+                                    <i class="fas fa-truck text-[9px] opacity-80" aria-hidden="true"></i>
+                                    {{ trans_choice('vendor.line_delivered_items', $lineDeliveredQty, ['count' => $lineDeliveredQty]) }}
+                                </span>
+                            @endif
+                            @if($lineReturnedQty > 0)
+                                <span class="inline-flex items-center gap-1 font-medium text-indigo-800" data-line-returned-label>
+                                    <i class="fas fa-rotate-left text-[9px] opacity-80" aria-hidden="true"></i>
+                                    {{ trans_choice('vendor.line_returned_items', $lineReturnedQty, ['count' => $lineReturnedQty]) }}
+                                </span>
+                            @endif
+                        </p>
+                    @endif
                 </div>
                 <div class="flex shrink-0 items-stretch gap-2 text-right sm:gap-3" data-line-qty-stepper="{{ $cartItem->item_id }}">
                     <div class="flex min-w-[2.25rem] flex-col items-end justify-center gap-0.5">
@@ -81,6 +103,7 @@
                                     tabindex="-1"
                                     aria-hidden="true"></button>
                             <button type="button"
+                                    x-ref="menuButton"
                                     class="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 [touch-action:manipulation]"
                                     @click.stop="menu = !menu"
                                     :aria-expanded="menu"
@@ -94,7 +117,16 @@
                                  x-transition:enter-start="opacity-0 scale-95"
                                  x-transition:enter-end="opacity-100 scale-100"
                                  @click.outside="menu = false"
-                                 class="absolute right-0 top-full z-[60] mt-1 w-36 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg ring-1 ring-black/5">
+                                 class="fixed w-36 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg ring-1 ring-black/5"
+                                 style="display: none; z-index: 9999;"
+                                 x-init="$watch('menu', value => {
+                                     if (value && $refs.menuButton) {
+                                         const rect = $refs.menuButton.getBoundingClientRect();
+                                         const menuW = $el.offsetWidth || 144;
+                                         $el.style.top = (rect.bottom + 4) + 'px';
+                                         $el.style.left = Math.max(8, rect.right - menuW) + 'px';
+                                     }
+                                 })">
                                 <button type="button"
                                         class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-800 hover:bg-gray-50"
                                         data-edit-b64="{{ $lineEditPayload }}"

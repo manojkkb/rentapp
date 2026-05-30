@@ -277,8 +277,16 @@
                                         <td class="px-3 py-2.5 align-middle sm:px-4 sm:py-3">
                                             <input type="hidden" :name="'lines[' + item.id + '][item_id]'" :value="item.id">
                                             <div class="flex items-start gap-2 sm:items-center sm:gap-2.5">
-                                                <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 ring-1 ring-blue-100 sm:h-10 sm:w-10">
-                                                    <i class="fas fa-box text-sm text-blue-600 sm:text-base"></i>
+                                                <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 ring-1 ring-blue-100 sm:h-10 sm:w-10">
+                                                    <img x-show="item.photo_url"
+                                                         :src="item.photo_url"
+                                                         alt=""
+                                                         class="h-full w-full object-cover"
+                                                         loading="lazy"
+                                                         decoding="async">
+                                                    <i x-show="!item.photo_url"
+                                                       class="fas fa-box text-sm text-blue-600 sm:text-base"
+                                                       aria-hidden="true"></i>
                                                 </div>
                                                 <div class="min-w-0 flex-1">
                                                     <p class="truncate text-sm font-semibold text-gray-900" x-text="item.name"></p>
@@ -377,7 +385,7 @@
 
                 <x-order-wizard-actions class="border-t border-gray-200 p-3 sm:p-4">
                     <a href="{{ route('vendor.orders.create') }}"
-                       class="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-gray-100 px-4 text-sm font-semibold text-gray-800 transition [touch-action:manipulation] hover:bg-gray-200 sm:w-auto sm:min-w-[6.5rem]">
+                       class="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-gray-600 transition hover:text-blue-700 [touch-action:manipulation] sm:mr-auto">
                         <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>
                         {{ __('vendor.back') }}
                     </a>
