@@ -1,0 +1,218 @@
+StartFontMetrics 4.1
+Notice Converted by PHP-font-lib
+Comment https://github.com/dompdf/php-font-lib
+EncodingScheme FontSpecific
+Copyright Copyright 2018 Google Inc. All Rights Reserved.
+FontName Noto Sans Malayalam
+FontSubfamily Regular
+UniqueID 2.101;GOOG;NotoSansMalayalam-Regular
+FullName Noto Sans Malayalam Regular
+Version Version 2.101; ttfautohint (v1.8) -l 8 -r 50 -G 200 -x 14 -D mlym -f none -a qsq -X ""
+PostScriptName NotoSansMalayalam-Regular
+Trademark Noto is a trademark of Google Inc.
+Manufacturer Monotype Imaging Inc.
+Designer Jelle Bosma - Monotype Design Team
+Description Designed by Monotype design team.
+FontVendorURL http://www.google.com/get/noto/
+FontDesignerURL http://www.monotype.com/studio
+LicenseDescription This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software.
+LicenseURL http://scripts.sil.org/OFL
+Weight Medium
+ItalicAngle 0
+IsFixedPitch false
+UnderlineThickness 50
+UnderlinePosition -100
+FontHeightOffset 0
+Ascender 864
+Descender -383
+FontBBox -808 -367 2333 864
+StartCharMetrics 365
+U 0 ; WX 0 ; N NULL ; G 1
+U 13 ; WX 309 ; N CR ; G 2
+U 32 ; WX 309 ; N space ; G 3
+U 33 ; WX 269 ; N exclam.mlym ; G 277
+U 34 ; WX 426 ; N quotedbl.mlym ; G 278
+U 35 ; WX 646 ; N numbersign.mlym ; G 279
+U 37 ; WX 831 ; N percent.mlym ; G 280
+U 39 ; WX 250 ; N quotesingle.mlym ; G 281
+U 40 ; WX 301 ; N parenleft.mlym ; G 282
+U 41 ; WX 301 ; N parenright.mlym ; G 283
+U 42 ; WX 551 ; N asterisk.mlym ; G 284
+U 43 ; WX 572 ; N plus.mlym ; G 285
+U 44 ; WX 250 ; N comma.mlym ; G 286
+U 45 ; WX 322 ; N hyphen.mlym ; G 287
+U 46 ; WX 268 ; N period.mlym ; G 288
+U 47 ; WX 393 ; N slash.mlym ; G 289
+U 48 ; WX 572 ; N zero.mlym ; G 290
+U 49 ; WX 572 ; N one.mlym ; G 291
+U 50 ; WX 572 ; N two.mlym ; G 292
+U 51 ; WX 572 ; N three.mlym ; G 293
+U 52 ; WX 572 ; N four.mlym ; G 294
+U 53 ; WX 572 ; N five.mlym ; G 295
+U 54 ; WX 572 ; N six.mlym ; G 296
+U 55 ; WX 572 ; N seven.mlym ; G 297
+U 56 ; WX 572 ; N eight.mlym ; G 298
+U 57 ; WX 572 ; N nine.mlym ; G 299
+U 58 ; WX 268 ; N colon.mlym ; G 300
+U 59 ; WX 268 ; N semicolon.mlym ; G 301
+U 60 ; WX 572 ; N less.mlym ; G 302
+U 61 ; WX 572 ; N equal.mlym ; G 303
+U 62 ; WX 572 ; N greater.mlym ; G 304
+U 63 ; WX 445 ; N question.mlym ; G 305
+U 91 ; WX 318 ; N bracketleft.mlym ; G 306
+U 92 ; WX 393 ; N backslash.mlym ; G 307
+U 93 ; WX 323 ; N bracketright.mlym ; G 308
+U 94 ; WX 572 ; N asciicircum.mlym ; G 309
+U 95 ; WX 444 ; N underscore.mlym ; G 310
+U 123 ; WX 369 ; N braceleft.mlym ; G 311
+U 124 ; WX 551 ; N bar.mlym ; G 312
+U 125 ; WX 369 ; N braceright.mlym ; G 313
+U 126 ; WX 572 ; N asciitilde.mlym ; G 314
+U 160 ; WX 309 ; N uni00A0.mlym ; G 315
+U 173 ; WX 322 ; N sfthyphen.mlym ; G 316
+U 215 ; WX 572 ; N multiply.mlym ; G 324
+U 247 ; WX 572 ; N divide.mlym ; G 325
+U 775 ; WX 0 ; N uni0307 ; G 336
+U 803 ; WX 0 ; N uni0323 ; G 337
+U 2385 ; WX 0 ; N uni0951 ; G 331
+U 2386 ; WX 0 ; N uni0952 ; G 332
+U 2404 ; WX 350 ; N danda.mlym ; G 333
+U 2405 ; WX 570 ; N dbldanda.mlym ; G 334
+U 3328 ; WX 0 ; N uni0D00 ; G 4
+U 3329 ; WX 0 ; N candrabindumlym ; G 5
+U 3330 ; WX 453 ; N anusvaramlym ; G 6
+U 3331 ; WX 336 ; N visargamlym ; G 7
+U 3332 ; WX 583 ; N uni0D04 ; G 8
+U 3333 ; WX 1495 ; N amlym ; G 9
+U 3334 ; WX 1647 ; N aamlym ; G 10
+U 3335 ; WX 986 ; N imlym ; G 11
+U 3336 ; WX 1745 ; N iimlym ; G 12
+U 3337 ; WX 692 ; N umlym ; G 13
+U 3338 ; WX 1451 ; N uumlym ; G 14
+U 3339 ; WX 871 ; N rvocalicmlym ; G 15
+U 3340 ; WX 1167 ; N lvocalicmlym ; G 16
+U 3342 ; WX 1273 ; N emlym ; G 17
+U 3343 ; WX 1272 ; N eemlym ; G 18
+U 3344 ; WX 1988 ; N aimlym ; G 19
+U 3346 ; WX 757 ; N omlym ; G 20
+U 3347 ; WX 1259 ; N oomlym ; G 21
+U 3348 ; WX 1510 ; N aumlym ; G 22
+U 3349 ; WX 1038 ; N kamlym ; G 23
+U 3350 ; WX 1000 ; N khamlym ; G 24
+U 3351 ; WX 897 ; N gamlym ; G 25
+U 3352 ; WX 1325 ; N ghamlym ; G 26
+U 3353 ; WX 1065 ; N ngamlym ; G 27
+U 3354 ; WX 933 ; N camlym ; G 28
+U 3355 ; WX 1349 ; N chamlym ; G 29
+U 3356 ; WX 939 ; N jamlym ; G 30
+U 3357 ; WX 1655 ; N jhamlym ; G 31
+U 3358 ; WX 1446 ; N nyamlym ; G 32
+U 3359 ; WX 563 ; N ttamlym ; G 33
+U 3360 ; WX 655 ; N tthamlym ; G 34
+U 3361 ; WX 1223 ; N ddamlym ; G 35
+U 3362 ; WX 1334 ; N ddhamlym ; G 36
+U 3363 ; WX 1368 ; N nnamlym ; G 37
+U 3364 ; WX 1014 ; N tamlym ; G 38
+U 3365 ; WX 896 ; N thamlym ; G 39
+U 3366 ; WX 641 ; N damlym ; G 40
+U 3367 ; WX 911 ; N dhamlym ; G 41
+U 3368 ; WX 911 ; N namlym ; G 42
+U 3369 ; WX 1021 ; N nnnamlym ; G 43
+U 3370 ; WX 896 ; N pamlym ; G 44
+U 3371 ; WX 1129 ; N phamlym ; G 45
+U 3372 ; WX 1306 ; N bamlym ; G 46
+U 3373 ; WX 654 ; N bhamlym ; G 47
+U 3374 ; WX 723 ; N mamlym ; G 48
+U 3375 ; WX 1035 ; N yamlym ; G 49
+U 3376 ; WX 736 ; N ramlym ; G 50
+U 3377 ; WX 674 ; N rramlym ; G 51
+U 3378 ; WX 859 ; N lamlym ; G 52
+U 3379 ; WX 724 ; N llamlym ; G 53
+U 3380 ; WX 654 ; N lllamlym ; G 54
+U 3381 ; WX 958 ; N vamlym ; G 55
+U 3382 ; WX 1040 ; N shamlym ; G 56
+U 3383 ; WX 1149 ; N ssamlym ; G 57
+U 3384 ; WX 1223 ; N samlym ; G 58
+U 3385 ; WX 1190 ; N hamlym ; G 59
+U 3386 ; WX 773 ; N tttamlym ; G 60
+U 3387 ; WX 0 ; N uni0D3B ; G 61
+U 3388 ; WX 0 ; N uni0D3C ; G 62
+U 3389 ; WX 466 ; N avagrahamlym ; G 63
+U 3390 ; WX 504 ; N aavowelsignmlym ; G 64
+U 3391 ; WX 228 ; N ivowelsignmlym ; G 65
+U 3392 ; WX 228 ; N iivowelsignmlym ; G 66
+U 3393 ; WX 332 ; N uvowelsignmlym ; G 67
+U 3394 ; WX 332 ; N uuvowelsignmlym ; G 68
+U 3395 ; WX 243 ; N rvocalicvowelsignmlym ; G 69
+U 3396 ; WX 243 ; N rrvocalicvowelsignmlym ; G 70
+U 3398 ; WX 715 ; N evowelsignmlym ; G 71
+U 3399 ; WX 595 ; N eevowelsignmlym ; G 72
+U 3400 ; WX 1430 ; N aivowelsignmlym ; G 73
+U 3402 ; WX 1427 ; N ovowelsignmlym ; G 74
+U 3403 ; WX 1292 ; N oovowelsignmlym ; G 75
+U 3404 ; WX 1684 ; N auvowelsignmlym ; G 76
+U 3405 ; WX 0 ; N viramamlym ; G 77
+U 3406 ; WX 0 ; N rephmlym ; G 78
+U 3407 ; WX 1244 ; N uni0D4F ; G 79
+U 3412 ; WX 646 ; N machillumlym ; G 80
+U 3413 ; WX 1033 ; N yachillumlym ; G 81
+U 3414 ; WX 725 ; N lllachillumlym ; G 82
+U 3415 ; WX 759 ; N aulengthmarkmlym ; G 83
+U 3416 ; WX 1223 ; N uni0D58 ; G 84
+U 3417 ; WX 1131 ; N uni0D59 ; G 85
+U 3418 ; WX 1071 ; N uni0D5A ; G 86
+U 3419 ; WX 958 ; N uni0D5B ; G 87
+U 3420 ; WX 1518 ; N uni0D5C ; G 88
+U 3421 ; WX 2010 ; N uni0D5D ; G 89
+U 3422 ; WX 1375 ; N uni0D5E ; G 90
+U 3423 ; WX 1341 ; N uni0D5F ; G 91
+U 3424 ; WX 871 ; N rrvocalicmlym ; G 92
+U 3425 ; WX 1320 ; N llvocalicmlym ; G 93
+U 3426 ; WX 0 ; N lvocalicvowelsignmlym ; G 94
+U 3427 ; WX 0 ; N llvocalicvowelsignmlym ; G 95
+U 3430 ; WX 576 ; N zeromlym ; G 96
+U 3431 ; WX 896 ; N onemlym ; G 97
+U 3432 ; WX 859 ; N twomlym ; G 98
+U 3433 ; WX 1083 ; N threemlym ; G 99
+U 3434 ; WX 797 ; N fourmlym ; G 100
+U 3435 ; WX 971 ; N fivemlym ; G 101
+U 3436 ; WX 1223 ; N sixmlym ; G 102
+U 3437 ; WX 743 ; N sevenmlym ; G 103
+U 3438 ; WX 958 ; N eightmlym ; G 104
+U 3439 ; WX 1122 ; N ninemlym ; G 105
+U 3440 ; WX 1084 ; N tenmlym ; G 106
+U 3441 ; WX 907 ; N hundredmlym ; G 107
+U 3442 ; WX 1411 ; N thousandmlym ; G 108
+U 3443 ; WX 784 ; N onequartermlym ; G 109
+U 3444 ; WX 920 ; N onehalfmlym ; G 110
+U 3445 ; WX 1233 ; N threequartermlym ; G 111
+U 3446 ; WX 1387 ; N uni0D76 ; G 112
+U 3447 ; WX 1713 ; N uni0D77 ; G 113
+U 3448 ; WX 2178 ; N uni0D78 ; G 114
+U 3449 ; WX 1147 ; N datemarkmlym ; G 115
+U 3450 ; WX 1519 ; N nnachillumlym ; G 116
+U 3451 ; WX 1062 ; N nachillumlym ; G 117
+U 3452 ; WX 736 ; N rrachillumlym ; G 118
+U 3453 ; WX 1198 ; N lachillumlym ; G 119
+U 3454 ; WX 1044 ; N llachillumlym ; G 120
+U 3455 ; WX 1206 ; N kachillumlym ; G 121
+U 7386 ; WX 0 ; N uni1CDA ; G 335
+U 8203 ; WX 0 ; N uni200B ; G 360
+U 8204 ; WX 0 ; N uni200C ; G 361
+U 8205 ; WX 0 ; N uni200D ; G 362
+U 8208 ; WX 322 ; N uni2010 ; G 359
+U 8211 ; WX 500 ; N endash.mlym ; G 317
+U 8212 ; WX 1000 ; N emdash.mlym ; G 318
+U 8216 ; WX 232 ; N quoteleft.mlym ; G 319
+U 8217 ; WX 232 ; N quoteright.mlym ; G 320
+U 8220 ; WX 420 ; N quotedblleft.mlym ; G 321
+U 8221 ; WX 420 ; N quotedblright.mlym ; G 322
+U 8230 ; WX 804 ; N ellipsis.mlym ; G 323
+U 8377 ; WX 572 ; N uni20B9.mlym ; G 327
+U 8722 ; WX 572 ; N minus.mlym ; G 326
+U 9676 ; WX 562 ; N uni25CC ; G 363
+U 43056 ; WX 242 ; N uniA830 ; G 328
+U 43057 ; WX 447 ; N uniA831 ; G 329
+U 43058 ; WX 652 ; N uniA832 ; G 330
+EndCharMetrics
+EndFontMetrics

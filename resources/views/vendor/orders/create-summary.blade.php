@@ -132,6 +132,17 @@
                     ]));
                 @endphp
                 <li class="flex items-center gap-2 py-2.5 first:pt-0 sm:gap-3">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-slate-100 to-blue-50 ring-1 ring-gray-200/80 sm:h-12 sm:w-12">
+                        @if(! empty($row['photo_url']))
+                            <img src="{{ $row['photo_url'] }}"
+                                 alt=""
+                                 class="h-full w-full object-cover"
+                                 loading="lazy"
+                                 decoding="async">
+                        @else
+                            <i class="fas fa-box-open text-lg text-blue-600/90" aria-hidden="true"></i>
+                        @endif
+                    </div>
                     <div class="min-w-0 flex-1 pr-1">
                         <p class="truncate font-medium leading-snug text-gray-900">{{ $row['name'] }}</p>
                         <p class="mt-0.5 break-words text-[11px] leading-snug text-gray-600 tabular-nums sm:text-xs">

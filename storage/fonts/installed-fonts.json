@@ -1,0 +1,62 @@
+{
+    "noto sans devanagari": {
+        "normal": "NotoSansDevanagari-Regular",
+        "bold": "NotoSansDevanagari-Regular",
+        "italic": "NotoSansDevanagari-Regular",
+        "bold_italic": "NotoSansDevanagari-Regular"
+    },
+    "noto sans bengali": {
+        "normal": "NotoSansBengali-Regular",
+        "bold": "NotoSansBengali-Regular",
+        "italic": "NotoSansBengali-Regular",
+        "bold_italic": "NotoSansBengali-Regular"
+    },
+    "noto sans telugu": {
+        "normal": "NotoSansTelugu-Regular",
+        "bold": "NotoSansTelugu-Regular",
+        "italic": "NotoSansTelugu-Regular",
+        "bold_italic": "NotoSansTelugu-Regular"
+    },
+    "noto sans tamil": {
+        "normal": "NotoSansTamil-Regular",
+        "bold": "NotoSansTamil-Regular",
+        "italic": "NotoSansTamil-Regular",
+        "bold_italic": "NotoSansTamil-Regular"
+    },
+    "noto sans gujarati": {
+        "normal": "NotoSansGujarati-Regular",
+        "bold": "NotoSansGujarati-Regular",
+        "italic": "NotoSansGujarati-Regular",
+        "bold_italic": "NotoSansGujarati-Regular"
+    },
+    "noto sans kannada": {
+        "normal": "NotoSansKannada-Regular",
+        "bold": "NotoSansKannada-Regular",
+        "italic": "NotoSansKannada-Regular",
+        "bold_italic": "NotoSansKannada-Regular"
+    },
+    "noto sans oriya": {
+        "normal": "NotoSansOriya-Regular",
+        "bold": "NotoSansOriya-Regular",
+        "italic": "NotoSansOriya-Regular",
+        "bold_italic": "NotoSansOriya-Regular"
+    },
+    "noto sans malayalam": {
+        "normal": "NotoSansMalayalam-Regular",
+        "bold": "NotoSansMalayalam-Regular",
+        "italic": "NotoSansMalayalam-Regular",
+        "bold_italic": "NotoSansMalayalam-Regular"
+    },
+    "noto sans gurmukhi": {
+        "normal": "NotoSansGurmukhi-Regular",
+        "bold": "NotoSansGurmukhi-Regular",
+        "italic": "NotoSansGurmukhi-Regular",
+        "bold_italic": "NotoSansGurmukhi-Regular"
+    },
+    "noto nastaliq urdu": {
+        "normal": "NotoNastaliqUrdu-Regular",
+        "bold": "NotoNastaliqUrdu-Regular",
+        "italic": "NotoNastaliqUrdu-Regular",
+        "bold_italic": "NotoNastaliqUrdu-Regular"
+    }
+}

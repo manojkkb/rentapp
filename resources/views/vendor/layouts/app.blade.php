@@ -16,6 +16,7 @@
     <title>@yield('title', 'Rentkia')</title>
     
     <!-- Vite Assets (includes Tailwind CSS, Alpine.js, Font Awesome, and Inter Font) -->
+    @stack('vite-before-app')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
  
     <style>

@@ -28,7 +28,7 @@ class VendorAccess
             return null;
         }
 
-        $vendorId = session('current_vendor_id');
+        $vendorId = Auth::user()->vendor_id;
         if (! $vendorId) {
             return null;
         }
@@ -106,6 +106,9 @@ class VendorAccess
             'vendor.language.switch',
             'vendor.logout',
             'vendor.manifest',
+            'vendor.support',
+            'vendor.support.messages.store',
+            'vendor.support.socket-token',
         ];
 
         if (in_array($routeName, $alwaysAllowed, true)) {
@@ -126,6 +129,10 @@ class VendorAccess
                 'vendor.staff.create', 'vendor.staff.store' => 'staff.invite',
                 default => 'staff.edit',
             };
+        }
+
+        if (in_array($routeName, ['vendor.deliveries.index', 'vendor.returns.index'], true)) {
+            return 'orders.view';
         }
 
         if (str_starts_with($routeName, 'vendor.orders.create')) {

@@ -14,6 +14,30 @@
 @endphp
 
 @section('content')
+@if(($vendorSubscriptionStatus ?? '') === 'trial' && isset($vendorTrialDaysRemaining, $vendorTrialEndsAt))
+    <div class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-300/70 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 px-4 py-3.5 shadow-sm ring-1 ring-amber-200/60">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 shadow-sm">
+            <i class="fas fa-gift text-base" aria-hidden="true"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold text-amber-950">
+                {{ __('vendor.dashboard_trial_heading') }}
+            </p>
+            <p class="mt-0.5 text-sm leading-snug text-amber-900/90">
+                {{ __('vendor.subscription_trial_banner', [
+                    'days' => $vendorTrialDaysRemaining,
+                    'date' => $vendorTrialEndsAt->format('d M Y'),
+                ]) }}
+            </p>
+        </div>
+        <a href="{{ route('vendor.subscription.plans') }}"
+           class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-700">
+            {{ __('vendor.dashboard_trial_cta') }}
+            <i class="fas fa-arrow-right text-[10px]" aria-hidden="true"></i>
+        </a>
+    </div>
+@endif
+
 {{-- Mobile PWA install strip --}}
 <div x-data="vendorDashboardPwaInstall()"
      x-show="show"

@@ -1,0 +1,174 @@
+StartFontMetrics 4.1
+Notice Converted by PHP-font-lib
+Comment https://github.com/dompdf/php-font-lib
+EncodingScheme FontSpecific
+Copyright Copyright 2017-2022 Google Inc. All Rights Reserved.
+FontName Noto Sans Tamil
+FontSubfamily Regular
+UniqueID 2.002;NONE;NotoSansTamil-Regular
+FullName Noto Sans Tamil Regular
+Version Version 2.002; ttfautohint (v1.8) -l 8 -r 50 -G 200 -x 14 -D taml -f none -a qsq -X ""
+PostScriptName NotoSansTamil-Regular
+Trademark Noto is a trademark of Google Inc.
+Manufacturer Monotype Imaging Inc.
+Designer Jelle Bosma - Monotype Design Team
+Description Designed by Monotype design team.
+FontVendorURL http://www.google.com/get/noto/
+FontDesignerURL http://www.monotype.com/studio
+LicenseDescription This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software.
+LicenseURL http://scripts.sil.org/OFL
+Weight Medium
+ItalicAngle 0
+IsFixedPitch false
+UnderlineThickness 50
+UnderlinePosition -100
+FontHeightOffset 0
+Ascender 870
+Descender -370
+FontBBox -586 -321 2188 870
+StartCharMetrics 244
+U 0 ; WX 0 ; N NULL ; G 1
+U 13 ; WX 260 ; N CR ; G 2
+U 32 ; WX 260 ; N space ; G 3
+U 33 ; WX 269 ; N exclam.tamil ; G 170
+U 34 ; WX 426 ; N quotedbl.tamil ; G 171
+U 35 ; WX 646 ; N numbersign.tamil ; G 172
+U 37 ; WX 831 ; N percent.tamil ; G 173
+U 39 ; WX 250 ; N quotesingle.tamil ; G 174
+U 40 ; WX 321 ; N parenleft.tamil ; G 175
+U 41 ; WX 321 ; N parenright.tamil ; G 176
+U 42 ; WX 551 ; N asterisk.tamil ; G 177
+U 43 ; WX 572 ; N plus.tamil ; G 178
+U 44 ; WX 250 ; N comma.tamil ; G 179
+U 45 ; WX 322 ; N hyphen.tamil ; G 180
+U 46 ; WX 268 ; N period.tamil ; G 181
+U 47 ; WX 393 ; N slash.tamil ; G 182
+U 48 ; WX 572 ; N zero.tamil ; G 183
+U 49 ; WX 572 ; N one.tamil ; G 184
+U 50 ; WX 572 ; N two.tamil ; G 185
+U 51 ; WX 572 ; N three.tamil ; G 186
+U 52 ; WX 572 ; N four.tamil ; G 187
+U 53 ; WX 572 ; N five.tamil ; G 188
+U 54 ; WX 572 ; N six.tamil ; G 189
+U 55 ; WX 572 ; N seven.tamil ; G 190
+U 56 ; WX 572 ; N eight.tamil ; G 191
+U 57 ; WX 572 ; N nine.tamil ; G 192
+U 58 ; WX 268 ; N colon.tamil ; G 193
+U 59 ; WX 268 ; N semicolon.tamil ; G 194
+U 60 ; WX 572 ; N less.tamil ; G 195
+U 61 ; WX 572 ; N equal.tamil ; G 196
+U 62 ; WX 572 ; N greater.tamil ; G 197
+U 63 ; WX 445 ; N question.tamil ; G 198
+U 91 ; WX 318 ; N bracketleft.tamil ; G 199
+U 92 ; WX 393 ; N backslash.tamil ; G 200
+U 93 ; WX 323 ; N bracketright.tamil ; G 201
+U 94 ; WX 572 ; N asciicircum.tamil ; G 202
+U 95 ; WX 444 ; N underscore.tamil ; G 203
+U 123 ; WX 369 ; N braceleft.tamil ; G 204
+U 124 ; WX 551 ; N bar.tamil ; G 205
+U 125 ; WX 369 ; N braceright.tamil ; G 206
+U 126 ; WX 572 ; N asciitilde.tamil ; G 207
+U 160 ; WX 260 ; N uni00A0.tamil ; G 208
+U 173 ; WX 322 ; N sfthyphen.tamil ; G 209
+U 178 ; WX 312 ; N uni00B2 ; G 233
+U 179 ; WX 329 ; N uni00B3 ; G 234
+U 215 ; WX 572 ; N multiply.tamil ; G 217
+U 247 ; WX 572 ; N divide.tamil ; G 218
+U 2385 ; WX 0 ; N uni0951 ; G 221
+U 2386 ; WX 0 ; N uni0952 ; G 222
+U 2404 ; WX 350 ; N danda.tamil ; G 223
+U 2405 ; WX 570 ; N dbldanda.tamil ; G 224
+U 2946 ; WX 352 ; N anusvaratamil ; G 4
+U 2947 ; WX 896 ; N visargatamil ; G 5
+U 2949 ; WX 1121 ; N atamil ; G 6
+U 2950 ; WX 1313 ; N aatamil ; G 7
+U 2951 ; WX 1126 ; N itamil ; G 8
+U 2952 ; WX 707 ; N iitamil ; G 9
+U 2953 ; WX 1067 ; N utamil ; G 10
+U 2954 ; WX 1540 ; N uutamil ; G 11
+U 2958 ; WX 801 ; N etamil ; G 12
+U 2959 ; WX 801 ; N eetamil ; G 13
+U 2960 ; WX 1022 ; N aitamil ; G 14
+U 2962 ; WX 985 ; N otamil ; G 15
+U 2963 ; WX 985 ; N ootamil ; G 16
+U 2964 ; WX 2051 ; N autamil ; G 17
+U 2965 ; WX 825 ; N katamil ; G 18
+U 2969 ; WX 1044 ; N ngatamil ; G 19
+U 2970 ; WX 723 ; N catamil ; G 20
+U 2972 ; WX 1022 ; N jatamil ; G 21
+U 2974 ; WX 1210 ; N nyatamil ; G 22
+U 2975 ; WX 693 ; N ttatamil ; G 23
+U 2979 ; WX 1648 ; N nnatamil ; G 24
+U 2980 ; WX 825 ; N tatamil ; G 25
+U 2984 ; WX 789 ; N natamil ; G 26
+U 2985 ; WX 1234 ; N nnnatamil ; G 27
+U 2986 ; WX 778 ; N patamil ; G 28
+U 2990 ; WX 858 ; N matamil ; G 29
+U 2991 ; WX 963 ; N yatamil ; G 30
+U 2992 ; WX 640 ; N ratamil ; G 31
+U 2993 ; WX 869 ; N rratamil ; G 32
+U 2994 ; WX 1013 ; N latamil ; G 33
+U 2995 ; WX 1070 ; N llatamil ; G 34
+U 2996 ; WX 858 ; N lllatamil ; G 35
+U 2997 ; WX 1044 ; N vatamil ; G 36
+U 2998 ; WX 1172 ; N shatamil ; G 37
+U 2999 ; WX 1345 ; N ssatamil ; G 38
+U 3000 ; WX 1285 ; N satamil ; G 39
+U 3001 ; WX 1619 ; N hatamil ; G 40
+U 3006 ; WX 640 ; N aavowelsigntamil ; G 41
+U 3007 ; WX 262 ; N ivowelsigntamil ; G 42
+U 3008 ; WX 0 ; N iivowelsigntamil ; G 43
+U 3009 ; WX 502 ; N uvowelsigntamil ; G 44
+U 3010 ; WX 844 ; N uuvowelsigntamil ; G 45
+U 3014 ; WX 901 ; N evowelsigntamil ; G 46
+U 3015 ; WX 720 ; N eevowelsigntamil ; G 47
+U 3016 ; WX 1160 ; N aivowelsigntamil ; G 48
+U 3018 ; WX 1707 ; N ovowelsigntamil ; G 49
+U 3019 ; WX 1510 ; N oovowelsigntamil ; G 50
+U 3020 ; WX 2150 ; N auvowelsigntamil ; G 51
+U 3021 ; WX 0 ; N viramatamil ; G 52
+U 3024 ; WX 1141 ; N ohmsigntamil ; G 53
+U 3031 ; WX 1070 ; N aulengthmarktamil ; G 54
+U 3046 ; WX 650 ; N zerotamil ; G 55
+U 3047 ; WX 825 ; N onetamil ; G 56
+U 3048 ; WX 1067 ; N twotamil ; G 57
+U 3049 ; WX 985 ; N threetamil ; G 58
+U 3050 ; WX 941 ; N fourtamil ; G 59
+U 3051 ; WX 1051 ; N fivetamil ; G 60
+U 3052 ; WX 1006 ; N sixtamil ; G 61
+U 3053 ; WX 801 ; N seventamil ; G 62
+U 3054 ; WX 1121 ; N eighttamil ; G 63
+U 3055 ; WX 1155 ; N ninetamil ; G 64
+U 3056 ; WX 875 ; N tentamil ; G 65
+U 3057 ; WX 887 ; N hundredtamil ; G 66
+U 3058 ; WX 965 ; N thousandtamil ; G 67
+U 3059 ; WX 985 ; N daysigntamil ; G 68
+U 3060 ; WX 1268 ; N monthsigntamil ; G 69
+U 3061 ; WX 2223 ; N yearsigntamil ; G 70
+U 3062 ; WX 1027 ; N debitsigntamil ; G 71
+U 3063 ; WX 1328 ; N creditsigntamil ; G 72
+U 3064 ; WX 1965 ; N asabovesigntamil ; G 73
+U 3065 ; WX 1050 ; N rupeesigntamil ; G 74
+U 3066 ; WX 1214 ; N numsigntamil ; G 75
+U 7386 ; WX 0 ; N uni1CDA ; G 225
+U 8203 ; WX 0 ; N uni200B ; G 239
+U 8204 ; WX 0 ; N uni200C ; G 240
+U 8205 ; WX 0 ; N uni200D ; G 241
+U 8208 ; WX 322 ; N uni2010 ; G 242
+U 8211 ; WX 500 ; N endash.tamil ; G 210
+U 8212 ; WX 1000 ; N emdash.tamil ; G 211
+U 8216 ; WX 232 ; N quoteleft.tamil ; G 212
+U 8217 ; WX 232 ; N quoteright.tamil ; G 213
+U 8220 ; WX 420 ; N quotedblleft.tamil ; G 214
+U 8221 ; WX 420 ; N quotedblright.tamil ; G 215
+U 8230 ; WX 804 ; N ellipsis.tamil ; G 216
+U 8308 ; WX 360 ; N uni2074 ; G 235
+U 8322 ; WX 312 ; N uni2082 ; G 236
+U 8323 ; WX 329 ; N uni2083 ; G 237
+U 8324 ; WX 360 ; N uni2084 ; G 238
+U 8377 ; WX 572 ; N uni20B9.tamil ; G 220
+U 8722 ; WX 572 ; N minus.tamil ; G 219
+U 9676 ; WX 562 ; N uni25CC ; G 243
+U 43251 ; WX 479 ; N uniA8F3 ; G 226
+EndCharMetrics
+EndFontMetrics

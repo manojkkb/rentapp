@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            AdminSeeder::class,
             LanguageSeeder::class,
             BusinessCategorySeeder::class,
             VendorSeeder::class,
@@ -23,6 +24,7 @@ class DatabaseSeeder extends Seeder
             ItemSeeder::class,
             CouponSeeder::class,
             SubscriptionPlanSeeder::class,
+            PlatformSettingsSeeder::class,
         ]);
     }
 }

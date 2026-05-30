@@ -261,6 +261,82 @@ function orderPageData() {
                 return matchesSearch && matchesCategory;
             });
         },
+        orderId: @json($order->id),
+        lineEditOpen: false,
+        lineEditItemId: null,
+        lineEditName: '',
+        lineEditQty: 1,
+        lineEditBilling: '',
+        lineEditUsesBilling: false,
+        lineEditSaving: false,
+        openLineEdit(d) {
+            this.lineEditItemId = d.item_id;
+            this.lineEditName = d.name ?? '';
+            this.lineEditQty = parseInt(String(d.quantity), 10) || 1;
+            this.lineEditUsesBilling = !!d.uses_billing;
+            if (d.billing_units !== null && d.billing_units !== undefined && d.billing_units !== '') {
+                const n = parseFloat(String(d.billing_units));
+                this.lineEditBilling = Number.isFinite(n) ? String(n) : '';
+            } else {
+                this.lineEditBilling = '';
+            }
+            this.lineEditOpen = true;
+        },
+        closeLineEdit() {
+            if (this.lineEditSaving) return;
+            this.lineEditOpen = false;
+        },
+        async saveLineEdit() {
+            if (this.lineEditSaving || this.lineEditItemId == null) return;
+            const qty = parseInt(String(this.lineEditQty), 10);
+            if (!qty || qty < 1) {
+                if (typeof showToast === 'function') showToast('Quantity must be at least 1', 'error');
+                return;
+            }
+            let billing = parseFloat(String(this.lineEditBilling));
+            if (this.lineEditUsesBilling) {
+                if (!Number.isFinite(billing) || billing < 0.01) billing = 1;
+            } else {
+                billing = 1;
+            }
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            this.lineEditSaving = true;
+            try {
+                const res = await fetch(`{{ url('vendor/orders') }}/${this.orderId}/items/${this.lineEditItemId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf || '',
+                    },
+                    body: JSON.stringify({
+                        quantity: qty,
+                        billing_units: this.lineEditUsesBilling ? billing : 1,
+                    }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.dispatchEvent(new CustomEvent('order-item-updated', {
+                        detail: {
+                            itemId: this.lineEditItemId,
+                            quantity: data.item.quantity,
+                            billing_units: data.item.billing_units,
+                        },
+                    }));
+                    if (typeof refreshOrderItems === 'function') refreshOrderItems();
+                    if (typeof updateSummary === 'function' && data.order) updateSummary(data.order);
+                    if (typeof showToast === 'function') showToast(data.message, 'success');
+                    this.lineEditOpen = false;
+                } else if (typeof showToast === 'function') {
+                    showToast(data.message || 'Could not update line', 'error');
+                }
+            } catch (e) {
+                if (typeof showToast === 'function') showToast('Network error', 'error');
+            } finally {
+                this.lineEditSaving = false;
+            }
+        },
     };
 }
 </script>
@@ -268,6 +344,8 @@ function orderPageData() {
 @order-item-removed.window="syncItemRemoved($event.detail.itemId)"
 @order-item-updated.window="syncItemUpdated($event.detail.itemId, $event.detail.quantity, $event.detail.billing_units)"
 @order-emptied.window="syncAllRemoved()"
+@order-line-edit.window="openLineEdit($event.detail)"
+@keydown.escape.window="if (lineEditOpen) closeLineEdit()"
 >
     
     <div class="mb-3 flex w-full min-w-0 flex-col gap-3 sm:mb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4 md:mb-6">
@@ -286,7 +364,39 @@ function orderPageData() {
                 </p>
             </div>
         </div>
-        <div class="flex shrink-0 items-center justify-stretch sm:justify-end">
+        <div class="flex shrink-0 flex-wrap items-center justify-stretch gap-2 sm:justify-end">
+            @if(! $orderReadOnly && in_array($order->status, ['pending', 'confirmed', 'ongoing'], true))
+                <span id="rs-header-delivered-wrap" class="inline-flex w-full sm:w-auto">
+                    @if($order->delivered_at)
+                        <button type="button"
+                                class="rs-btn-deliver-clear inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50 sm:w-auto"
+                                onclick="openRentalClearConfirm('delivered', this)">
+                            <i class="fas fa-undo" aria-hidden="true"></i>{{ __('vendor.clear_delivered') }}
+                        </button>
+                    @else
+                        <button type="button"
+                                class="rs-btn-deliver-mark inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 sm:w-auto"
+                                onclick="openMarkDeliveredModal(this)">
+                            <i class="fas fa-truck" aria-hidden="true"></i>{{ __('vendor.mark_delivered') }}
+                        </button>
+                    @endif
+                </span>
+                <span id="rs-header-returned-wrap" class="inline-flex w-full sm:w-auto">
+                    @if($order->returned_at)
+                        <button type="button"
+                                class="rs-btn-return-clear inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-900 shadow-sm transition hover:bg-indigo-50 sm:w-auto"
+                                onclick="openRentalClearConfirm('returned', this)">
+                            <i class="fas fa-undo" aria-hidden="true"></i>{{ __('vendor.clear_returned') }}
+                        </button>
+                    @else
+                        <button type="button"
+                                class="rs-btn-return-mark inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 sm:w-auto"
+                                onclick="openMarkReturnedModal(this)">
+                            <i class="fas fa-rotate-left" aria-hidden="true"></i>{{ __('vendor.mark_returned') }}
+                        </button>
+                    @endif
+                </span>
+            @endif
             <a href="{{ route('vendor.orders.invoice.download', $order) }}"
                class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800 shadow-sm transition hover:bg-blue-100 sm:w-auto">
                 <i class="fas fa-download text-blue-700"></i>{{ __('vendor.download_invoice') }}
@@ -545,154 +655,7 @@ function orderPageData() {
                 </div>
 
                 <div data-items-list class="p-3 sm:p-4 md:p-5">
-                    @if($order->items->count() > 0)
-                        <style>
-                            @media (max-width: 767px) {
-                                .cart-line-table thead { display: none !important; }
-                                .cart-line-table { display: block; width: 100%; border: 0; }
-                                .cart-line-table tbody { display: block; }
-                                .cart-line-table tbody tr[data-cart-line] {
-                                    display: flex !important;
-                                    flex-direction: column;
-                                    gap: 0.625rem;
-                                    padding: 0.875rem;
-                                    margin-bottom: 0.75rem;
-                                    border: 1px solid #e5e7eb !important;
-                                    border-radius: 0.75rem;
-                                    background: #fff;
-                                    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
-                                }
-                                .cart-line-table tbody tr[data-cart-line]:last-child { margin-bottom: 0; }
-                                .cart-line-table tbody td {
-                                    display: grid !important;
-                                    grid-template-columns: minmax(5.25rem, 32%) 1fr;
-                                    gap: 0.5rem 0.75rem;
-                                    align-items: center;
-                                    padding: 0 !important;
-                                    border: none !important;
-                                    width: 100% !important;
-                                    text-align: left !important;
-                                }
-                                .cart-line-table tbody td:first-child,
-                                .cart-line-table tbody td:nth-child(2),
-                                .cart-line-table tbody td:nth-child(3) { align-items: start; }
-                                .cart-line-table tbody td::before {
-                                    content: attr(data-col);
-                                    font-size: 0.65rem;
-                                    font-weight: 600;
-                                    line-height: 1.25;
-                                    text-transform: uppercase;
-                                    letter-spacing: 0.06em;
-                                    color: #6b7280;
-                                    padding-top: 0.15rem;
-                                }
-                                .cart-line-table tbody td:last-child { justify-items: start; }
-                            }
-                        </style>
-                        <div class="-mx-3 max-md:overflow-visible md:-mx-0 md:overflow-x-auto md:rounded-xl md:border md:border-gray-200">
-                            <table class="cart-line-table w-full border-collapse text-left text-sm md:min-w-[36rem]">
-                                <thead>
-                                    <tr class="border-b border-gray-200 bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-600">
-                                        <th class="py-3 pl-3 pr-2 sm:pl-4">{{ __('vendor.item') }}</th>
-                                        <th class="w-[1%] whitespace-nowrap px-2 py-3 text-center">{{ __('vendor.quantity') }}</th>
-                                        <th class="w-[1%] whitespace-nowrap px-2 py-3 text-center">{{ __('vendor.cart_duration') }}</th>
-                                        <th class="w-[1%] whitespace-nowrap px-2 py-3 text-right">{{ __('vendor.total') }}</th>
-                                        <th class="w-12 px-2 py-3 pr-3 text-center sm:pr-4"><span class="sr-only">{{ __('vendor.remove_from_cart') }}</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                            @foreach($order->items as $cartItem)
-                                @php
-                                    $linePt = $cartItem->price_type ?? ($cartItem->item?->price_type ?? 'per_day');
-                                @endphp
-                                <tr data-cart-line="1"
-                                    class="border-b border-gray-100 bg-white transition hover:bg-slate-50/80 max-md:border-0 max-md:hover:bg-white md:border-b"
-                                    data-line-price-type="{{ $linePt }}"
-                                    data-line-qty="{{ $cartItem->quantity }}"
-                                    data-line-billing="{{ (float) ($cartItem->billing_units ?? 1) }}">
-                                    <td class="align-middle py-3 pl-3 pr-2 sm:pl-4" data-col="{{ __('vendor.item') }}">
-                                        <div class="flex min-w-0 max-w-md gap-3">
-                                            <div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-slate-100 to-blue-50 ring-1 ring-gray-200/80 sm:h-16 sm:w-16" aria-hidden="true">
-                                                <i class="fas fa-box-open text-xl text-blue-600/90"></i>
-                                            </div>
-                                            <div class="min-w-0">
-                                                <div class="font-bold leading-snug text-gray-900">{{ $cartItem->item?->name ?? $cartItem->item_name }}</div>
-                                                <div class="mt-0.5 text-base font-bold tabular-nums text-blue-700">₹{{ number_format((float) ($cartItem->item?->price ?? $cartItem->price), 2) }}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="align-middle px-2 py-3 text-center max-md:text-left" data-col="{{ __('vendor.quantity') }}">
-                                        <div class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50/80 px-1 py-0.5" data-line-qty-stepper="{{ $cartItem->item_id }}">
-                                            <button type="button"
-                                                onclick="nudgeLineQty({{ $order->id }}, {{ $cartItem->item_id }}, -1, this)"
-                                                class="flex h-9 w-9 items-center justify-center rounded-md bg-white text-gray-700 shadow-sm transition hover:bg-gray-100 active:scale-95"
-                                                title="{{ __('vendor.quantity') }} −1">
-                                                <i class="fas fa-minus text-xs"></i>
-                                            </button>
-                                            <span class="min-w-[2rem] text-center text-sm font-bold tabular-nums text-gray-900" data-qty-display="{{ $cartItem->item_id }}">{{ $cartItem->quantity }}</span>
-                                            <button type="button"
-                                                onclick="nudgeLineQty({{ $order->id }}, {{ $cartItem->item_id }}, 1, this)"
-                                                class="flex h-9 w-9 items-center justify-center rounded-md bg-white text-gray-700 shadow-sm transition hover:bg-gray-100 active:scale-95"
-                                                title="{{ __('vendor.quantity') }} +1">
-                                                <i class="fas fa-plus text-xs"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                    <td class="align-middle px-2 py-3 text-center max-md:text-left" data-col="{{ __('vendor.cart_duration') }}">
-                                        @if(\App\Models\Items::priceTypeUsesBillingUnits($linePt))
-                                            <div class="inline-flex flex-col items-center gap-1">
-                                                <span class="text-[0.65rem] font-semibold uppercase tracking-wide text-gray-500">{{ \App\Models\Items::billingUnitsFieldLabel($linePt) }}</span>
-                                                <div class="inline-flex items-center gap-1">
-                                                    <button type="button"
-                                                        onclick="nudgeLineBilling({{ $order->id }}, {{ $cartItem->item_id }}, -1)"
-                                                        class="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95">
-                                                        <i class="fas fa-minus text-xs"></i>
-                                                    </button>
-                                                    <input id="line-billing-{{ $cartItem->item_id }}" type="number" step="0.01" min="0.01" lang="en"
-                                                        class="h-9 w-14 rounded-lg border border-gray-200 bg-white text-center text-sm font-bold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25"
-                                                        value="{{ (float) ($cartItem->billing_units ?? 1) }}"
-                                                        onblur="updateCartBillingUnits({{ $order->id }}, {{ $cartItem->item_id }}, this)">
-                                                    <button type="button"
-                                                        onclick="nudgeLineBilling({{ $order->id }}, {{ $cartItem->item_id }}, 1)"
-                                                        class="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95">
-                                                        <i class="fas fa-plus text-xs"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        @else
-                                            <span class="text-gray-400">—</span>
-                                        @endif
-                                    </td>
-                                    <td class="align-middle px-2 py-3 text-right max-md:text-left" data-col="{{ __('vendor.total') }}">
-                                        <span class="text-base font-bold tabular-nums text-gray-900" data-line-total="{{ $cartItem->item_id }}">₹{{ number_format($cartItem->lineSubtotal(), 2) }}</span>
-                                    </td>
-                                    <td class="align-middle px-2 py-3 pr-3 text-center sm:pr-4 max-md:text-left" data-col="{{ __('vendor.remove_from_cart') }}">
-                                        <button type="button"
-                                                data-cart-remove="1"
-                                                onclick="removeCartItem({{ $order->id }}, {{ $cartItem->item_id }}, this)"
-                                                class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-red-100 bg-red-50 text-red-600 transition hover:bg-red-100 hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                                                title="{{ __('vendor.remove_from_cart') }}">
-                                            <i class="fas fa-trash text-sm"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @else
-                        <div class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 px-6 py-14 text-center">
-                            <div class="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-gray-100">
-                                <i class="fas fa-shopping-cart text-3xl text-gray-400"></i>
-                            </div>
-                            <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.no_items_yet') }}</h3>
-                            <p class="mt-2 max-w-sm text-sm leading-relaxed text-gray-600">{{ __('vendor.add_to_cart') }}</p>
-                            <button type="button" @click="showAddItem = true"
-                                    class="mt-6 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow-md transition hover:bg-blue-700 active:scale-[0.99]">
-                                <i class="fas fa-plus"></i>{{ __('vendor.add_item') }}
-                            </button>
-                        </div>
-                    @endif
+                    @include('vendor.orders.partials.order-items-list', ['order' => $order, 'orderReadOnly' => $orderReadOnly])
                 </div>
             </section>
             @if($orderReadOnly)
@@ -714,7 +677,24 @@ function orderPageData() {
                 $orderNextStatusesPanel = $order->allowedNextStatuses();
                 $tzRental = config('app.timezone');
                 $fmtRental = fn ($dt) => $dt ? $dt->copy()->timezone($tzRental)->format('M j, Y g:i A') : null;
-                $showRentalHandoff = in_array($stPanel, ['confirmed', 'ongoing', 'completed'], true);
+                $showRentalHandoff = in_array($stPanel, ['pending', 'confirmed', 'ongoing', 'completed'], true);
+                $deliveredUnitsTotal = 0;
+                $returnedUnitsTotal = 0;
+                $orderUnitsTotal = 0;
+                foreach ($order->items as $rentalLine) {
+                    $lineQty = max(1, (int) $rentalLine->quantity);
+                    $orderUnitsTotal += $lineQty;
+                    if ($rentalLine->delivered_at) {
+                        $deliveredUnitsTotal += $lineQty;
+                    }
+                    $returnedUnitsTotal += min($lineQty, max(0, (int) ($rentalLine->returned_qty ?? 0)));
+                }
+                $deliveredUnitsCountLabel = $deliveredUnitsTotal > 0
+                    ? __('vendor.delivered_units_count', ['delivered' => $deliveredUnitsTotal, 'total' => $orderUnitsTotal])
+                    : null;
+                $returnedUnitsCountLabel = $returnedUnitsTotal > 0
+                    ? __('vendor.returned_units_count', ['returned' => $returnedUnitsTotal, 'total' => $orderUnitsTotal])
+                    : null;
             @endphp
             <section class="rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100" aria-labelledby="order-status-section-title">
                 <div class="border-b border-gray-100 bg-slate-50/90 px-3 py-2 sm:px-3.5">
@@ -765,29 +745,53 @@ function orderPageData() {
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div class="rounded-lg border border-teal-100/90 bg-teal-50/40 p-3 ring-1 ring-teal-100/60">
                             <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-teal-900/85">{{ __('vendor.delivered_status') }}</p>
-                            <p id="rs-delivered-summary" class="text-xs font-semibold leading-snug text-gray-900">{{ $order->delivered_at ? $fmtRental($order->delivered_at) : __('vendor.not_delivered_yet') }}</p>
+                            <p id="rs-delivered-summary" class="text-xs font-semibold leading-snug text-gray-900">
+                                @if($order->delivered_at)
+                                    {{ $fmtRental($order->delivered_at) }}
+                                @elseif($deliveredUnitsCountLabel)
+                                    {{ $deliveredUnitsCountLabel }}
+                                @else
+                                    {{ __('vendor.not_delivered_yet') }}
+                                @endif
+                            </p>
+                            <p id="rs-delivered-units" class="mt-0.5 text-[11px] font-medium leading-snug text-teal-900/80 {{ ($order->delivered_at && $deliveredUnitsCountLabel) ? '' : 'hidden' }}">{{ ($order->delivered_at && $deliveredUnitsCountLabel) ? $deliveredUnitsCountLabel : '' }}</p>
                             @if(! $orderReadOnly)
                                 <div class="mt-2 flex flex-wrap gap-2" id="rs-delivered-actions">
-                                    <button type="button" id="rs-btn-deliver-mark"
-                                            class="{{ $order->delivered_at ? 'hidden' : '' }} inline-flex items-center justify-center rounded-lg bg-teal-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-teal-700"
-                                            onclick="patchRentalStatus({ delivered: 'mark' }, this)">{{ __('vendor.mark_delivered') }}</button>
-                                    <button type="button" id="rs-btn-deliver-clear"
-                                            class="{{ $order->delivered_at ? '' : 'hidden' }} inline-flex items-center justify-center rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50"
-                                            onclick="openRentalClearConfirm('delivered', this)">{{ __('vendor.clear_delivered') }}</button>
+                                    @if($order->delivered_at)
+                                        <button type="button"
+                                                class="rs-btn-deliver-clear inline-flex items-center justify-center rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50"
+                                                onclick="openRentalClearConfirm('delivered', this)">{{ __('vendor.clear_delivered') }}</button>
+                                    @else
+                                        <button type="button"
+                                                class="rs-btn-deliver-mark inline-flex items-center justify-center rounded-lg bg-teal-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-teal-700"
+                                                onclick="openMarkDeliveredModal(this)">{{ __('vendor.mark_delivered') }}</button>
+                                    @endif
                                 </div>
                             @endif
                         </div>
                         <div class="rounded-lg border border-indigo-100/90 bg-indigo-50/40 p-3 ring-1 ring-indigo-100/60">
                             <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-900/85">{{ __('vendor.returned_status') }}</p>
-                            <p id="rs-returned-summary" class="text-xs font-semibold leading-snug text-gray-900">{{ $order->returned_at ? $fmtRental($order->returned_at) : __('vendor.not_returned_yet') }}</p>
+                            <p id="rs-returned-summary" class="text-xs font-semibold leading-snug text-gray-900">
+                                @if($order->returned_at)
+                                    {{ $fmtRental($order->returned_at) }}
+                                @elseif($returnedUnitsCountLabel)
+                                    {{ $returnedUnitsCountLabel }}
+                                @else
+                                    {{ __('vendor.not_returned_yet') }}
+                                @endif
+                            </p>
+                            <p id="rs-returned-units" class="mt-0.5 text-[11px] font-medium leading-snug text-indigo-900/80 {{ ($order->returned_at && $returnedUnitsCountLabel) ? '' : 'hidden' }}">{{ ($order->returned_at && $returnedUnitsCountLabel) ? $returnedUnitsCountLabel : '' }}</p>
                             @if(! $orderReadOnly)
                                 <div class="mt-2 flex flex-wrap gap-2" id="rs-returned-actions">
-                                    <button type="button" id="rs-btn-return-mark"
-                                            class="{{ $order->returned_at ? 'hidden' : '' }} inline-flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-indigo-700"
-                                            onclick="patchRentalStatus({ returned: 'mark' }, this)">{{ __('vendor.mark_returned') }}</button>
-                                    <button type="button" id="rs-btn-return-clear"
-                                            class="{{ $order->returned_at ? '' : 'hidden' }} inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-indigo-900 shadow-sm transition hover:bg-indigo-50"
-                                            onclick="openRentalClearConfirm('returned', this)">{{ __('vendor.clear_returned') }}</button>
+                                    @if($order->returned_at)
+                                        <button type="button"
+                                                class="rs-btn-return-clear inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-indigo-900 shadow-sm transition hover:bg-indigo-50"
+                                                onclick="openRentalClearConfirm('returned', this)">{{ __('vendor.clear_returned') }}</button>
+                                    @else
+                                        <button type="button"
+                                                class="rs-btn-return-mark inline-flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+                                                onclick="openMarkReturnedModal(this)">{{ __('vendor.mark_returned') }}</button>
+                                    @endif
                                 </div>
                             @endif
                         </div>
@@ -1357,22 +1361,341 @@ function orderPageData() {
                         notDelivered: @json(__('vendor.not_delivered_yet')),
                         notReturned: @json(__('vendor.not_returned_yet')),
                     };
+                    var deliveredUnitsCountTpl = @json(__('vendor.delivered_units_count', ['delivered' => ':delivered', 'total' => ':total']));
+                    var returnedUnitsCountTpl = @json(__('vendor.returned_units_count', ['returned' => ':returned', 'total' => ':total']));
+                    var markDeliveredAlreadyLabel = @json(__('vendor.mark_delivered_already_done'));
+                    var markReturnedAlreadyLabel = @json(__('vendor.mark_returned_already_done'));
+                    var returnQtyLabel = @json(__('vendor.return_qty_label'));
+                    var markReturnedConfirmBase = @json(__('vendor.mark_returned_confirm'));
+                    var markReturnedConfirmCountTpl = @json(__('vendor.mark_returned_confirm_count'));
+                    var markDeliveredConfirmBase = @json(__('vendor.mark_delivered_confirm'));
+                    var markDeliveredConfirmCountTpl = @json(__('vendor.mark_delivered_confirm_count'));
                     function applyRentalStatusToUi(rs) {
                         if (!rs) return;
                         var dText = document.getElementById('rs-delivered-summary');
+                        var dUnits = document.getElementById('rs-delivered-units');
                         var rText = document.getElementById('rs-returned-summary');
-                        if (dText) dText.textContent = rs.delivered_at_display || rentalStatusLabels.notDelivered;
-                        if (rText) rText.textContent = rs.returned_at_display || rentalStatusLabels.notReturned;
+                        var rUnits = document.getElementById('rs-returned-units');
+                        var deliveredUnits = parseInt(rs.delivered_units, 10) || 0;
+                        var totalUnits = parseInt(rs.total_units, 10) || 0;
+                        var deliveredCountText = deliveredUnits > 0
+                            ? deliveredUnitsCountTpl.replace(':delivered', String(deliveredUnits)).replace(':total', String(totalUnits))
+                            : '';
+                        if (dText) {
+                            if (rs.delivered_at_display) {
+                                dText.textContent = rs.delivered_at_display;
+                            } else if (deliveredCountText) {
+                                dText.textContent = deliveredCountText;
+                            } else {
+                                dText.textContent = rentalStatusLabels.notDelivered;
+                            }
+                        }
+                        if (dUnits) {
+                            if (rs.delivered_at_display && deliveredCountText) {
+                                dUnits.textContent = deliveredCountText;
+                                dUnits.classList.remove('hidden');
+                            } else {
+                                dUnits.textContent = '';
+                                dUnits.classList.add('hidden');
+                            }
+                        }
+                        var returnedUnits = parseInt(rs.returned_units, 10) || 0;
+                        var returnedCountText = returnedUnits > 0
+                            ? returnedUnitsCountTpl.replace(':returned', String(returnedUnits)).replace(':total', String(totalUnits))
+                            : '';
+                        if (rText) {
+                            if (rs.returned_at_display) {
+                                rText.textContent = rs.returned_at_display;
+                            } else if (returnedCountText) {
+                                rText.textContent = returnedCountText;
+                            } else {
+                                rText.textContent = rentalStatusLabels.notReturned;
+                            }
+                        }
+                        if (rUnits) {
+                            if (rs.returned_at_display && returnedCountText) {
+                                rUnits.textContent = returnedCountText;
+                                rUnits.classList.remove('hidden');
+                            } else {
+                                rUnits.textContent = '';
+                                rUnits.classList.add('hidden');
+                            }
+                        }
                         var hasD = !!(rs.delivered_at);
                         var hasR = !!(rs.returned_at);
-                        var bdm = document.getElementById('rs-btn-deliver-mark');
-                        var bdc = document.getElementById('rs-btn-deliver-clear');
-                        var brm = document.getElementById('rs-btn-return-mark');
-                        var brc = document.getElementById('rs-btn-return-clear');
-                        if (bdm) bdm.classList.toggle('hidden', hasD);
-                        if (bdc) bdc.classList.toggle('hidden', !hasD);
-                        if (brm) brm.classList.toggle('hidden', hasR);
-                        if (brc) brc.classList.toggle('hidden', !hasR);
+                        function deliveredActionButtonHtml(delivered, compact) {
+                            if (delivered) {
+                                return compact
+                                    ? '<button type="button" class="rs-btn-deliver-clear inline-flex items-center justify-center rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50" onclick="openRentalClearConfirm(\'delivered\', this)">' + @json(__('vendor.clear_delivered')) + '</button>'
+                                    : '<button type="button" class="rs-btn-deliver-clear inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50 sm:w-auto" onclick="openRentalClearConfirm(\'delivered\', this)"><i class="fas fa-undo" aria-hidden="true"></i>' + @json(__('vendor.clear_delivered')) + '</button>';
+                            }
+                            return compact
+                                ? '<button type="button" class="rs-btn-deliver-mark inline-flex items-center justify-center rounded-lg bg-teal-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-teal-700" onclick="openMarkDeliveredModal(this)">' + @json(__('vendor.mark_delivered')) + '</button>'
+                                : '<button type="button" class="rs-btn-deliver-mark inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 sm:w-auto" onclick="openMarkDeliveredModal(this)"><i class="fas fa-truck" aria-hidden="true"></i>' + @json(__('vendor.mark_delivered')) + '</button>';
+                        }
+                        var panelWrap = document.getElementById('rs-delivered-actions');
+                        var headerWrap = document.getElementById('rs-header-delivered-wrap');
+                        if (panelWrap) panelWrap.innerHTML = deliveredActionButtonHtml(hasD, true);
+                        if (headerWrap) headerWrap.innerHTML = deliveredActionButtonHtml(hasD, false);
+                        function returnedActionButtonHtml(returned, compact) {
+                            if (returned) {
+                                return compact
+                                    ? '<button type="button" class="rs-btn-return-clear inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-indigo-900 shadow-sm transition hover:bg-indigo-50" onclick="openRentalClearConfirm(\'returned\', this)">' + @json(__('vendor.clear_returned')) + '</button>'
+                                    : '<button type="button" class="rs-btn-return-clear inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-900 shadow-sm transition hover:bg-indigo-50 sm:w-auto" onclick="openRentalClearConfirm(\'returned\', this)"><i class="fas fa-undo" aria-hidden="true"></i>' + @json(__('vendor.clear_returned')) + '</button>';
+                            }
+                            return compact
+                                ? '<button type="button" class="rs-btn-return-mark inline-flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-indigo-700" onclick="openMarkReturnedModal(this)">' + @json(__('vendor.mark_returned')) + '</button>'
+                                : '<button type="button" class="rs-btn-return-mark inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 sm:w-auto" onclick="openMarkReturnedModal(this)"><i class="fas fa-rotate-left" aria-hidden="true"></i>' + @json(__('vendor.mark_returned')) + '</button>';
+                        }
+                        var returnPanelWrap = document.getElementById('rs-returned-actions');
+                        var returnHeaderWrap = document.getElementById('rs-header-returned-wrap');
+                        if (returnPanelWrap) returnPanelWrap.innerHTML = returnedActionButtonHtml(hasR, true);
+                        if (returnHeaderWrap) returnHeaderWrap.innerHTML = returnedActionButtonHtml(hasR, false);
+                        if (!hasD) {
+                            document.querySelectorAll('[data-cart-line][data-order-item-id]').forEach(function (row) {
+                                row.setAttribute('data-line-delivered', '0');
+                            });
+                        }
+                    }
+                    function escapeDeliveredModalHtml(text) {
+                        var d = document.createElement('div');
+                        d.textContent = text == null ? '' : String(text);
+                        return d.innerHTML;
+                    }
+                    function collectOrderDeliveryLines() {
+                        var lines = [];
+                        document.querySelectorAll('[data-cart-line][data-order-item-id]').forEach(function (row) {
+                            var id = parseInt(row.getAttribute('data-order-item-id'), 10);
+                            if (!id) return;
+                            var nameEl = row.querySelector('[data-line-name]');
+                            var name = nameEl ? nameEl.textContent.trim() : ('Item #' + id);
+                            var qtyEl = row.querySelector('[data-qty-display]');
+                            var qty = qtyEl ? (parseInt(qtyEl.textContent, 10) || 1) : (parseInt(row.getAttribute('data-line-qty'), 10) || 1);
+                            lines.push({
+                                id: id,
+                                name: name,
+                                quantity: qty,
+                                delivered: row.getAttribute('data-line-delivered') === '1',
+                            });
+                        });
+                        return lines;
+                    }
+                    function openMarkDeliveredModal(triggerBtn) {
+                        if (typeof orderShowReadOnly !== 'undefined' && orderShowReadOnly) return;
+                        var lines = collectOrderDeliveryLines();
+                        var list = document.getElementById('markDeliveredItemList');
+                        var modal = document.getElementById('markDeliveredModal');
+                        if (!list || !modal) return;
+                        if (lines.length === 0) {
+                            if (typeof showToast === 'function') showToast(@json(__('vendor.no_items_yet')), 'error');
+                            return;
+                        }
+                        var pending = lines.filter(function (l) { return !l.delivered; });
+                        if (pending.length === 0) {
+                            if (typeof showToast === 'function') showToast(@json(__('vendor.mark_delivered_already_done')), 'info');
+                            return;
+                        }
+                        var alreadyDeliveredUnits = lines.reduce(function (sum, l) {
+                            return sum + (l.delivered ? (l.quantity || 0) : 0);
+                        }, 0);
+                        var orderUnits = lines.reduce(function (sum, l) { return sum + (l.quantity || 0); }, 0);
+                        var deliverAlreadySummary = document.getElementById('markDeliveredAlreadySummary');
+                        if (deliverAlreadySummary) {
+                            if (alreadyDeliveredUnits > 0) {
+                                deliverAlreadySummary.textContent = deliveredUnitsCountTpl
+                                    .replace(':delivered', String(alreadyDeliveredUnits))
+                                    .replace(':total', String(orderUnits));
+                                deliverAlreadySummary.classList.remove('hidden');
+                            } else {
+                                deliverAlreadySummary.textContent = '';
+                                deliverAlreadySummary.classList.add('hidden');
+                            }
+                        }
+                        var html = '';
+                        lines.forEach(function (line) {
+                            var checked = ' checked';
+                            var disabled = line.delivered ? ' disabled' : '';
+                            var badge = line.delivered
+                                ? '<span class="ml-1.5 inline-flex rounded bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-800">' + escapeDeliveredModalHtml(markDeliveredAlreadyLabel) + '</span>'
+                                : '';
+                            html += '<label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-100 bg-white px-3 py-2.5 shadow-sm ring-1 ring-gray-100/80' + (line.delivered ? ' opacity-60' : ' hover:bg-teal-50/40') + '">';
+                            html += '<input type="checkbox" class="mark-delivered-item-cb mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-teal-600 focus:ring-teal-500" value="' + line.id + '"' + checked + disabled + ' onchange="updateMarkDeliveredConfirmLabel()">';
+                            html += '<span class="min-w-0 flex-1"><span class="text-sm font-semibold text-gray-900">' + escapeDeliveredModalHtml(line.name) + badge + '</span>';
+                            html += '<span class="mt-0.5 block text-xs text-gray-500">× ' + line.quantity + '</span></span></label>';
+                        });
+                        list.innerHTML = html;
+                        updateMarkDeliveredConfirmLabel();
+                        modal.classList.remove('hidden');
+                        document.body.style.overflow = 'hidden';
+                        window.markDeliveredTriggerBtn = triggerBtn || null;
+                    }
+                    function updateMarkDeliveredConfirmLabel() {
+                        var btn = document.getElementById('markDeliveredConfirmBtn');
+                        var label = document.getElementById('markDeliveredConfirmLabel');
+                        if (!btn || !label) return;
+                        var n = document.querySelectorAll('.mark-delivered-item-cb:checked:not(:disabled)').length;
+                        label.textContent = n > 0
+                            ? markDeliveredConfirmCountTpl.replace(':count', String(n))
+                            : markDeliveredConfirmBase;
+                        btn.disabled = n === 0;
+                    }
+                    function closeMarkDeliveredModal() {
+                        var modal = document.getElementById('markDeliveredModal');
+                        if (modal) modal.classList.add('hidden');
+                        document.body.style.overflow = '';
+                        window.markDeliveredTriggerBtn = null;
+                        var deliverAlreadySummary = document.getElementById('markDeliveredAlreadySummary');
+                        if (deliverAlreadySummary) {
+                            deliverAlreadySummary.textContent = '';
+                            deliverAlreadySummary.classList.add('hidden');
+                        }
+                        var label = document.getElementById('markDeliveredConfirmLabel');
+                        var btn = document.getElementById('markDeliveredConfirmBtn');
+                        if (label) label.textContent = markDeliveredConfirmBase;
+                        if (btn) btn.disabled = false;
+                    }
+                    function confirmMarkDelivered() {
+                        var ids = [];
+                        document.querySelectorAll('.mark-delivered-item-cb:checked:not(:disabled)').forEach(function (cb) {
+                            var id = parseInt(cb.value, 10);
+                            if (id) ids.push(id);
+                        });
+                        if (ids.length === 0) {
+                            if (typeof showToast === 'function') showToast(@json(__('vendor.deliver_items_required')), 'error');
+                            return;
+                        }
+                        var btn = document.getElementById('markDeliveredConfirmBtn');
+                        if (btn) btn.disabled = true;
+                        patchRentalStatus({ delivered: 'mark', order_item_ids: ids }, btn || window.markDeliveredTriggerBtn);
+                    }
+                    function collectOrderReturnLines() {
+                        var lines = [];
+                        document.querySelectorAll('[data-cart-line][data-order-item-id]').forEach(function (row) {
+                            var id = parseInt(row.getAttribute('data-order-item-id'), 10);
+                            if (!id) return;
+                            var nameEl = row.querySelector('[data-line-name]');
+                            var name = nameEl ? nameEl.textContent.trim() : ('Item #' + id);
+                            var orderQty = parseInt(row.getAttribute('data-line-qty'), 10) || 1;
+                            var returnedQty = parseInt(row.getAttribute('data-line-returned-qty'), 10) || 0;
+                            var delivered = row.getAttribute('data-line-delivered') === '1';
+                            var fullyReturned = row.getAttribute('data-line-returned') === '1';
+                            var returnableQty = Math.max(0, orderQty - returnedQty);
+                            lines.push({
+                                id: id,
+                                name: name,
+                                orderQty: orderQty,
+                                returnedQty: returnedQty,
+                                returnableQty: returnableQty,
+                                delivered: delivered,
+                                fullyReturned: fullyReturned,
+                            });
+                        });
+                        return lines;
+                    }
+                    function openMarkReturnedModal(triggerBtn) {
+                        if (typeof orderShowReadOnly !== 'undefined' && orderShowReadOnly) return;
+                        var lines = collectOrderReturnLines();
+                        var list = document.getElementById('markReturnedItemList');
+                        var modal = document.getElementById('markReturnedModal');
+                        if (!list || !modal) return;
+                        if (lines.length === 0) {
+                            if (typeof showToast === 'function') showToast(@json(__('vendor.no_items_yet')), 'error');
+                            return;
+                        }
+                        var pending = lines.filter(function (l) { return l.delivered && !l.fullyReturned && l.returnableQty > 0; });
+                        if (pending.length === 0) {
+                            if (typeof showToast === 'function') showToast(markReturnedAlreadyLabel, 'info');
+                            return;
+                        }
+                        var alreadyReturnedUnits = lines.reduce(function (sum, l) { return sum + (l.returnedQty || 0); }, 0);
+                        var orderUnits = lines.reduce(function (sum, l) { return sum + (l.orderQty || 0); }, 0);
+                        var alreadySummary = document.getElementById('markReturnedAlreadySummary');
+                        if (alreadySummary) {
+                            if (alreadyReturnedUnits > 0) {
+                                alreadySummary.textContent = returnedUnitsCountTpl
+                                    .replace(':returned', String(alreadyReturnedUnits))
+                                    .replace(':total', String(orderUnits));
+                                alreadySummary.classList.remove('hidden');
+                            } else {
+                                alreadySummary.textContent = '';
+                                alreadySummary.classList.add('hidden');
+                            }
+                        }
+                        var html = '';
+                        lines.forEach(function (line) {
+                            if (!line.delivered || line.fullyReturned) return;
+                            var minQty = Math.max(1, line.returnedQty + 1);
+                            if (minQty > line.orderQty) return;
+                            var defaultQty = line.orderQty;
+                            html += '<div class="rounded-lg border border-gray-100 bg-white px-3 py-2.5 shadow-sm ring-1 ring-gray-100/80">';
+                            html += '<label class="flex cursor-pointer items-start gap-3">';
+                            html += '<input type="checkbox" class="mark-returned-item-cb mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" value="' + line.id + '" data-max-qty="' + line.orderQty + '" data-min-qty="' + minQty + '" checked onchange="toggleMarkReturnedQtyInput(this); updateMarkReturnedConfirmLabel()">';
+                            html += '<span class="min-w-0 flex-1"><span class="text-sm font-semibold text-gray-900">' + escapeDeliveredModalHtml(line.name) + '</span>';
+                            html += '<span class="mt-0.5 block text-xs text-gray-500">' + escapeDeliveredModalHtml(returnQtyLabel) + ': ';
+                            html += '<span class="font-medium text-gray-700">' + line.returnedQty + '</span> / ' + line.orderQty + ' ' + escapeDeliveredModalHtml(@json(__('vendor.order_wizard_qty'))) + '</span></span></label>';
+                            html += '<div class="mt-2 flex items-center gap-2 pl-7">';
+                            html += '<input type="number" min="' + minQty + '" max="' + line.orderQty + '" step="1" class="mark-returned-item-qty w-20 rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-semibold tabular-nums text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/25" value="' + defaultQty + '" data-order-item-id="' + line.id + '">';
+                            html += '<span class="text-xs text-gray-500">/ ' + line.orderQty + '</span></div></div>';
+                        });
+                        list.innerHTML = html;
+                        updateMarkReturnedConfirmLabel();
+                        modal.classList.remove('hidden');
+                        document.body.style.overflow = 'hidden';
+                        window.markReturnedTriggerBtn = triggerBtn || null;
+                    }
+                    function updateMarkReturnedConfirmLabel() {
+                        var btn = document.getElementById('markReturnedConfirmBtn');
+                        var label = document.getElementById('markReturnedConfirmLabel');
+                        if (!btn || !label) return;
+                        var n = document.querySelectorAll('.mark-returned-item-cb:checked:not(:disabled)').length;
+                        label.textContent = n > 0
+                            ? markReturnedConfirmCountTpl.replace(':count', String(n))
+                            : markReturnedConfirmBase;
+                        btn.disabled = n === 0;
+                    }
+                    function toggleMarkReturnedQtyInput(cb) {
+                        var wrap = cb.closest('.rounded-lg');
+                        if (!wrap) return;
+                        var qtyInput = wrap.querySelector('.mark-returned-item-qty');
+                        if (!qtyInput) return;
+                        qtyInput.disabled = !cb.checked || cb.disabled;
+                    }
+                    function closeMarkReturnedModal() {
+                        var modal = document.getElementById('markReturnedModal');
+                        if (modal) modal.classList.add('hidden');
+                        document.body.style.overflow = '';
+                        window.markReturnedTriggerBtn = null;
+                        var alreadySummary = document.getElementById('markReturnedAlreadySummary');
+                        if (alreadySummary) {
+                            alreadySummary.textContent = '';
+                            alreadySummary.classList.add('hidden');
+                        }
+                        var label = document.getElementById('markReturnedConfirmLabel');
+                        var btn = document.getElementById('markReturnedConfirmBtn');
+                        if (label) label.textContent = markReturnedConfirmBase;
+                        if (btn) btn.disabled = false;
+                    }
+                    function confirmMarkReturned() {
+                        var returnLines = [];
+                        document.querySelectorAll('.mark-returned-item-cb:checked:not(:disabled)').forEach(function (cb) {
+                            var id = parseInt(cb.value, 10);
+                            if (!id) return;
+                            var wrap = cb.closest('.rounded-lg');
+                            var qtyInput = wrap ? wrap.querySelector('.mark-returned-item-qty') : null;
+                            var qty = qtyInput ? parseInt(qtyInput.value, 10) : parseInt(cb.getAttribute('data-max-qty'), 10);
+                            var maxQty = parseInt(cb.getAttribute('data-max-qty'), 10) || qty;
+                            var minQty = parseInt(cb.getAttribute('data-min-qty'), 10) || 1;
+                            if (!Number.isFinite(qty) || qty < minQty) qty = minQty;
+                            if (qty > maxQty) qty = maxQty;
+                            returnLines.push({ order_item_id: id, quantity: qty });
+                        });
+                        if (returnLines.length === 0) {
+                            if (typeof showToast === 'function') showToast(@json(__('vendor.return_items_required')), 'error');
+                            return;
+                        }
+                        var btn = document.getElementById('markReturnedConfirmBtn');
+                        if (btn) btn.disabled = true;
+                        patchRentalStatus({ returned: 'mark', return_lines: returnLines }, btn || window.markReturnedTriggerBtn);
                     }
                     function patchRentalStatus(payload, triggerBtn) {
                         if (typeof orderShowReadOnly !== 'undefined' && orderShowReadOnly) return;
@@ -1392,6 +1715,33 @@ function orderPageData() {
                             .then(function (res) {
                                 if (triggerBtn) triggerBtn.disabled = false;
                                 if (res.ok && res.data && res.data.success && res.data.rental_status) {
+                                    closeMarkDeliveredModal();
+                                    closeMarkReturnedModal();
+                                    var confirmBtn = document.getElementById('markDeliveredConfirmBtn');
+                                    if (confirmBtn) confirmBtn.disabled = false;
+                                    var returnConfirmBtn = document.getElementById('markReturnedConfirmBtn');
+                                    if (returnConfirmBtn) returnConfirmBtn.disabled = false;
+                                    if (payload && payload.delivered === 'mark' && payload.order_item_ids) {
+                                        document.querySelectorAll('[data-cart-line][data-order-item-id]').forEach(function (row) {
+                                            var rid = parseInt(row.getAttribute('data-order-item-id'), 10);
+                                            if (payload.order_item_ids.indexOf(rid) !== -1) {
+                                                row.setAttribute('data-line-delivered', '1');
+                                            }
+                                        });
+                                    }
+                                    if (payload && payload.delivered === 'clear') {
+                                        document.querySelectorAll('[data-cart-line][data-order-item-id]').forEach(function (row) {
+                                            row.setAttribute('data-line-delivered', '0');
+                                            row.setAttribute('data-line-returned', '0');
+                                            row.setAttribute('data-line-returned-qty', '0');
+                                        });
+                                        if (typeof refreshOrderItems === 'function') {
+                                            refreshOrderItems();
+                                        }
+                                    }
+                                    if (payload && (payload.returned === 'mark' || payload.returned === 'clear') && typeof refreshOrderItems === 'function') {
+                                        refreshOrderItems();
+                                    }
                                     applyRentalStatusToUi(res.data.rental_status);
                                     if (typeof showToast === 'function') showToast(res.data.message || 'OK', 'success');
                                 } else {
@@ -1401,10 +1751,21 @@ function orderPageData() {
                                         if (first && first[0]) msg = first[0];
                                     }
                                     if (typeof showToast === 'function') showToast(msg, 'error');
+                                    var confirmBtnErr = document.getElementById('markDeliveredConfirmBtn');
+                                    if (confirmBtnErr) confirmBtnErr.disabled = false;
+                                    var returnConfirmBtnErr = document.getElementById('markReturnedConfirmBtn');
+                                    if (returnConfirmBtnErr) {
+                                        returnConfirmBtnErr.disabled = false;
+                                        updateMarkReturnedConfirmLabel();
+                                    }
                                 }
                             })
                             .catch(function () {
                                 if (triggerBtn) triggerBtn.disabled = false;
+                                var confirmBtn = document.getElementById('markDeliveredConfirmBtn');
+                                if (confirmBtn) confirmBtn.disabled = false;
+                                var returnConfirmBtn = document.getElementById('markReturnedConfirmBtn');
+                                if (returnConfirmBtn) returnConfirmBtn.disabled = false;
                                 if (typeof showToast === 'function') showToast('Network error', 'error');
                             });
                     }
@@ -2148,6 +2509,58 @@ function orderPageData() {
             </div>
         </div>
     </div>
+
+    {{-- Edit order line (from cart item 3-dot menu) --}}
+    <div x-show="lineEditOpen"
+         x-cloak
+         class="fixed inset-0 z-[80] flex items-end justify-center p-2 sm:items-center sm:p-4"
+         role="dialog"
+         aria-modal="true">
+        <div class="absolute inset-0 bg-gray-900/50" @click="closeLineEdit()"></div>
+        <div class="relative z-10 w-full max-w-md overflow-hidden rounded-t-2xl bg-white shadow-xl ring-1 ring-gray-900/5 sm:rounded-2xl"
+             @click.stop>
+            <div class="border-b border-gray-100 px-4 py-3">
+                <h4 class="text-base font-bold text-gray-900">{{ __('vendor.order_wizard_summary_edit_line') }}</h4>
+                <p class="mt-0.5 truncate text-sm text-gray-600" x-text="lineEditName"></p>
+            </div>
+            <div class="space-y-3 px-4 py-4">
+                <div>
+                    <label for="order_line_edit_qty" class="mb-1 block text-xs font-semibold text-gray-800">{{ __('vendor.quantity') }}</label>
+                    <input id="order_line_edit_qty"
+                           type="number"
+                           min="1"
+                           step="1"
+                           x-model="lineEditQty"
+                           class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25">
+                </div>
+                <div x-show="lineEditUsesBilling" x-cloak>
+                    <label for="order_line_edit_billing" class="mb-1 block text-xs font-semibold text-gray-800">{{ __('vendor.billing_units') }}</label>
+                    <input id="order_line_edit_billing"
+                           type="number"
+                           step="0.01"
+                           min="0.01"
+                           lang="en"
+                           x-model="lineEditBilling"
+                           class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25">
+                </div>
+                <div class="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end sm:gap-2">
+                    <button type="button"
+                            @click="closeLineEdit()"
+                            :disabled="lineEditSaving"
+                            class="inline-flex h-10 w-full items-center justify-center rounded-lg bg-gray-100 px-4 text-sm font-semibold text-gray-800 hover:bg-gray-200 disabled:opacity-50 sm:w-auto">
+                        {{ __('vendor.cancel') }}
+                    </button>
+                    <button type="button"
+                            @click="saveLineEdit()"
+                            :disabled="lineEditSaving"
+                            class="inline-flex h-10 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 sm:w-auto">
+                        <span x-show="!lineEditSaving">{{ __('vendor.save') }}</span>
+                        <span x-show="lineEditSaving" x-cloak><i class="fas fa-spinner fa-spin" aria-hidden="true"></i></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Discount Modal -->
@@ -2512,6 +2925,62 @@ function orderPageData() {
                 <button type="button" id="deleteModalConfirm"
                         class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
                     <i class="fas fa-trash mr-2"></i>{{ __('vendor.delete') }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mark delivered: item checklist -->
+<div id="markDeliveredModal" class="fixed inset-0 z-[73] hidden" role="dialog" aria-modal="true" aria-labelledby="markDeliveredModalTitle">
+    <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="closeMarkDeliveredModal()"></div>
+    <div class="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4">
+        <div class="relative flex max-h-[min(92dvh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl ring-1 ring-gray-200 sm:rounded-2xl" onclick="event.stopPropagation()">
+            <div class="shrink-0 border-b border-gray-100 bg-gradient-to-r from-teal-50 to-emerald-50 px-4 py-3.5 sm:px-5">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <h3 id="markDeliveredModalTitle" class="text-base font-bold text-gray-900 sm:text-lg">{{ __('vendor.mark_delivered_modal_title') }}</h3>
+                        <p class="mt-1 text-xs leading-snug text-gray-600 sm:text-sm">{{ __('vendor.mark_delivered_modal_hint') }}</p>
+                        <p id="markDeliveredAlreadySummary" class="mt-2 hidden rounded-lg border border-teal-200/80 bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-teal-900"></p>
+                    </div>
+                    <button type="button" onclick="closeMarkDeliveredModal()" class="shrink-0 rounded-lg p-2 text-gray-500 transition hover:bg-white/80 hover:text-gray-800" aria-label="{{ __('vendor.cancel') }}">
+                        <i class="fas fa-times text-lg" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="markDeliveredItemList" class="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain px-4 py-3 sm:px-5 [-webkit-overflow-scrolling:touch]"></div>
+            <div class="shrink-0 border-t border-gray-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">
+                <button type="button" id="markDeliveredConfirmBtn" onclick="confirmMarkDelivered()"
+                        class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-teal-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
+                    <i class="fas fa-check" aria-hidden="true"></i><span id="markDeliveredConfirmLabel">{{ __('vendor.mark_delivered_confirm') }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mark returned: item checklist + qty -->
+<div id="markReturnedModal" class="fixed inset-0 z-[73] hidden" role="dialog" aria-modal="true" aria-labelledby="markReturnedModalTitle">
+    <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="closeMarkReturnedModal()"></div>
+    <div class="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4">
+        <div class="relative flex max-h-[min(92dvh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl ring-1 ring-gray-200 sm:rounded-2xl" onclick="event.stopPropagation()">
+            <div class="shrink-0 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-violet-50 px-4 py-3.5 sm:px-5">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <h3 id="markReturnedModalTitle" class="text-base font-bold text-gray-900 sm:text-lg">{{ __('vendor.mark_returned_modal_title') }}</h3>
+                        <p class="mt-1 text-xs leading-snug text-gray-600 sm:text-sm">{{ __('vendor.mark_returned_modal_hint') }}</p>
+                        <p id="markReturnedAlreadySummary" class="mt-2 hidden rounded-lg border border-indigo-200/80 bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-indigo-900"></p>
+                    </div>
+                    <button type="button" onclick="closeMarkReturnedModal()" class="shrink-0 rounded-lg p-2 text-gray-500 transition hover:bg-white/80 hover:text-gray-800" aria-label="{{ __('vendor.cancel') }}">
+                        <i class="fas fa-times text-lg" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="markReturnedItemList" class="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain px-4 py-3 sm:px-5 [-webkit-overflow-scrolling:touch]"></div>
+            <div class="shrink-0 border-t border-gray-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">
+                <button type="button" id="markReturnedConfirmBtn" onclick="confirmMarkReturned()"
+                        class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-indigo-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
+                    <i class="fas fa-check" aria-hidden="true"></i><span id="markReturnedConfirmLabel">{{ __('vendor.mark_returned_confirm') }}</span>
                 </button>
             </div>
         </div>
@@ -3376,6 +3845,13 @@ function submitEditCart(e) {
     });
 }
 
+function formatBillingUnitsDisplay(n) {
+    const v = parseFloat(n);
+    if (!Number.isFinite(v)) return '0';
+    const s = v.toFixed(2).replace(/\.?0+$/, '');
+    return s || '0';
+}
+
 function nudgeLineQty(cartId, itemId, delta, buttonEl) {
     const row = buttonEl.closest('[data-line-price-type]');
     let current = row ? parseInt(row.getAttribute('data-line-qty'), 10) : NaN;
@@ -3436,9 +3912,13 @@ function updateCartItemQty(cartId, itemId, quantity, el) {
             const qtyDisplay = document.querySelector(`[data-qty-display="${itemId}"]`);
             if (qtyDisplay) qtyDisplay.textContent = String(data.item.quantity);
 
-            // Update line total
+            const billingDisplay = document.querySelector(`[data-billing-display="${itemId}"]`);
+            if (billingDisplay && data.item.billing_units != null) {
+                billingDisplay.textContent = formatBillingUnitsDisplay(data.item.billing_units);
+            }
+
             const lineTotalEl = document.querySelector(`[data-line-total="${itemId}"]`);
-            if (lineTotalEl) lineTotalEl.textContent = '₹' + parseFloat(data.item.line_total).toFixed(2);
+            if (lineTotalEl) lineTotalEl.textContent = ' = ₹' + Math.round(parseFloat(data.item.line_total) || 0).toLocaleString('en-IN');
 
             if (row) {
                 if (data.item.price_type) {
@@ -3447,13 +3927,11 @@ function updateCartItemQty(cartId, itemId, quantity, el) {
                 row.setAttribute('data-line-qty', data.item.quantity);
                 if (data.item.billing_units != null) {
                     row.setAttribute('data-line-billing', data.item.billing_units);
-                    const bin = row.querySelector('input[id^="line-billing-"]');
-                    if (bin) bin.value = parseFloat(data.item.billing_units);
                 }
             }
 
-            // Update summary totals
             updateSummary(data.order);
+            if (typeof refreshOrderItems === 'function') refreshOrderItems();
 
             showToast(data.message, 'success');
         } else {
@@ -3507,7 +3985,6 @@ function updateCartBillingUnits(cartId, itemId, inputEl) {
             row.setAttribute('data-line-qty', data.item.quantity);
             if (data.item.billing_units != null) {
                 row.setAttribute('data-line-billing', data.item.billing_units);
-                inputEl.value = parseFloat(data.item.billing_units);
             }
             window.dispatchEvent(new CustomEvent('order-item-updated', {
                 detail: {
@@ -3516,9 +3993,16 @@ function updateCartBillingUnits(cartId, itemId, inputEl) {
                     billing_units: data.item.billing_units,
                 },
             }));
+            const qtyDisplay = document.querySelector(`[data-qty-display="${itemId}"]`);
+            if (qtyDisplay) qtyDisplay.textContent = String(data.item.quantity);
+            const billingDisplay = document.querySelector(`[data-billing-display="${itemId}"]`);
+            if (billingDisplay && data.item.billing_units != null) {
+                billingDisplay.textContent = formatBillingUnitsDisplay(data.item.billing_units);
+            }
             const lineTotalEl = document.querySelector(`[data-line-total="${itemId}"]`);
-            if (lineTotalEl) lineTotalEl.textContent = '₹' + parseFloat(data.item.line_total).toFixed(2);
+            if (lineTotalEl) lineTotalEl.textContent = ' = ₹' + Math.round(parseFloat(data.item.line_total) || 0).toLocaleString('en-IN');
             updateSummary(data.order);
+            if (typeof refreshOrderItems === 'function') refreshOrderItems();
             showToast(data.message, 'success');
         } else {
             showToast(data.message || 'Could not update line', 'error');
@@ -3844,8 +4328,11 @@ function updateSummary(cart) {
         applyRentalStatusToUi({
             delivered_at: cart.delivered_at,
             delivered_at_display: cart.delivered_at_display,
+            delivered_units: cart.delivered_units,
             returned_at: cart.returned_at,
             returned_at_display: cart.returned_at_display,
+            returned_units: cart.returned_units,
+            total_units: cart.total_units,
         });
     }
 }

@@ -15,14 +15,15 @@ class SubscriptionPlanSeeder extends Seeder
     {
          $plans = [
 
-            // 🔹 SILVER
+            // 🔹 SILVER (free trial is automatic from vendor created_at — not a paid plan)
             [
-                'name' => 'Trail Plan',
-                'slug' => 'trail-plan',
+                'name' => 'Silver Monthly',
+                'slug' => 'silver-monthly',
                 'type' => 'silver',
                 'billing_cycle' => 'monthly',
                 'price' => 199,
                 'duration_days' => 30,
+                'is_trial' => false,
                 'features' => [
                     'max_listings' => 10,
                     'max_users' => 2,
@@ -37,6 +38,7 @@ class SubscriptionPlanSeeder extends Seeder
                 'billing_cycle' => 'yearly',
                 'price' => 1999,
                 'duration_days' => 365,
+                'is_trial' => false,
                 'features' => [
                     'max_listings' => 10,
                     'max_users' => 2,
@@ -53,6 +55,7 @@ class SubscriptionPlanSeeder extends Seeder
                 'billing_cycle' => 'monthly',
                 'price' => 499,
                 'duration_days' => 30,
+                'is_trial' => false,
                 'features' => [
                     'max_listings' => 50,
                     'max_users' => 5,
@@ -72,5 +75,9 @@ class SubscriptionPlanSeeder extends Seeder
                 $plan
             );
         }
+
+        SubscriptionPlan::query()
+            ->where('slug', 'trail-plan')
+            ->update(['is_active' => false, 'is_trial' => true]);
     }
 }

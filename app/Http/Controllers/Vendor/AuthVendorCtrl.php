@@ -31,15 +31,13 @@ class AuthVendorCtrl extends Controller
     {
         // If already logged in, redirect appropriately
         if (Auth::check()) {
-            $vendorId = session('current_vendor_id');
-            
-            if ($vendorId) {
-                // User has selected a vendor, go to home
+            $user = Auth::user();
+
+            if ($user->vendor_id && $user->currentVendor()) {
                 return redirect()->route('vendor.home');
-            } else {
-                // User is authenticated but needs to select vendor
-                return redirect()->route('vendor.select');
             }
+
+            return redirect()->route('vendor.select');
         }
         
         return view('vendor.auth.login');
@@ -101,20 +99,32 @@ class AuthVendorCtrl extends Controller
             $user->vendors()->updateExistingPivot($vendor->id, [
                 'last_login_at' => now(),
             ]);
-            
-            // Store current vendor in session
-            Session::put('current_vendor_id', $vendor->id);
-            
-            // Set language in session
+
+            $user->setCurrentVendorId($vendor->id);
+
             Session::put('language', $vendor->language ?? $user->language ?? 'en');
-            
-            // Redirect to vendor home/dashboard
+
             return redirect()
                 ->route('vendor.home')
                 ->with('success', 'Welcome back to ' . $vendor->name . '!');
         }
-        
-        // Multiple vendors - redirect to selection page
+
+        if ($user->vendor_id) {
+            $defaultVendor = $vendors->firstWhere('id', $user->vendor_id);
+
+            if ($defaultVendor && $defaultVendor->is_verified) {
+                $user->vendors()->updateExistingPivot($defaultVendor->id, [
+                    'last_login_at' => now(),
+                ]);
+
+                Session::put('language', $defaultVendor->language ?? $user->language ?? 'en');
+
+                return redirect()
+                    ->route('vendor.home')
+                    ->with('success', 'Welcome back to ' . $defaultVendor->name . '!');
+            }
+        }
+
         return redirect()->route('vendor.select');
     }
     
@@ -270,7 +280,7 @@ class AuthVendorCtrl extends Controller
             return redirect()->route('vendor.create');
         }
 
-        $isSwitching = Session::has('current_vendor_id');
+        $isSwitching = (bool) $user->vendor_id;
 
         return view('vendor.auth.select', compact('memberships', 'isSwitching'));
     }
@@ -306,24 +316,19 @@ class AuthVendorCtrl extends Controller
             return back()->withErrors(['error' => 'You do not have access to this vendor']);
         }
         
-        // Check if switching vendors (already had current_vendor_id)
-        $isSwitching = Session::has('current_vendor_id');
-        
-        // Update last login time in vendor_users pivot
+        $isSwitching = (bool) $user->vendor_id;
+
         $user->vendors()->updateExistingPivot($vendor->id, [
             'last_login_at' => now(),
         ]);
-        
-        // Store only vendor ID in session
-        Session::put('current_vendor_id', $vendor->id);
+
+        $user->setCurrentVendorId($vendor->id);
         VendorAccess::flush();
 
         app(VendorRoleProvisioner::class)->ensureDefaultRoles($vendor, $user->id);
 
-        // Set language in session
         Session::put('language', $vendor->language ?? $user->language ?? 'en');
-        
-        // Clear old session data
+
         Session::forget(['vendor_id', 'vendor_user_id', 'vendor_name', 'vendor_email', 'vendor_mobile', 'vendor_auth_user_id', 'vendor_auth_mobile']);
         
         // Redirect to vendor home with appropriate message
@@ -420,14 +425,11 @@ class AuthVendorCtrl extends Controller
 
         app(VendorRoleProvisioner::class)->ensureDefaultRoles($vendor, $user->id);
         
-        // Store only vendor ID in session
-        Session::put('current_vendor_id', $vendor->id);
+        $user->setCurrentVendorId($vendor->id);
         VendorAccess::flush();
-        
-        // Set language in session
+
         Session::put('language', $vendor->language ?? 'en');
-        
-        // Clear old session data
+
         Session::forget(['vendor_id', 'vendor_user_id', 'vendor_name', 'vendor_email', 'vendor_mobile', 'vendor_auth_user_id', 'vendor_auth_mobile']);
         
         // Redirect to vendor home

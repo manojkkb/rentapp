@@ -80,6 +80,37 @@
             </li>
             @endvendorCan
 
+            @vendorCan('orders.view')
+            <li>
+                <a href="{{ route('vendor.deliveries.index') }}"
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
+                   class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
+                          {{ request()->routeIs('vendor.deliveries.*')
+                              ? 'bg-emerald-500 text-white shadow-sm'
+                              : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-700' }}">
+                    <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs leading-none
+                          {{ request()->routeIs('vendor.deliveries.*') ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-emerald-700' }}">
+                        <i class="fas fa-truck" aria-hidden="true"></i>
+                    </span>
+                    <span class="min-w-0 truncate">{{ __('vendor.deliveries') }}</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ route('vendor.returns.index') }}"
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
+                   class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
+                          {{ request()->routeIs('vendor.returns.*')
+                              ? 'bg-emerald-500 text-white shadow-sm'
+                              : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-700' }}">
+                    <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs leading-none
+                          {{ request()->routeIs('vendor.returns.*') ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-emerald-700' }}">
+                        <i class="fas fa-rotate-left" aria-hidden="true"></i>
+                    </span>
+                    <span class="min-w-0 truncate">{{ __('vendor.returns') }}</span>
+                </a>
+            </li>
+            @endvendorCan
+
             @vendorCan('items.view')
             <li>
                 <a href="{{ route('vendor.items.index') }}"
@@ -230,6 +261,21 @@
                 </a>
             </li>
             @endvendorCan
+
+            <li>
+                <a href="{{ route('vendor.support') }}"
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
+                   class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
+                          {{ request()->routeIs('vendor.support*')
+                              ? 'bg-emerald-500 text-white shadow-sm'
+                              : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-700' }}">
+                    <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs leading-none
+                          {{ request()->routeIs('vendor.support*') ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-emerald-700' }}">
+                        <i class="fas fa-headset" aria-hidden="true"></i>
+                    </span>
+                    <span class="min-w-0 truncate">{{ __('vendor.help_support') }}</span>
+                </a>
+            </li>
         </ul>
     </nav>
 

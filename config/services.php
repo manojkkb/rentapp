@@ -42,4 +42,10 @@ return [
         'template_id' => env('SMS_TEMPLATE_ID'),
      ],
 
+    'socket' => [
+        'url' => env('SOCKET_SERVER_URL', 'http://127.0.0.1:6001'),
+        'broadcast_url' => env('SOCKET_BROADCAST_URL', 'http://127.0.0.1:6001/internal/broadcast'),
+        'secret' => env('SOCKET_SERVER_SECRET'),
+    ],
+
 ];

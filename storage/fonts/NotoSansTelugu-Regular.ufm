@@ -1,0 +1,194 @@
+StartFontMetrics 4.1
+Notice Converted by PHP-font-lib
+Comment https://github.com/dompdf/php-font-lib
+EncodingScheme FontSpecific
+Copyright Copyright 2019-2022 Google LLC. All Rights Reserved.
+FontName Noto Sans Telugu
+FontSubfamily Regular
+UniqueID 2.001;GOOG;NotoSansTelugu-Regular
+FullName Noto Sans Telugu Regular
+Version Version 2.001; ttfautohint (v1.8) -l 8 -r 50 -G 200 -x 14 -D telu -f none -a qsq -X ""
+PostScriptName NotoSansTelugu-Regular
+Trademark Noto is a trademark of Google LLC.
+Manufacturer Monotype Imaging Inc.
+Designer Jelle Bosma - Monotype Design Team
+Description Designed by Monotype design team.
+FontVendorURL http://www.google.com/get/noto/
+FontDesignerURL http://www.monotype.com/studio
+LicenseDescription This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software.
+LicenseURL http://scripts.sil.org/OFL
+Weight Medium
+ItalicAngle 0
+IsFixedPitch false
+UnderlineThickness 50
+UnderlinePosition -100
+FontHeightOffset 0
+Ascender 869
+Descender -483
+FontBBox -1271 -476 1749 869
+StartCharMetrics 791
+U 0 ; WX 0 ; N NULL ; G 1
+U 13 ; WX 283 ; N CR ; G 2
+U 32 ; WX 283 ; N space ; G 3
+U 33 ; WX 298 ; N exclam.telu ; G 615
+U 34 ; WX 456 ; N quotedbl.telu ; G 616
+U 35 ; WX 646 ; N numbersign.telu ; G 617
+U 37 ; WX 831 ; N percent.telu ; G 618
+U 39 ; WX 280 ; N quotesingle.telu ; G 619
+U 40 ; WX 362 ; N parenleft.telu ; G 620
+U 41 ; WX 362 ; N parenright.telu ; G 621
+U 42 ; WX 551 ; N asterisk.telu ; G 622
+U 43 ; WX 572 ; N plus.telu ; G 623
+U 44 ; WX 268 ; N comma.telu ; G 624
+U 45 ; WX 322 ; N hyphen.telu ; G 625
+U 46 ; WX 268 ; N period.telu ; G 626
+U 47 ; WX 436 ; N slash.telu ; G 627
+U 48 ; WX 572 ; N zero.telu ; G 628
+U 49 ; WX 572 ; N one.telu ; G 629
+U 50 ; WX 572 ; N two.telu ; G 630
+U 51 ; WX 572 ; N three.telu ; G 631
+U 52 ; WX 572 ; N four.telu ; G 632
+U 53 ; WX 572 ; N five.telu ; G 633
+U 54 ; WX 572 ; N six.telu ; G 634
+U 55 ; WX 572 ; N seven.telu ; G 635
+U 56 ; WX 572 ; N eight.telu ; G 636
+U 57 ; WX 572 ; N nine.telu ; G 637
+U 58 ; WX 268 ; N colon.telu ; G 638
+U 59 ; WX 268 ; N semicolon.telu ; G 639
+U 60 ; WX 572 ; N less.telu ; G 640
+U 61 ; WX 572 ; N equal.telu ; G 641
+U 62 ; WX 572 ; N greater.telu ; G 642
+U 63 ; WX 471 ; N question.telu ; G 643
+U 91 ; WX 344 ; N bracketleft.telu ; G 644
+U 92 ; WX 436 ; N backslash.telu ; G 645
+U 93 ; WX 344 ; N bracketright.telu ; G 646
+U 94 ; WX 572 ; N asciicircum.telu ; G 647
+U 95 ; WX 444 ; N underscore.telu ; G 648
+U 123 ; WX 388 ; N braceleft.telu ; G 649
+U 124 ; WX 551 ; N bar.telu ; G 650
+U 125 ; WX 388 ; N braceright.telu ; G 651
+U 126 ; WX 572 ; N asciitilde.telu ; G 652
+U 160 ; WX 283 ; N uni00A0.telu ; G 653
+U 173 ; WX 322 ; N sfthyphen.telu ; G 654
+U 215 ; WX 572 ; N multiply.telu ; G 663
+U 247 ; WX 572 ; N divide.telu ; G 664
+U 2385 ; WX 0 ; N uni0951 ; G 669
+U 2386 ; WX 0 ; N uni0952 ; G 670
+U 2404 ; WX 379 ; N dandatelu ; G 667
+U 2405 ; WX 599 ; N dbldandatelu ; G 668
+U 3072 ; WX 0 ; N uni0C00 ; G 4
+U 3073 ; WX 298 ; N candrabindutelu ; G 5
+U 3074 ; WX 507 ; N anusvaratelu ; G 6
+U 3075 ; WX 296 ; N visargatelu ; G 7
+U 3076 ; WX 0 ; N uni0C04 ; G 8
+U 3077 ; WX 800 ; N atelu ; G 9
+U 3078 ; WX 798 ; N aatelu ; G 10
+U 3079 ; WX 689 ; N itelu ; G 11
+U 3080 ; WX 994 ; N iitelu ; G 12
+U 3081 ; WX 798 ; N utelu ; G 13
+U 3082 ; WX 1095 ; N uutelu ; G 14
+U 3083 ; WX 1442 ; N rvocalictelu ; G 15
+U 3084 ; WX 882 ; N lvocalictelu ; G 16
+U 3086 ; WX 711 ; N etelu ; G 17
+U 3087 ; WX 711 ; N eetelu ; G 18
+U 3088 ; WX 727 ; N aitelu ; G 19
+U 3090 ; WX 731 ; N otelu ; G 20
+U 3091 ; WX 731 ; N ootelu ; G 21
+U 3092 ; WX 731 ; N autelu ; G 22
+U 3093 ; WX 522 ; N katelu ; G 23
+U 3094 ; WX 755 ; N khatelu ; G 24
+U 3095 ; WX 583 ; N gatelu ; G 25
+U 3096 ; WX 1058 ; N ghatelu ; G 26
+U 3097 ; WX 731 ; N ngatelu ; G 27
+U 3098 ; WX 760 ; N catelu ; G 28
+U 3099 ; WX 760 ; N chatelu ; G 29
+U 3100 ; WX 731 ; N jatelu ; G 30
+U 3101 ; WX 1286 ; N jhatelu ; G 31
+U 3102 ; WX 979 ; N nyatelu ; G 32
+U 3103 ; WX 772 ; N ttatelu ; G 33
+U 3104 ; WX 593 ; N tthatelu ; G 34
+U 3105 ; WX 740 ; N ddatelu ; G 35
+U 3106 ; WX 740 ; N ddhatelu ; G 36
+U 3107 ; WX 826 ; N nnatelu ; G 37
+U 3108 ; WX 778 ; N tatelu ; G 38
+U 3109 ; WX 706 ; N thatelu ; G 39
+U 3110 ; WX 706 ; N datelu ; G 40
+U 3111 ; WX 706 ; N dhatelu ; G 41
+U 3112 ; WX 702 ; N natelu ; G 42
+U 3114 ; WX 711 ; N patelu ; G 43
+U 3115 ; WX 711 ; N phatelu ; G 44
+U 3116 ; WX 750 ; N batelu ; G 45
+U 3117 ; WX 750 ; N bhatelu ; G 46
+U 3118 ; WX 1058 ; N matelu ; G 47
+U 3119 ; WX 1286 ; N yatelu ; G 48
+U 3120 ; WX 593 ; N ratelu ; G 49
+U 3121 ; WX 822 ; N rratelu ; G 50
+U 3122 ; WX 709 ; N latelu ; G 51
+U 3123 ; WX 645 ; N llatelu ; G 52
+U 3124 ; WX 812 ; N lllatelu ; G 53
+U 3125 ; WX 711 ; N vatelu ; G 54
+U 3126 ; WX 550 ; N shatelu ; G 55
+U 3127 ; WX 713 ; N ssatelu ; G 56
+U 3128 ; WX 702 ; N satelu ; G 57
+U 3129 ; WX 1033 ; N hatelu ; G 58
+U 3133 ; WX 590 ; N avagrahatelu ; G 59
+U 3134 ; WX 260 ; N aavowelsigntelu ; G 60
+U 3135 ; WX 0 ; N ivowelsigntelu ; G 61
+U 3136 ; WX 0 ; N iivowelsigntelu ; G 62
+U 3137 ; WX 346 ; N uvowelsigntelu ; G 63
+U 3138 ; WX 668 ; N uuvowelsigntelu ; G 64
+U 3139 ; WX 400 ; N rvocalicvowelsigntelu ; G 65
+U 3140 ; WX 656 ; N rrvocalicvowelsigntelu ; G 66
+U 3142 ; WX 0 ; N evowelsigntelu ; G 67
+U 3143 ; WX 0 ; N eevowelsigntelu ; G 68
+U 3144 ; WX 0 ; N aivowelsigntelu ; G 69
+U 3146 ; WX 0 ; N ovowelsigntelu ; G 70
+U 3147 ; WX 0 ; N oovowelsigntelu ; G 71
+U 3148 ; WX 0 ; N auvowelsigntelu ; G 72
+U 3149 ; WX 0 ; N viramatelu ; G 73
+U 3157 ; WX 0 ; N lengthmarktelu ; G 74
+U 3158 ; WX 0 ; N ailengthmarktelu ; G 75
+U 3160 ; WX 760 ; N tsatelu ; G 76
+U 3161 ; WX 731 ; N dzatelu ; G 77
+U 3162 ; WX 716 ; N rrratelu ; G 78
+U 3168 ; WX 1764 ; N rrvocalictelu ; G 79
+U 3169 ; WX 1227 ; N llvocalictelu ; G 80
+U 3170 ; WX 0 ; N lvocalicvowelsigntelu ; G 81
+U 3171 ; WX 324 ; N llvocalicvowelsigntelu ; G 82
+U 3174 ; WX 675 ; N zerotelu ; G 83
+U 3175 ; WX 665 ; N onetelu ; G 84
+U 3176 ; WX 773 ; N twotelu ; G 85
+U 3177 ; WX 546 ; N threetelu ; G 86
+U 3178 ; WX 686 ; N fourtelu ; G 87
+U 3179 ; WX 711 ; N fivetelu ; G 88
+U 3180 ; WX 698 ; N sixtelu ; G 89
+U 3181 ; WX 573 ; N seventelu ; G 90
+U 3182 ; WX 803 ; N eighttelu ; G 91
+U 3183 ; WX 698 ; N ninetelu ; G 92
+U 3191 ; WX 1044 ; N uni0C77 ; G 93
+U 3192 ; WX 622 ; N uni0C78 ; G 94
+U 3193 ; WX 273 ; N uni0C79 ; G 95
+U 3194 ; WX 489 ; N uni0C7A ; G 96
+U 3195 ; WX 693 ; N uni0C7B ; G 97
+U 3196 ; WX 610 ; N uni0C7C ; G 98
+U 3197 ; WX 598 ; N uni0C7D ; G 99
+U 3198 ; WX 598 ; N uni0C7E ; G 100
+U 3199 ; WX 742 ; N uni0C7F ; G 101
+U 7386 ; WX 0 ; N uni1CDA ; G 671
+U 7410 ; WX 471 ; N uni1CF2 ; G 672
+U 8203 ; WX 0 ; N uni200B ; G 673
+U 8204 ; WX 0 ; N uni200C ; G 674
+U 8205 ; WX 0 ; N uni200D ; G 675
+U 8208 ; WX 322 ; N uni2010.telu ; G 655
+U 8211 ; WX 500 ; N endash.telu ; G 656
+U 8212 ; WX 1000 ; N emdash.telu ; G 657
+U 8216 ; WX 259 ; N quoteleft.telu ; G 658
+U 8217 ; WX 259 ; N quoteright.telu ; G 659
+U 8220 ; WX 438 ; N quotedblleft.telu ; G 660
+U 8221 ; WX 438 ; N quotedblright.telu ; G 661
+U 8230 ; WX 791 ; N ellipsis.telu ; G 662
+U 8377 ; WX 572 ; N uni20B9.telu ; G 666
+U 8722 ; WX 572 ; N minus.telu ; G 665
+U 9676 ; WX 578 ; N uni25CC ; G 676
+EndCharMetrics
+EndFontMetrics

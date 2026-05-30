@@ -1,12 +1,8 @@
 <!-- Modern Green Sidebar -->
-<aside x-show="sidebarOpen" 
-       x-transition:enter="transform transition ease-in-out duration-300"
-       x-transition:enter-start="-translate-x-full"
-       x-transition:enter-end="translate-x-0"
-       x-transition:leave="transform transition ease-in-out duration-300"
-       x-transition:leave-start="translate-x-0"
-       x-transition:leave-end="-translate-x-full"
-       class="w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-shrink-0 overflow-y-auto transition-colors">
+<aside
+       class="admin-sidebar fixed inset-y-0 left-0 z-30 flex h-full w-72 max-h-[100dvh] min-h-0 flex-shrink-0 -translate-x-full flex-col overflow-y-auto border-r border-gray-200 bg-white transition-transform duration-300 dark:border-gray-700 dark:bg-gray-800 md:static md:max-h-none md:translate-x-0"
+       :class="{ 'translate-x-0': sidebarOpen }"
+       @click.away="if (window.innerWidth < 768) sidebarOpen = false">
     
     <!-- Logo -->
     <div class="p-5 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
@@ -25,159 +21,123 @@
     <nav class="p-3 space-y-1">
         
         <!-- 1. Dashboard -->
-        <div x-data="{ open: true }">
-            <button @click="open = !open" 
-                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-semibold transition-all group">
-                <i class="fas fa-home text-base"></i>
-                <span>Dashboard</span>
+        <div x-data="{ open: {{ request()->routeIs('admin.dashboard*') ? 'true' : 'false' }} }">
+            <button @click="open = !open"
+                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all group
+                           {{ request()->routeIs('admin.dashboard*')
+                               ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-semibold'
+                               : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white' }}">
+                <i class="fas fa-home text-base {{ request()->routeIs('admin.dashboard*') ? '' : 'text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400' }}"></i>
+                <span class="{{ request()->routeIs('admin.dashboard*') ? '' : 'font-medium' }}">Dashboard</span>
                 <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
             </button>
-            <div x-show="open" x-transition x-cloak class="pl-10 pr-3 py-1 space-y-0.5">
-                <a href="{{ route('admin.dashboard') }}" class="block py-1.5 text-sm text-green-600 dark:text-green-400 font-medium transition-colors">Overview</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Revenue Analytics</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Booking Analytics</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Vendor Performance</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">City Analytics</a>
+            <div x-show="open" x-transition class="pl-10 pr-3 py-1 space-y-0.5">
+                @php
+                    $dashLinks = [
+                        ['route' => 'admin.dashboard', 'label' => 'Overview'],
+                        ['route' => 'admin.dashboard.revenue', 'label' => 'Revenue'],
+                        ['route' => 'admin.dashboard.bookings', 'label' => 'Bookings'],
+                        ['route' => 'admin.dashboard.vendors', 'label' => 'Vendors'],
+                        ['route' => 'admin.dashboard.cities', 'label' => 'Cities'],
+                    ];
+                @endphp
+                @foreach ($dashLinks as $link)
+                    <a href="{{ route($link['route']) }}"
+                       class="block py-1.5 text-sm transition-colors {{ request()->routeIs($link['route']) ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400' }}">
+                        {{ $link['label'] }}
+                    </a>
+                @endforeach
             </div>
         </div>
         
-        <!-- 2. User Management -->
-        <div x-data="{ open: false }">
-            <button @click="open = !open" 
-                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group">
+        <!-- 2. Users -->
+        <div x-data="{ open: {{ request()->routeIs('admin.users.*') ? 'true' : 'false' }} }">
+            <button @click="open = !open"
+                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all group
+                           {{ request()->routeIs('admin.users.*')
+                               ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-semibold'
+                               : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white' }}">
                 <i class="fas fa-users text-base text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400"></i>
-                <span class="font-medium">User Management</span>
+                <span class="font-medium">Users</span>
                 <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
             </button>
-            <div x-show="open" x-transition x-cloak class="pl-10 pr-3 py-1 space-y-0.5">
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">All Users</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Customers</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Vendors</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Admins</a>
-                <a href="#" class="flex items-center py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
-                    KYC Verification
-                    <span class="ml-auto bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-xs px-1.5 py-0.5 rounded-full font-bold">5</span>
-                </a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Suspended Users</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Login Activity</a>
+            <div x-show="open" x-transition class="pl-10 pr-3 py-1 space-y-0.5">
+                @php
+                    $userLinks = [
+                        ['route' => 'admin.users.index', 'label' => 'All'],
+                        ['route' => 'admin.users.customers', 'label' => 'Customers'],
+                        ['route' => 'admin.users.vendor-accounts', 'label' => 'Staff'],
+                        ['route' => 'admin.users.admins', 'label' => 'Admins'],
+                        ['route' => 'admin.users.kyc', 'label' => 'KYC', 'badge' => $pendingKycCount ?? 0],
+                        ['route' => 'admin.users.suspended', 'label' => 'Suspended'],
+                        ['route' => 'admin.users.login-activity', 'label' => 'Logins'],
+                    ];
+                @endphp
+                @foreach ($userLinks as $link)
+                    <a href="{{ route($link['route']) }}"
+                       class="flex items-center py-1.5 text-sm transition-colors {{ request()->routeIs($link['route']) ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400' }}">
+                        <span>{{ $link['label'] }}</span>
+                        @if(!empty($link['badge']))
+                            <span class="ml-auto bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-xs px-1.5 py-0.5 rounded-full font-bold">{{ $link['badge'] }}</span>
+                        @endif
+                    </a>
+                @endforeach
             </div>
         </div>
         
-        <!-- 3. Vendor Management -->
-        <div x-data="{ open: false }">
-            <button @click="open = !open" 
-                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group">
+        <!-- 3. Vendors -->
+        <div x-data="{ open: {{ request()->routeIs('admin.vendors.*') ? 'true' : 'false' }} }">
+            <button @click="open = !open"
+                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group {{ request()->routeIs('admin.vendors.*') ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : '' }}">
                 <i class="fas fa-store text-base text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400"></i>
-                <span class="font-medium">Vendor Management</span>
+                <span class="font-medium">Vendors</span>
                 <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
             </button>
-            <div x-show="open" x-transition x-cloak class="pl-10 pr-3 py-1 space-y-0.5">
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">All Vendors</a>
-                <a href="#" class="flex items-center py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
-                    Pending Approval
-                    <span class="ml-auto bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-xs px-1.5 py-0.5 rounded-full font-bold">12</span>
+            <div x-show="open" x-transition class="pl-10 pr-3 py-1 space-y-0.5">
+                <a href="{{ route('admin.vendors.index') }}"
+                   class="block py-1.5 text-sm transition-colors {{ request()->routeIs('admin.vendors.*') ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400' }}">
+                    All
                 </a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Approved Vendors</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Rejected Vendors</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Vendor Ratings</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Vendor Wallet</a>
-                <a href="#" class="flex items-center py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
-                    Payout Requests
-                    <span class="ml-auto bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs px-1.5 py-0.5 rounded-full font-bold">8</span>
+            </div>
+        </div>
+
+        <!-- Subscriptions -->
+        <div x-data="{ open: {{ request()->routeIs('admin.subscriptions.*') ? 'true' : 'false' }} }">
+            <button @click="open = !open"
+                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group {{ request()->routeIs('admin.subscriptions.*') ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : '' }}">
+                <i class="fas fa-credit-card text-base text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400"></i>
+                <span class="font-medium">Subscriptions</span>
+                <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
+            </button>
+            <div x-show="open" x-transition class="pl-10 pr-3 py-1 space-y-0.5">
+                <a href="{{ route('admin.subscriptions.index') }}"
+                   class="block py-1.5 text-sm transition-colors {{ request()->routeIs('admin.subscriptions.index') ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400' }}">
+                    All
                 </a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Commission Settings</a>
+                <a href="{{ route('admin.subscriptions.plans.index') }}"
+                   class="block py-1.5 text-sm transition-colors {{ request()->routeIs('admin.subscriptions.plans.*') ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400' }}">
+                    Plans
+                </a>
+            </div>
+        </div>
+
+        <!-- 4. Biz types -->
+        <div x-data="{ open: {{ request()->routeIs('admin.business-categories.*') ? 'true' : 'false' }} }">
+            <button @click="open = !open"
+                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group {{ request()->routeIs('admin.business-categories.*') ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : '' }}">
+                <i class="fas fa-briefcase text-base text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400"></i>
+                <span class="font-medium">Biz Types</span>
+                <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
+            </button>
+            <div x-show="open" x-transition class="pl-10 pr-3 py-1 space-y-0.5">
+                <a href="{{ route('admin.business-categories.index') }}"
+                   class="block py-1.5 text-sm transition-colors {{ request()->routeIs('admin.business-categories.*') ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400' }}">
+                    All
+                </a>
             </div>
         </div>
         
-        <!-- 4. Categories -->
-        <div x-data="{ open: false }">
-            <button @click="open = !open" 
-                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group">
-                <i class="fas fa-folder text-base text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400"></i>
-                <span class="font-medium">Categories</span>
-                <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
-            </button>
-            <div x-show="open" x-transition x-cloak class="pl-10 pr-3 py-1 space-y-0.5">
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Main Categories</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Sub Categories</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Category Icons</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Category SEO</a>
-            </div>
-        </div>
-        
-        <!-- 5. Item Management -->
-        <div x-data="{ open: false }">
-            <button @click="open = !open" 
-                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group">
-                <i class="fas fa-box text-base text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400"></i>
-                <span class="font-medium">Item Management</span>
-                <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
-            </button>
-            <div x-show="open" x-transition x-cloak class="pl-10 pr-3 py-1 space-y-0.5">
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">All Items</a>
-                <a href="#" class="flex items-center py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
-                    Pending Items
-                    <span class="ml-auto bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-xs px-1.5 py-0.5 rounded-full font-bold">15</span>
-                </a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Active Items</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Inactive Items</a>
-                <a href="#" class="flex items-center py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
-                    Low Stock Alerts
-                    <span class="ml-auto bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-xs px-1.5 py-0.5 rounded-full font-bold">3</span>
-                </a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Service Items</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Product Items</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Bulk Import</a>
-            </div>
-        </div>
-        
-        <!-- 6. Booking Management -->
-        <div x-data="{ open: false }">
-            <button @click="open = !open" 
-                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group">
-                <i class="fas fa-calendar-check text-base text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400"></i>
-                <span class="font-medium">Booking Management</span>
-                <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
-            </button>
-            <div x-show="open" x-transition x-cloak class="pl-10 pr-3 py-1 space-y-0.5">
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">All Bookings</a>
-                <a href="#" class="flex items-center py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
-                    Pending
-                    <span class="ml-auto bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-xs px-1.5 py-0.5 rounded-full font-bold">23</span>
-                </a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Confirmed</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Completed</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Cancelled</a>
-                <a href="#" class="flex items-center py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
-                    Refund Requests
-                    <span class="ml-auto bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-xs px-1.5 py-0.5 rounded-full font-bold">4</span>
-                </a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Damage Reports</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Invoice Management</a>
-            </div>
-        </div>
-        
-        <!-- 7. Finance -->
-        <div x-data="{ open: false }">
-            <button @click="open = !open" 
-                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group">
-                <i class="fas fa-wallet text-base text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400"></i>
-                <span class="font-medium">Finance</span>
-                <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
-            </button>
-            <div x-show="open" x-transition x-cloak class="pl-10 pr-3 py-1 space-y-0.5">
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Revenue Summary</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Commission Report</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Vendor Earnings</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Customer Payments</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Wallet Transactions</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Refund Logs</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Tax & GST Report</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Settlement Report</a>
-            </div>
-        </div>
-        
-        <!-- 8. Reports -->
+        <!-- Reports -->
         <div x-data="{ open: false }">
             <button @click="open = !open" 
                     class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group">
@@ -185,109 +145,82 @@
                 <span class="font-medium">Reports</span>
                 <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
             </button>
-            <div x-show="open" x-transition x-cloak class="pl-10 pr-3 py-1 space-y-0.5">
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Daily Report</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Monthly Report</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Yearly Report</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Category Wise</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Vendor Wise</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">City Wise</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Top Selling Items</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Customer Retention</a>
+            <div x-show="open" x-transition class="pl-10 pr-3 py-1 space-y-0.5">
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Daily</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Monthly</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Yearly</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Category</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Vendor</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">City</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Top items</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Retention</a>
             </div>
         </div>
         
-        <!-- 9. Marketing & CMS -->
+        <!-- Marketing -->
         <div x-data="{ open: false }">
             <button @click="open = !open" 
                     class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group">
                 <i class="fas fa-bullhorn text-base text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400"></i>
-                <span class="font-medium">Marketing & CMS</span>
+                <span class="font-medium">Marketing</span>
                 <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
             </button>
-            <div x-show="open" x-transition x-cloak class="pl-10 pr-3 py-1 space-y-0.5">
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Homepage Banner</a>
+            <div x-show="open" x-transition class="pl-10 pr-3 py-1 space-y-0.5">
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Banner</a>
                 <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Coupons</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Promo Codes</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Email Templates</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">SMS Templates</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Push Notifications</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Promos</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Email</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">SMS</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Push</a>
                 <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Blog</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">SEO Settings</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">SEO</a>
             </div>
         </div>
         
-        <!-- 10. Location Management -->
-        <div x-data="{ open: false }">
-            <button @click="open = !open" 
-                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group">
-                <i class="fas fa-map-marker-alt text-base text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400"></i>
-                <span class="font-medium">Location Management</span>
-                <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
-            </button>
-            <div x-show="open" x-transition x-cloak class="pl-10 pr-3 py-1 space-y-0.5">
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Countries</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">States</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Cities</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Service Areas</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Delivery Charges</a>
-            </div>
-        </div>
-        
-        <!-- 11. System Settings -->
-        <div x-data="{ open: false }">
-            <button @click="open = !open" 
-                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group">
+        <!-- Settings -->
+        <div x-data="{ open: {{ request()->routeIs('admin.settings*') ? 'true' : 'false' }} }">
+            <button @click="open = !open"
+                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group {{ request()->routeIs('admin.settings*') ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : '' }}">
                 <i class="fas fa-cog text-base text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400"></i>
-                <span class="font-medium">System Settings</span>
+                <span class="font-medium">Settings</span>
                 <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
             </button>
-            <div x-show="open" x-transition x-cloak class="pl-10 pr-3 py-1 space-y-0.5">
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">General Settings</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Booking Rules</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Cancellation Policy</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Deposit Rules</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Damage Charges Rules</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Currency Settings</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Tax Settings</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Minimum Order Rules</a>
+            <div x-show="open" x-transition class="pl-10 pr-3 py-1 space-y-0.5">
+                <a href="{{ route('admin.settings') }}"
+                   class="block py-1.5 text-sm transition-colors {{ request()->routeIs('admin.settings*') ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400' }}">
+                    Platform
+                </a>
             </div>
         </div>
         
-        <!-- 12. Roles & Permissions -->
+        <!-- Roles -->
         <div x-data="{ open: false }">
             <button @click="open = !open" 
                     class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group">
                 <i class="fas fa-lock text-base text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400"></i>
-                <span class="font-medium">Roles & Permissions</span>
+                <span class="font-medium">Roles</span>
                 <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
             </button>
-            <div x-show="open" x-transition x-cloak class="pl-10 pr-3 py-1 space-y-0.5">
+            <div x-show="open" x-transition class="pl-10 pr-3 py-1 space-y-0.5">
                 <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Roles</a>
                 <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Permissions</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Assign Permissions</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Admin Activity Logs</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Assign</a>
+                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Logs</a>
             </div>
         </div>
         
-        <!-- 13. Support System -->
-        <div x-data="{ open: false }">
-            <button @click="open = !open" 
-                    class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all group">
-                <i class="fas fa-headset text-base text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400"></i>
-                <span class="font-medium">Support System</span>
-                <i class="fas fa-chevron-down text-xs ml-auto transform transition-transform" :class="{ 'rotate-180': open }"></i>
-            </button>
-            <div x-show="open" x-transition x-cloak class="pl-10 pr-3 py-1 space-y-0.5">
-                <a href="#" class="flex items-center py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
-                    Support Tickets
-                    <span class="ml-auto bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 text-xs px-1.5 py-0.5 rounded-full font-bold">7</span>
-                </a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Customer Complaints</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Vendor Disputes</a>
-                <a href="#" class="block py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">Chat Logs</a>
-            </div>
-        </div>
+        <!-- Support -->
+        <a href="{{ route('admin.support.index') }}"
+           class="flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all group
+                  {{ request()->routeIs('admin.support.*')
+                      ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 font-semibold'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white' }}">
+            <i class="fas fa-headset text-base {{ request()->routeIs('admin.support.*') ? '' : 'text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400' }}"></i>
+            <span class="font-medium">Support</span>
+            @if(($openSupportTicketsCount ?? 0) > 0)
+                <span class="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900 dark:text-amber-200">{{ $openSupportTicketsCount }}</span>
+            @endif
+        </a>
         
     </nav>
     
@@ -296,10 +229,10 @@
         <div class="w-10 h-10 bg-green-gradient rounded-lg flex items-center justify-center mb-2">
             <i class="fas fa-lightbulb text-white"></i>
         </div>
-        <h3 class="font-bold text-gray-900 dark:text-white text-sm mb-1">Need Help?</h3>
-        <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">Check our documentation</p>
+        <h3 class="font-bold text-gray-900 dark:text-white text-sm mb-1">Help</h3>
+        <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">Docs &amp; support</p>
         <button class="w-full bg-white dark:bg-gray-700 text-green-700 dark:text-green-400 py-2 rounded-lg text-sm font-bold hover:bg-green-50 dark:hover:bg-gray-600 transition-all">
-            Get Help
+            Help
         </button>
     </div>
 </aside>

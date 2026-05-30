@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Subscription extends Model
 {
-    //
     protected $fillable = [
         'user_id',
         'subscription_plan_id',
@@ -25,6 +24,7 @@ class Subscription extends Model
         'start_date' => 'datetime',
         'expiry_date' => 'datetime',
         'amount' => 'decimal:2',
+        'auto_renew' => 'boolean',
     ];
 
     public function user()
@@ -42,4 +42,16 @@ class Subscription extends Model
         return $this->belongsTo(Vendor::class);
     }
 
+    public function payments()
+    {
+        return $this->hasMany(SubscriptionPayment::class);
+    }
+
+    public function scopeActiveForVendor($query, int $vendorId)
+    {
+        return $query
+            ->where('vendor_id', $vendorId)
+            ->where('status', 'active')
+            ->where('expiry_date', '>', now());
+    }
 }

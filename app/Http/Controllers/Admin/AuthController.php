@@ -41,7 +41,7 @@ class AuthController extends Controller
 
         if (auth()->guard('admin')->attempt($credentials, $remember)) {
             $request->session()->regenerate();
-            return redirect()->intended(route('admin.dashboard'));
+            return redirect()->intended(route('admin.dashboard', [], false));
         }
 
         $errorField = $request->filled('email') ? 'email' : 'phone';

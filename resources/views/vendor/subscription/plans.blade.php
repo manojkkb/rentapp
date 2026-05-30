@@ -7,16 +7,38 @@
 @php
     $hasMonthly = $plansByType->flatten(1)->contains(fn ($p) => $p->billing_cycle === 'monthly');
     $hasYearly = $plansByType->flatten(1)->contains(fn ($p) => $p->billing_cycle === 'yearly');
+    $canPurchase = in_array($subscriptionStatus, ['trial', 'expired'], true);
+    $trialDays = \App\Support\PlatformSettings::trialDays();
 @endphp
 
 <div class="max-w-6xl mx-auto pb-12" x-data="{ billing: '{{ $hasMonthly ? 'monthly' : 'yearly' }}' }">
+    @if($subscriptionStatus === 'trial')
+        <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            {{ __('vendor.subscription_trial_banner', [
+                'days' => $trialDaysRemaining,
+                'date' => $trialEndsAt->format('d M Y'),
+            ]) }}
+        </div>
+    @elseif($subscriptionStatus === 'active' && $activeSubscription)
+        <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            {{ __('vendor.subscription_active_banner', [
+                'plan' => $activeSubscription->subscriptionPlan?->name ?? __('vendor.subscription_plans'),
+                'date' => $activeSubscription->expiry_date?->format('d M Y') ?? '—',
+            ]) }}
+        </div>
+    @elseif($subscriptionStatus === 'expired')
+        <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {{ __('vendor.subscription_expired_banner') }}
+        </div>
+    @endif
+
     {{-- Header --}}
     <div class="text-center mb-10">
         <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
             {{ __('vendor.subscription_plans') }}
         </h1>
         <p class="mt-2 text-sm sm:text-base text-gray-600 max-w-xl mx-auto">
-            {{ __('vendor.billing_intro') }}
+            {{ __('vendor.billing_intro', ['days' => $trialDays]) }}
         </p>
 
         {{-- Monthly / Yearly toggle --}}
@@ -196,28 +218,40 @@
                     {{-- CTA: one block per available cycle so data-id stays correct --}}
                     <div class="mt-8 space-y-2">
                         @if($monthly)
-                            <button
-                                type="button"
-                                x-show="billing === 'monthly'"
-                                x-cloak
-                                class="buy-btn inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-                                data-id="{{ $monthly->id }}"
-                                data-price="{{ $monthly->price }}"
-                            >
-                                {{ __('vendor.billing_subscribe_monthly') }}
-                            </button>
+                            @if($canPurchase)
+                                <button
+                                    type="button"
+                                    x-show="billing === 'monthly'"
+                                    x-cloak
+                                    class="buy-btn inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                                    data-id="{{ $monthly->id }}"
+                                    data-price="{{ $monthly->discount_price ?? $monthly->price }}"
+                                >
+                                    {{ __('vendor.billing_subscribe_monthly') }}
+                                </button>
+                            @else
+                                <p x-show="billing === 'monthly'" x-cloak class="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-center text-sm text-gray-600">
+                                    {{ __('vendor.subscription_purchase_disabled_active') }}
+                                </p>
+                            @endif
                         @endif
                         @if($yearly)
-                            <button
-                                type="button"
-                                x-show="billing === 'yearly'"
-                                x-cloak
-                                class="buy-btn inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-                                data-id="{{ $yearly->id }}"
-                                data-price="{{ $yearly->price }}"
-                            >
-                                {{ __('vendor.billing_subscribe_yearly') }}
-                            </button>
+                            @if($canPurchase)
+                                <button
+                                    type="button"
+                                    x-show="billing === 'yearly'"
+                                    x-cloak
+                                    class="buy-btn inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                                    data-id="{{ $yearly->id }}"
+                                    data-price="{{ $yearly->discount_price ?? $yearly->price }}"
+                                >
+                                    {{ __('vendor.billing_subscribe_yearly') }}
+                                </button>
+                            @else
+                                <p x-show="billing === 'yearly'" x-cloak class="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-center text-sm text-gray-600">
+                                    {{ __('vendor.subscription_purchase_disabled_active') }}
+                                </p>
+                            @endif
                         @endif
                     </div>
                 </div>
@@ -232,57 +266,61 @@
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 <script>
+const createOrderUrl = @json(route('vendor.subscription.create-order'));
+const verifyPaymentUrl = @json(route('vendor.subscription.verify-payment'));
+const razorpayKey = @json(config('services.razorpay.key', env('RAZORPAY_KEY')));
+
 document.querySelectorAll('.buy-btn').forEach(button => {
-
     button.addEventListener('click', async function () {
+        const planId = this.dataset.id;
 
-        let planId = this.dataset.id;
-
-        let response = await fetch('create-order', {
+        const response = await fetch(createOrderUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
             },
-            body: JSON.stringify({
-                plan_id: planId
-            })
+            body: JSON.stringify({ plan_id: planId }),
         });
 
-        let data = await response.json();
+        const data = await response.json();
 
-        var options = {
-            "key": "{{ env('RAZORPAY_KEY') }}",
-            "amount": data.amount,
-            "currency": "INR",
-            "name": "Rentkia",
-            "description": data.plan_name,
-            "order_id": data.order_id,
+        if (!response.ok) {
+            alert(data.message || @json(__('vendor.subscription_expired_message')));
+            return;
+        }
 
-            "handler": function (response) {
-
-                fetch('verify-payment', {
+        const options = {
+            key: razorpayKey,
+            amount: data.amount,
+            currency: 'INR',
+            name: 'Rentkia',
+            description: data.plan_name,
+            order_id: data.order_id,
+            handler: function (rzpResponse) {
+                fetch(verifyPaymentUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
                     },
-                    body: JSON.stringify({
-                        ...response,
-                        plan_id: planId
-                    })
+                    body: JSON.stringify({ ...rzpResponse, plan_id: planId }),
                 })
                 .then(res => res.json())
-                .then(data => {
-                    alert(@json(__('vendor.payment_success')));
+                .then(result => {
+                    if (result.status === 'success') {
+                        window.location.href = result.redirect || @json(route('vendor.home'));
+                        return;
+                    }
+                    alert(@json(__('vendor.subscription_expired_message')));
                 });
-            }
+            },
         };
 
-        var rzp = new Razorpay(options);
-        rzp.open();
+        new Razorpay(options).open();
     });
-
 });
 </script>
 @endsection

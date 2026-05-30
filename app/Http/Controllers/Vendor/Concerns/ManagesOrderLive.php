@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 trait ManagesOrderLive
 {
@@ -58,11 +59,41 @@ trait ManagesOrderLive
             'delivered_at_display' => $rental['delivered_at_display'],
             'returned_at' => $rental['returned_at'],
             'returned_at_display' => $rental['returned_at_display'],
+            'delivered_units' => $rental['delivered_units'],
+            'returned_units' => $rental['returned_units'],
+            'total_units' => $rental['total_units'],
         ];
     }
 
     /**
-     * @return array{status: string, delivered_at: string|null, delivered_at_display: string|null, returned_at: string|null, returned_at_display: string|null}
+     * @return array{delivered_units: int, returned_units: int, total_units: int}
+     */
+    protected function orderRentalUnitsStats(Order $order): array
+    {
+        $order->loadMissing('items');
+
+        $deliveredUnits = 0;
+        $returnedUnits = 0;
+        $totalUnits = 0;
+
+        foreach ($order->items as $line) {
+            $qty = max(1, (int) $line->quantity);
+            $totalUnits += $qty;
+            if ($line->delivered_at) {
+                $deliveredUnits += $qty;
+            }
+            $returnedUnits += min($qty, max(0, (int) ($line->returned_qty ?? 0)));
+        }
+
+        return [
+            'delivered_units' => $deliveredUnits,
+            'returned_units' => $returnedUnits,
+            'total_units' => $totalUnits,
+        ];
+    }
+
+    /**
+     * @return array{status: string, delivered_at: string|null, delivered_at_display: string|null, returned_at: string|null, returned_at_display: string|null, delivered_units: int, returned_units: int, total_units: int}
      */
     protected function rentalStatusPayload(Order $order): array
     {
@@ -71,12 +102,17 @@ trait ManagesOrderLive
             return $dt ? $dt->copy()->timezone($tz)->format('M j, Y g:i A') : null;
         };
 
+        $unitStats = $this->orderRentalUnitsStats($order);
+
         return [
             'status' => (string) $order->status,
             'delivered_at' => $order->delivered_at?->toIso8601String(),
             'delivered_at_display' => $format($order->delivered_at),
             'returned_at' => $order->returned_at?->toIso8601String(),
             'returned_at_display' => $format($order->returned_at),
+            'delivered_units' => $unitStats['delivered_units'],
+            'returned_units' => $unitStats['returned_units'],
+            'total_units' => $unitStats['total_units'],
         ];
     }
 
@@ -793,36 +829,45 @@ trait ManagesOrderLive
         $validated = $request->validate([
             'delivered' => 'nullable|in:mark,clear',
             'returned' => 'nullable|in:mark,clear',
+            'order_item_ids' => 'nullable|array|min:1',
+            'order_item_ids.*' => 'integer',
+            'return_lines' => 'nullable|array|min:1',
+            'return_lines.*.order_item_id' => 'required|integer',
+            'return_lines.*.quantity' => 'required|integer|min:1',
         ]);
 
         if (($validated['delivered'] ?? null) === null && ($validated['returned'] ?? null) === null) {
             return response()->json(['success' => false, 'message' => 'No action specified.'], 422);
         }
 
-        DB::transaction(function () use ($order, $validated) {
+        DB::transaction(function () use ($order, $validated, $request) {
             $order->refresh();
 
             if (($validated['delivered'] ?? null) === 'clear') {
-                $order->delivered_at = null;
-                $order->returned_at = null;
+                $this->clearOrderItemsDeliveredAndReturned($order);
             } elseif (($validated['delivered'] ?? null) === 'mark') {
-                if (! $order->delivered_at) {
-                    $order->delivered_at = now();
+                $itemIds = $validated['order_item_ids'] ?? null;
+                if (is_array($itemIds) && $itemIds !== []) {
+                    $this->markSelectedOrderItemsDelivered($order, $itemIds);
+                } else {
+                    if (! $order->delivered_at) {
+                        $order->delivered_at = now();
+                    }
+                    $order->save();
+                    $this->syncOrderItemsRentalFromOrder($order);
                 }
             }
 
             if (($validated['returned'] ?? null) === 'clear') {
-                $order->returned_at = null;
+                $this->clearOrderItemsReturned($order);
             } elseif (($validated['returned'] ?? null) === 'mark') {
-                if (! $order->delivered_at) {
-                    $order->delivered_at = now();
+                $returnLines = $validated['return_lines'] ?? null;
+                if (is_array($returnLines) && $returnLines !== []) {
+                    $this->markSelectedOrderItemsReturned($order, $returnLines);
+                } else {
+                    $this->markAllOrderItemsReturned($order);
                 }
-                $order->returned_at = now();
             }
-
-            $order->save();
-
-            $this->syncOrderItemsRentalFromOrder($order);
         });
 
         $order->refresh();
@@ -941,6 +986,213 @@ trait ManagesOrderLive
         }
 
         return 1;
+    }
+
+    /**
+     * @param  list<int>  $orderItemIds
+     */
+    private function markSelectedOrderItemsDelivered(Order $order, array $orderItemIds): void
+    {
+        $order->load('items');
+
+        $validIds = $order->items->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $selected = array_values(array_intersect(
+            array_map('intval', $orderItemIds),
+            $validIds
+        ));
+
+        if ($selected === []) {
+            throw ValidationException::withMessages([
+                'order_item_ids' => [__('vendor.deliver_items_required')],
+            ]);
+        }
+
+        $now = now();
+
+        foreach ($order->items as $line) {
+            if (! in_array((int) $line->id, $selected, true)) {
+                continue;
+            }
+            if (! $line->delivered_at) {
+                $line->delivered_at = $now;
+                $line->save();
+            }
+        }
+
+        $this->syncOrderDeliveredTimestampFromItems($order);
+    }
+
+    private function syncOrderDeliveredTimestampFromItems(Order $order): void
+    {
+        $order->load('items');
+
+        if ($order->items->isEmpty()) {
+            $order->delivered_at = null;
+            $order->save();
+
+            return;
+        }
+
+        $allDelivered = $order->items->every(fn (OrderItem $line) => $line->delivered_at !== null);
+
+        if ($allDelivered) {
+            if (! $order->delivered_at) {
+                $order->delivered_at = now();
+            }
+        } else {
+            $order->delivered_at = null;
+            $order->returned_at = null;
+            foreach ($order->items as $line) {
+                if ($line->returned_at) {
+                    $line->returned_at = null;
+                    $line->rental_duration_minutes = null;
+                    $line->save();
+                }
+            }
+        }
+
+        $order->save();
+    }
+
+    /**
+     * @param  list<array{order_item_id: int, quantity: int}>  $returnLines
+     */
+    private function markSelectedOrderItemsReturned(Order $order, array $returnLines): void
+    {
+        $order->load('items');
+        $linesById = $order->items->keyBy('id');
+        $now = now();
+        $touched = false;
+
+        foreach ($returnLines as $row) {
+            $lineId = (int) ($row['order_item_id'] ?? 0);
+            $qty = (int) ($row['quantity'] ?? 0);
+            if ($lineId < 1 || $qty < 1) {
+                continue;
+            }
+
+            /** @var OrderItem|null $line */
+            $line = $linesById->get($lineId);
+            if (! $line) {
+                continue;
+            }
+
+            if (! $line->delivered_at) {
+                throw ValidationException::withMessages([
+                    'return_lines' => [__('vendor.return_item_not_delivered', ['name' => $line->item_name ?? __('vendor.item')])],
+                ]);
+            }
+
+            $maxQty = max(1, (int) $line->quantity);
+            $returnedQty = min($maxQty, $qty);
+            $line->returned_qty = $returnedQty;
+
+            if ($returnedQty >= $maxQty) {
+                if (! $line->returned_at) {
+                    $line->returned_at = $now;
+                }
+                if ($line->delivered_at) {
+                    $line->rental_duration_minutes = (int) max(0, round($line->delivered_at->diffInSeconds($line->returned_at) / 60));
+                }
+            } else {
+                $line->returned_at = null;
+                $line->rental_duration_minutes = null;
+            }
+
+            $line->save();
+            $touched = true;
+        }
+
+        if (! $touched) {
+            throw ValidationException::withMessages([
+                'return_lines' => [__('vendor.return_items_required')],
+            ]);
+        }
+
+        $this->syncOrderReturnedTimestampFromItems($order);
+    }
+
+    private function markAllOrderItemsReturned(Order $order): void
+    {
+        $order->load('items');
+        $now = now();
+
+        foreach ($order->items as $line) {
+            if (! $line->delivered_at) {
+                $line->delivered_at = $now;
+            }
+            $line->returned_qty = max(1, (int) $line->quantity);
+            $line->returned_at = $now;
+            if ($line->delivered_at) {
+                $line->rental_duration_minutes = (int) max(0, round($line->delivered_at->diffInSeconds($line->returned_at) / 60));
+            }
+            $line->save();
+        }
+
+        if (! $order->delivered_at) {
+            $order->delivered_at = $now;
+        }
+        $order->returned_at = $now;
+        $order->save();
+    }
+
+    private function clearOrderItemsReturned(Order $order): void
+    {
+        $order->load('items');
+        $order->returned_at = null;
+        $order->save();
+
+        foreach ($order->items as $line) {
+            $line->returned_at = null;
+            $line->returned_qty = 0;
+            $line->rental_duration_minutes = null;
+            $line->save();
+        }
+    }
+
+    private function clearOrderItemsDeliveredAndReturned(Order $order): void
+    {
+        $order->delivered_at = null;
+        $order->returned_at = null;
+        $order->save();
+
+        $order->load('items');
+
+        foreach ($order->items as $line) {
+            $line->delivered_at = null;
+            $line->returned_at = null;
+            $line->returned_qty = 0;
+            $line->rental_duration_minutes = null;
+            $line->save();
+        }
+    }
+
+    private function syncOrderReturnedTimestampFromItems(Order $order): void
+    {
+        $order->load('items');
+
+        if ($order->items->isEmpty()) {
+            $order->returned_at = null;
+            $order->save();
+
+            return;
+        }
+
+        $allReturned = $order->items->every(function (OrderItem $line) {
+            $maxQty = max(1, (int) $line->quantity);
+
+            return $line->returned_at !== null || (int) $line->returned_qty >= $maxQty;
+        });
+
+        if ($allReturned) {
+            if (! $order->returned_at) {
+                $order->returned_at = now();
+            }
+        } else {
+            $order->returned_at = null;
+        }
+
+        $order->save();
     }
 
     /**

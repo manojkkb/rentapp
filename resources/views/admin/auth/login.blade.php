@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' }" :class="{ 'dark': darkMode }">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +10,8 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     
     <style>
+        [x-cloak] { display: none !important; }
+
         * { font-family: 'Inter', sans-serif; }
         
         /* Green gradient */
@@ -41,13 +43,21 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
-    
+<body class="min-h-full bg-gray-50 dark:bg-gray-900"
+      x-data="{
+          darkMode: localStorage.getItem('darkMode') === 'true',
+          toggleDark() {
+              this.darkMode = !this.darkMode;
+              localStorage.setItem('darkMode', this.darkMode);
+          }
+      }"
+      :class="{ 'dark': darkMode }">
+
     <div class="min-h-screen flex">
         <!-- Left Side - Login Form -->
         <div class="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 relative">
             <!-- Dark Mode Toggle -->
-            <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)" 
+            <button @click="toggleDark()"
                     class="absolute top-6 right-6 p-3 text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-gray-800 rounded-xl transition-all shadow-lg">
                 <i class="fas text-xl" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i>
             </button>

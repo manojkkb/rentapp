@@ -22,4 +22,29 @@ class VendorPermission extends Model
             'vendor_role_id'
         );
     }
+
+    public function label(): string
+    {
+        $translationKey = 'vendor.permission_'.str_replace('.', '_', $this->key);
+        $translated = __($translationKey);
+
+        if ($translated !== $translationKey) {
+            return $translated;
+        }
+
+        return $this->description ?? $this->key;
+    }
+
+    public static function groupLabel(?string $group): string
+    {
+        $slug = $group ?: 'general';
+        $translationKey = 'vendor.permission_group_'.$slug;
+        $translated = __($translationKey);
+
+        if ($translated !== $translationKey) {
+            return $translated;
+        }
+
+        return $slug;
+    }
 }

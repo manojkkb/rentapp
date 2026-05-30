@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
 use Symfony\Component\HttpFoundation\Response;
 
 class VendorAuthMiddleware
@@ -24,28 +23,25 @@ class VendorAuthMiddleware
             ]);
         }
         
-        // Check if user has selected a vendor
-        $vendorId = session('current_vendor_id');
-        
-        if (!$vendorId) {
-            // User is authenticated but hasn't selected a vendor
+        $user = Auth::user();
+        $vendorId = $user->vendor_id;
+
+        if (! $vendorId) {
             return redirect()->route('vendor.select')->withErrors([
-                'error' => 'Please select a vendor to continue'
+                'error' => 'Please select a vendor to continue',
             ]);
         }
-        
-        // Verify user has access to this vendor via vendor_users table
-        $user = Auth::user();
+
         $hasAccess = $user->vendors()
             ->where('vendors.id', $vendorId)
             ->wherePivot('is_active', true)
             ->exists();
-        
-        if (!$hasAccess) {
-            // User doesn't have access to this vendor
-            Session::forget('current_vendor_id');
+
+        if (! $hasAccess) {
+            $user->update(['vendor_id' => null]);
+
             return redirect()->route('vendor.select')->withErrors([
-                'error' => 'You do not have access to this vendor'
+                'error' => 'You do not have access to this vendor',
             ]);
         }
         

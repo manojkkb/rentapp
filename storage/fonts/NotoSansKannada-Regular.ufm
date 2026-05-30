@@ -1,0 +1,195 @@
+StartFontMetrics 4.1
+Notice Converted by PHP-font-lib
+Comment https://github.com/dompdf/php-font-lib
+EncodingScheme FontSpecific
+Copyright Copyright 2018-2022 Google Inc. All Rights Reserved.
+FontName Noto Sans Kannada
+FontSubfamily Regular
+UniqueID 2.002;GOOG;NotoSansKannada-Regular
+FullName Noto Sans Kannada Regular
+Version Version 2.002; ttfautohint (v1.8) -l 8 -r 50 -G 200 -x 14 -D knda -f none -a qsq -X ""
+PostScriptName NotoSansKannada-Regular
+Trademark Noto is a trademark of Google Inc.
+Manufacturer Monotype Imaging Inc.
+Designer Jelle Bosma - Monotype Design Team
+Description Designed by Monotype design team.
+FontVendorURL http://www.google.com/get/noto/
+FontDesignerURL http://www.monotype.com/studio
+LicenseDescription This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software.
+LicenseURL http://scripts.sil.org/OFL
+Weight Medium
+ItalicAngle 0
+IsFixedPitch false
+UnderlineThickness 50
+UnderlinePosition -100
+FontHeightOffset 0
+Ascender 809
+Descender -540
+FontBBox -586 -532 1723 809
+StartCharMetrics 481
+U 0 ; WX 0 ; N NULL ; G 1
+U 13 ; WX 288 ; N CR ; G 2
+U 32 ; WX 288 ; N space ; G 3
+U 33 ; WX 269 ; N exclam.knda ; G 406
+U 34 ; WX 408 ; N quotedbl.knda ; G 407
+U 35 ; WX 646 ; N numbersign.knda ; G 408
+U 37 ; WX 831 ; N percent.knda ; G 409
+U 39 ; WX 225 ; N quotesingle.knda ; G 410
+U 40 ; WX 383 ; N parenleft.knda ; G 411
+U 41 ; WX 383 ; N parenright.knda ; G 412
+U 42 ; WX 551 ; N asterisk.knda ; G 413
+U 43 ; WX 572 ; N plus.knda ; G 414
+U 44 ; WX 268 ; N comma.knda ; G 415
+U 45 ; WX 322 ; N hyphen.knda ; G 416
+U 46 ; WX 268 ; N period.knda ; G 417
+U 47 ; WX 519 ; N slash.knda ; G 418
+U 48 ; WX 572 ; N zero.knda ; G 419
+U 49 ; WX 572 ; N one.knda ; G 420
+U 50 ; WX 572 ; N two.knda ; G 421
+U 51 ; WX 572 ; N three.knda ; G 422
+U 52 ; WX 572 ; N four.knda ; G 423
+U 53 ; WX 572 ; N five.knda ; G 424
+U 54 ; WX 572 ; N six.knda ; G 425
+U 55 ; WX 572 ; N seven.knda ; G 426
+U 56 ; WX 572 ; N eight.knda ; G 427
+U 57 ; WX 572 ; N nine.knda ; G 428
+U 58 ; WX 268 ; N colon.knda ; G 429
+U 59 ; WX 280 ; N semicolon.knda ; G 430
+U 60 ; WX 572 ; N less.knda ; G 431
+U 61 ; WX 572 ; N equal.knda ; G 432
+U 62 ; WX 572 ; N greater.knda ; G 433
+U 63 ; WX 458 ; N question.knda ; G 434
+U 91 ; WX 383 ; N bracketleft.knda ; G 435
+U 92 ; WX 519 ; N backslash.knda ; G 436
+U 93 ; WX 383 ; N bracketright.knda ; G 437
+U 94 ; WX 572 ; N asciicircum.knda ; G 438
+U 95 ; WX 444 ; N underscore.knda ; G 439
+U 123 ; WX 383 ; N braceleft.knda ; G 440
+U 124 ; WX 551 ; N bar.knda ; G 441
+U 125 ; WX 382 ; N braceright.knda ; G 442
+U 126 ; WX 572 ; N asciitilde.knda ; G 443
+U 160 ; WX 288 ; N uni00A0.knda ; G 444
+U 173 ; WX 322 ; N sfthyphen.knda ; G 445
+U 215 ; WX 572 ; N multiply.knda ; G 453
+U 247 ; WX 572 ; N divide.knda ; G 454
+U 2385 ; WX 0 ; N uni0951 ; G 457
+U 2386 ; WX 0 ; N uni0952 ; G 458
+U 2404 ; WX 379 ; N dandaknda ; G 459
+U 2405 ; WX 599 ; N dbldandaknda ; G 460
+U 3200 ; WX 556 ; N uni0C80 ; G 4
+U 3201 ; WX 0 ; N candrabinduknda ; G 5
+U 3202 ; WX 550 ; N anusvaraknda ; G 6
+U 3203 ; WX 305 ; N visargaknda ; G 7
+U 3204 ; WX 1044 ; N uni0C84 ; G 8
+U 3205 ; WX 863 ; N aknda ; G 9
+U 3206 ; WX 841 ; N aaknda ; G 10
+U 3207 ; WX 711 ; N iknda ; G 11
+U 3208 ; WX 1010 ; N iiknda ; G 12
+U 3209 ; WX 1222 ; N uknda ; G 13
+U 3210 ; WX 1597 ; N uuknda ; G 14
+U 3211 ; WX 1191 ; N rvocalicknda ; G 15
+U 3212 ; WX 706 ; N lvocalicknda ; G 16
+U 3214 ; WX 787 ; N eknda ; G 17
+U 3215 ; WX 787 ; N eeknda ; G 18
+U 3216 ; WX 807 ; N aiknda ; G 19
+U 3218 ; WX 775 ; N oknda ; G 20
+U 3219 ; WX 775 ; N ooknda ; G 21
+U 3220 ; WX 778 ; N auknda ; G 22
+U 3221 ; WX 574 ; N kaknda ; G 23
+U 3222 ; WX 849 ; N khaknda ; G 24
+U 3223 ; WX 648 ; N gaknda ; G 25
+U 3224 ; WX 996 ; N ghaknda ; G 26
+U 3225 ; WX 775 ; N ngaknda ; G 27
+U 3226 ; WX 797 ; N caknda ; G 28
+U 3227 ; WX 843 ; N chaknda ; G 29
+U 3228 ; WX 775 ; N jaknda ; G 30
+U 3229 ; WX 1379 ; N jhaknda ; G 31
+U 3230 ; WX 966 ; N nyaknda ; G 32
+U 3231 ; WX 815 ; N ttaknda ; G 33
+U 3232 ; WX 651 ; N tthaknda ; G 34
+U 3233 ; WX 768 ; N ddaknda ; G 35
+U 3234 ; WX 768 ; N ddhaknda ; G 36
+U 3235 ; WX 864 ; N nnaknda ; G 37
+U 3236 ; WX 622 ; N taknda ; G 38
+U 3237 ; WX 765 ; N thaknda ; G 39
+U 3238 ; WX 765 ; N daknda ; G 40
+U 3239 ; WX 765 ; N dhaknda ; G 41
+U 3240 ; WX 711 ; N naknda ; G 42
+U 3242 ; WX 792 ; N paknda ; G 43
+U 3243 ; WX 792 ; N phaknda ; G 44
+U 3244 ; WX 800 ; N baknda ; G 45
+U 3245 ; WX 805 ; N bhaknda ; G 46
+U 3246 ; WX 1156 ; N maknda ; G 47
+U 3247 ; WX 1336 ; N yaknda ; G 48
+U 3248 ; WX 651 ; N raknda ; G 49
+U 3249 ; WX 893 ; N rraknda ; G 50
+U 3250 ; WX 759 ; N laknda ; G 51
+U 3251 ; WX 710 ; N llaknda ; G 52
+U 3253 ; WX 794 ; N vaknda ; G 53
+U 3254 ; WX 630 ; N shaknda ; G 54
+U 3255 ; WX 801 ; N ssaknda ; G 55
+U 3256 ; WX 709 ; N saknda ; G 56
+U 3257 ; WX 801 ; N haknda ; G 57
+U 3260 ; WX 0 ; N nuktaknda ; G 58
+U 3261 ; WX 446 ; N avagrahaknda ; G 59
+U 3262 ; WX 449 ; N aavowelsignknda ; G 60
+U 3263 ; WX 327 ; N ivowelsignknda ; G 61
+U 3264 ; WX 728 ; N iivowelsignknda ; G 62
+U 3265 ; WX 364 ; N uvowelsignknda ; G 63
+U 3266 ; WX 746 ; N uuvowelsignknda ; G 64
+U 3267 ; WX 123 ; N rvocalicvowelsignknda ; G 65
+U 3268 ; WX 494 ; N rrvocalicvowelsignknda ; G 66
+U 3270 ; WX 0 ; N evowelsignknda ; G 67
+U 3271 ; WX 408 ; N eevowelsignknda ; G 68
+U 3272 ; WX 0 ; N aivowelsignknda ; G 69
+U 3274 ; WX 0 ; N ovowelsignknda ; G 70
+U 3275 ; WX 0 ; N oovowelsignknda ; G 71
+U 3276 ; WX 430 ; N auvowelsignknda ; G 72
+U 3277 ; WX 313 ; N viramaknda ; G 73
+U 3285 ; WX 408 ; N lengthmarkknda ; G 74
+U 3286 ; WX 183 ; N ailengthmarkknda ; G 75
+U 3294 ; WX 869 ; N faknda ; G 76
+U 3296 ; WX 1570 ; N rrvocalicknda ; G 77
+U 3297 ; WX 706 ; N llvocalicknda ; G 78
+U 3298 ; WX 73 ; N lvocalicvowelsignknda ; G 79
+U 3299 ; WX 73 ; N llvocalicvowelsignknda ; G 80
+U 3302 ; WX 688 ; N zeroknda ; G 81
+U 3303 ; WX 688 ; N oneknda ; G 82
+U 3304 ; WX 688 ; N twoknda ; G 83
+U 3305 ; WX 688 ; N threeknda ; G 84
+U 3306 ; WX 688 ; N fourknda ; G 85
+U 3307 ; WX 688 ; N fiveknda ; G 86
+U 3308 ; WX 688 ; N sixknda ; G 87
+U 3309 ; WX 688 ; N sevenknda ; G 88
+U 3310 ; WX 688 ; N eightknda ; G 89
+U 3311 ; WX 688 ; N nineknda ; G 90
+U 3313 ; WX 531 ; N uni0CF1 ; G 91
+U 3314 ; WX 752 ; N uni0CF2 ; G 92
+U 7376 ; WX 0 ; N uni1CD0 ; G 461
+U 7378 ; WX 0 ; N uni1CD2 ; G 462
+U 7386 ; WX 0 ; N uni1CDA ; G 463
+U 7410 ; WX 513 ; N uni1CF2 ; G 464
+U 7412 ; WX 0 ; N uni1CF4 ; G 465
+U 7413 ; WX 527 ; N uni1CF5 ; G 466
+U 8203 ; WX 0 ; N uni200B ; G 477
+U 8204 ; WX 0 ; N uni200C ; G 478
+U 8205 ; WX 0 ; N uni200D ; G 479
+U 8208 ; WX 322 ; N uni2010 ; G 473
+U 8211 ; WX 500 ; N endash.knda ; G 446
+U 8212 ; WX 1000 ; N emdash.knda ; G 447
+U 8216 ; WX 259 ; N quoteleft.knda ; G 448
+U 8217 ; WX 259 ; N quoteright.knda ; G 449
+U 8220 ; WX 438 ; N quotedblleft.knda ; G 450
+U 8221 ; WX 438 ; N quotedblright.knda ; G 451
+U 8230 ; WX 791 ; N ellipsis.knda ; G 452
+U 8377 ; WX 572 ; N uni20B9.knda ; G 456
+U 8722 ; WX 572 ; N minus.knda ; G 455
+U 9676 ; WX 561 ; N uni25CC ; G 480
+U 43056 ; WX 237 ; N uniA830 ; G 467
+U 43057 ; WX 437 ; N uniA831 ; G 468
+U 43058 ; WX 637 ; N uniA832 ; G 469
+U 43059 ; WX 680 ; N uniA833 ; G 470
+U 43060 ; WX 680 ; N uniA834 ; G 471
+U 43061 ; WX 680 ; N uniA835 ; G 472
+EndCharMetrics
+EndFontMetrics

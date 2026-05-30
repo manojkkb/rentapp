@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'vendor.permission' => \App\Http\Middleware\EnforceVendorPermission::class,
+            'vendor.subscription' => \App\Http\Middleware\EnforceVendorSubscription::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

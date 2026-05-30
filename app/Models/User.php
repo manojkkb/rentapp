@@ -70,16 +70,26 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the current active vendor for this user
+     * Get the current active vendor for this user (stored on users.vendor_id).
      */
     public function currentVendor()
     {
-        $vendorId = session('current_vendor_id');
-        if ($vendorId) {
-            return $this->vendors()->where('vendors.id', $vendorId)->first();
+        if (! $this->vendor_id) {
+            return null;
         }
 
-        return null;
+        return $this->vendors()
+            ->where('vendors.id', $this->vendor_id)
+            ->wherePivot('is_active', true)
+            ->first();
+    }
+
+    /**
+     * Persist the user's selected vendor in the database.
+     */
+    public function setCurrentVendorId(int $vendorId): void
+    {
+        $this->update(['vendor_id' => $vendorId]);
     }
 
     /**

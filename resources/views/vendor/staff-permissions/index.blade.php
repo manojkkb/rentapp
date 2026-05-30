@@ -59,7 +59,7 @@
                     @if ($role->permissions->isNotEmpty())
                         <div class="mt-2 flex flex-wrap gap-1">
                             @foreach ($role->permissions->take(6) as $permission)
-                                <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600">{{ $permission->description ?? $permission->key }}</span>
+                                <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600">{{ $permission->label() }}</span>
                             @endforeach
                             @if ($role->permissions->count() > 6)
                                 <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600">+{{ $role->permissions->count() - 6 }}</span>
@@ -212,7 +212,7 @@
                             <div class="space-y-4">
                                 @foreach ($permissions as $group => $groupPermissions)
                                     <div class="rounded-lg border border-gray-200 p-3">
-                                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{{ $group ?: 'general' }}</p>
+                                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{{ \App\Models\VendorPermission::groupLabel($group) }}</p>
                                         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                             @foreach ($groupPermissions as $permission)
                                                 <label class="flex cursor-pointer items-start gap-2 rounded-md p-2 hover:bg-gray-50">
@@ -221,7 +221,7 @@
                                                            :checked="isSelected({{ $permission->id }})"
                                                            @change="togglePermission({{ $permission->id }})"
                                                            class="mt-0.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
-                                                    <span class="text-sm text-gray-700">{{ $permission->description ?? $permission->key }}</span>
+                                                    <span class="text-sm text-gray-700">{{ $permission->label() }}</span>
                                                 </label>
                                             @endforeach
                                         </div>

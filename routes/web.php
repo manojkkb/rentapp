@@ -3,6 +3,11 @@
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
+use App\Http\Controllers\Admin\SubscriptionPlanController as AdminSubscriptionPlanController;
+use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admin\BusinessCategoryController as AdminBusinessCategoryController;
+use App\Http\Controllers\Admin\VendorController as AdminVendorController;
 use App\Http\Controllers\Customer\HomeController;
 use App\Http\Controllers\Vendor\AuthVendorCtrl;
 use App\Http\Controllers\Vendor\CategoryController;
@@ -16,7 +21,9 @@ use App\Http\Controllers\Vendor\VendorController;
 use App\Http\Controllers\Vendor\VendorCouponController;
 use App\Http\Controllers\Vendor\VendorCustomerController;
 use App\Http\Controllers\Vendor\VendorOrderController;
+use App\Http\Controllers\Admin\SupportController as AdminSupportController;
 use App\Http\Controllers\Vendor\VendorPwaController;
+use App\Http\Controllers\Vendor\VendorSupportController;
 use App\Http\Controllers\WelcomeCtrl;
 use App\Http\Middleware\AdminAuthMidddleware;
 use App\Http\Middleware\VendorAuthMiddleware;
@@ -36,9 +43,44 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware([AdminAuthMidddleware::class])->group(function () {
 
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard/revenue', [DashboardController::class, 'revenue'])->name('dashboard.revenue');
+        Route::get('/dashboard/bookings', [DashboardController::class, 'bookings'])->name('dashboard.bookings');
+        Route::get('/dashboard/vendors', [DashboardController::class, 'vendors'])->name('dashboard.vendors');
+        Route::get('/dashboard/cities', [DashboardController::class, 'cities'])->name('dashboard.cities');
 
         Route::get('profile', [AdminController::class, 'profile'])->name('profile');
+        Route::put('profile', [AdminController::class, 'updateProfile'])->name('profile.update');
         Route::get('settings', [AdminController::class, 'settings'])->name('settings');
+        Route::put('settings', [AdminController::class, 'updateSettings'])->name('settings.update');
+
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::get('/', [UserManagementController::class, 'index'])->name('index');
+            Route::get('/customers', [UserManagementController::class, 'customers'])->name('customers');
+            Route::get('/vendor-accounts', [UserManagementController::class, 'vendorAccounts'])->name('vendor-accounts');
+            Route::get('/admins', [UserManagementController::class, 'admins'])->name('admins');
+            Route::get('/kyc', [UserManagementController::class, 'kyc'])->name('kyc');
+            Route::patch('/kyc/{vendor}/approve', [UserManagementController::class, 'approveKyc'])->name('kyc.approve');
+            Route::get('/suspended', [UserManagementController::class, 'suspended'])->name('suspended');
+            Route::patch('/vendors/{vendor}/toggle-active', [UserManagementController::class, 'toggleVendorActive'])->name('vendors.toggle-active');
+            Route::patch('/staff/{vendorUser}/toggle-active', [UserManagementController::class, 'toggleStaffActive'])->name('staff.toggle-active');
+            Route::get('/login-activity', [UserManagementController::class, 'loginActivity'])->name('login-activity');
+        });
+
+        Route::post('vendors/{vendor}/subscription/upgrade', [AdminVendorController::class, 'upgradeSubscription'])->name('vendors.subscription.upgrade');
+        Route::resource('vendors', AdminVendorController::class);
+
+        Route::resource('business-categories', AdminBusinessCategoryController::class)->except(['show']);
+
+        Route::prefix('subscriptions')->name('subscriptions.')->group(function () {
+            Route::get('/', [AdminSubscriptionController::class, 'index'])->name('index');
+            Route::resource('plans', AdminSubscriptionPlanController::class)->except(['show']);
+        });
+
+        Route::prefix('support')->name('support.')->group(function () {
+            Route::get('/', [AdminSupportController::class, 'index'])->name('index');
+            Route::get('/{conversation}', [AdminSupportController::class, 'show'])->name('show');
+            Route::post('/{conversation}/messages', [AdminSupportController::class, 'storeMessage'])->name('messages.store');
+        });
     });
 });
 
@@ -60,7 +102,7 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
 
     Route::post('logout', [AuthVendorCtrl::class, 'logout'])->name('logout');
 
-    Route::middleware([VendorAuthMiddleware::class, 'vendor.permission'])->group(function () {
+    Route::middleware([VendorAuthMiddleware::class, 'vendor.subscription', 'vendor.permission'])->group(function () {
 
         Route::get('/home', [VendorController::class, 'home'])->name('home');
         Route::get('/dashboard/stats', [VendorController::class, 'getDashboardStats'])->name('dashboard.stats');
@@ -106,6 +148,8 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
         Route::get('calendar/events', [VendorCalendarController::class, 'events'])->name('calendar.events');
 
         // Orders
+        Route::get('deliveries', [VendorOrderController::class, 'deliveries'])->name('deliveries.index');
+        Route::get('returns', [VendorOrderController::class, 'returns'])->name('returns.index');
         Route::get('orders', [VendorOrderController::class, 'index'])->name('orders.index');
         Route::get('orders/create', [VendorOrderController::class, 'create'])->name('orders.create');
         Route::post('orders/create/step-1', [VendorOrderController::class, 'storeWizardStep1'])->name('orders.create.step1');
@@ -156,5 +200,9 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
         Route::get('subscription/plans', [SubscriptionVendorController::class, 'subscriptionPlans'])->name('subscription.plans');
         Route::post('subscription/create-order', [SubscriptionVendorController::class, 'createOrder'])->name('subscription.create-order');
         Route::post('subscription/verify-payment', [SubscriptionVendorController::class, 'verifyPayment'])->name('subscription.verify-payment');
+
+        Route::get('support', [VendorSupportController::class, 'index'])->name('support');
+        Route::post('support/messages', [VendorSupportController::class, 'storeMessage'])->name('support.messages.store');
+        Route::get('support/socket-token', [VendorSupportController::class, 'socketToken'])->name('support.socket-token');
     });
 });

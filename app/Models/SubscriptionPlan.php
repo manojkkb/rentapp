@@ -17,6 +17,8 @@ class SubscriptionPlan extends Model
         'duration_days',
         'is_trial',
         'features',
+        'is_active',
+        'is_popular',
     ];
 
     protected $casts = [
@@ -30,5 +32,18 @@ class SubscriptionPlan extends Model
         
     ];
 
+    public function subscriptions()
+    {
+        return $this->hasMany(Subscription::class);
+    }
 
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopePurchasable($query)
+    {
+        return $query->active()->where('is_trial', false);
+    }
 }

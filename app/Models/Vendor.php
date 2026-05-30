@@ -116,6 +116,11 @@ class Vendor extends Model
         return $this->hasMany(Category::class);
     }
 
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
     /**
      * Get all reviews for the vendor.
      */

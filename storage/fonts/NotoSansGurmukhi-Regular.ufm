@@ -1,0 +1,185 @@
+StartFontMetrics 4.1
+Notice Converted by PHP-font-lib
+Comment https://github.com/dompdf/php-font-lib
+EncodingScheme FontSpecific
+Copyright Copyright 2019-2022 Google Inc. All Rights Reserved.
+FontName Noto Sans Gurmukhi
+FontSubfamily Regular
+UniqueID 2.002;NONE;NotoSansGurmukhi-Regular
+FullName Noto Sans Gurmukhi Regular
+Version Version 2.002; ttfautohint (v1.8) -l 8 -r 50 -G 200 -x 14 -D guru -f none -a qsq -X ""
+PostScriptName NotoSansGurmukhi-Regular
+Trademark Noto is a trademark of Google Inc.
+Manufacturer Monotype Imaging Inc.
+Designer Jelle Bosma - Monotype Design Team
+Description Designed by Monotype design team.
+FontVendorURL http://www.google.com/get/noto/
+FontDesignerURL http://www.monotype.com/studio
+LicenseDescription This Font Software is licensed under the SIL Open Font License, Version 1.1. This Font Software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the SIL Open Font License for the specific language, permissions and limitations governing your use of this Font Software.
+LicenseURL http://scripts.sil.org/OFL
+Weight Medium
+ItalicAngle 0
+IsFixedPitch false
+UnderlineThickness 50
+UnderlinePosition -100
+FontHeightOffset 0
+Ascender 896
+Descender -408
+FontBBox -529 -398 1532 896
+StartCharMetrics 306
+U 0 ; WX 0 ; N NULL ; G 1
+U 13 ; WX 260 ; N CR ; G 2
+U 32 ; WX 260 ; N space ; G 3
+U 33 ; WX 383 ; N exclam.guru ; G 233
+U 34 ; WX 502 ; N quotedbl.guru ; G 234
+U 35 ; WX 653 ; N numbersign.guru ; G 235
+U 37 ; WX 828 ; N percent.guru ; G 236
+U 39 ; WX 326 ; N quotesingle.guru ; G 237
+U 40 ; WX 354 ; N parenleft.guru ; G 238
+U 41 ; WX 354 ; N parenright.guru ; G 239
+U 42 ; WX 607 ; N asterisk.guru ; G 240
+U 43 ; WX 551 ; N plus.guru ; G 241
+U 44 ; WX 268 ; N comma.guru ; G 242
+U 45 ; WX 340 ; N hyphen.guru ; G 243
+U 46 ; WX 268 ; N period.guru ; G 244
+U 47 ; WX 429 ; N slash.guru ; G 245
+U 48 ; WX 551 ; N zero.guru ; G 246
+U 49 ; WX 551 ; N one.guru ; G 247
+U 50 ; WX 551 ; N two.guru ; G 248
+U 51 ; WX 551 ; N three.guru ; G 249
+U 52 ; WX 551 ; N four.guru ; G 250
+U 53 ; WX 551 ; N five.guru ; G 251
+U 54 ; WX 551 ; N six.guru ; G 252
+U 55 ; WX 551 ; N seven.guru ; G 253
+U 56 ; WX 551 ; N eight.guru ; G 254
+U 57 ; WX 551 ; N nine.guru ; G 255
+U 58 ; WX 294 ; N colon.guru ; G 256
+U 59 ; WX 294 ; N semicolon.guru ; G 257
+U 60 ; WX 551 ; N less.guru ; G 258
+U 61 ; WX 551 ; N equal.guru ; G 259
+U 62 ; WX 551 ; N greater.guru ; G 260
+U 63 ; WX 518 ; N question.guru ; G 261
+U 91 ; WX 356 ; N bracketleft.guru ; G 262
+U 92 ; WX 429 ; N backslash.guru ; G 263
+U 93 ; WX 356 ; N bracketright.guru ; G 264
+U 94 ; WX 551 ; N asciicircum.guru ; G 265
+U 95 ; WX 411 ; N underscore.guru ; G 266
+U 123 ; WX 391 ; N braceleft.guru ; G 267
+U 124 ; WX 540 ; N bar.guru ; G 268
+U 125 ; WX 376 ; N braceright.guru ; G 269
+U 126 ; WX 551 ; N asciitilde.guru ; G 270
+U 160 ; WX 260 ; N uni00A0.guru ; G 271
+U 173 ; WX 340 ; N sfthyphen.guru ; G 272
+U 215 ; WX 551 ; N multiply.guru ; G 280
+U 247 ; WX 551 ; N divide.guru ; G 281
+U 2385 ; WX 0 ; N uni0951 ; G 284
+U 2386 ; WX 0 ; N uni0952 ; G 285
+U 2404 ; WX 379 ; N danda.guru ; G 286
+U 2405 ; WX 599 ; N dbldanda.guru ; G 287
+U 2561 ; WX 0 ; N adakbindiguru ; G 4
+U 2562 ; WX 0 ; N bindiguru ; G 5
+U 2563 ; WX 405 ; N visargaguru ; G 6
+U 2565 ; WX 742 ; N aguru ; G 7
+U 2566 ; WX 977 ; N aaguru ; G 8
+U 2567 ; WX 816 ; N iguru ; G 9
+U 2568 ; WX 816 ; N iiguru ; G 10
+U 2569 ; WX 662 ; N uguru ; G 11
+U 2570 ; WX 662 ; N uuguru ; G 12
+U 2575 ; WX 557 ; N eeguru ; G 13
+U 2576 ; WX 742 ; N aiguru ; G 14
+U 2579 ; WX 662 ; N ooguru ; G 15
+U 2580 ; WX 742 ; N auguru ; G 16
+U 2581 ; WX 622 ; N kaguru ; G 17
+U 2582 ; WX 598 ; N khaguru ; G 18
+U 2583 ; WX 750 ; N gaguru ; G 19
+U 2584 ; WX 757 ; N ghaguru ; G 20
+U 2585 ; WX 579 ; N ngaguru ; G 21
+U 2586 ; WX 657 ; N caguru ; G 22
+U 2587 ; WX 634 ; N chaguru ; G 23
+U 2588 ; WX 612 ; N jaguru ; G 24
+U 2589 ; WX 594 ; N jhaguru ; G 25
+U 2590 ; WX 567 ; N nyaguru ; G 26
+U 2591 ; WX 575 ; N ttaguru ; G 27
+U 2592 ; WX 660 ; N tthaguru ; G 28
+U 2593 ; WX 597 ; N ddaguru ; G 29
+U 2594 ; WX 646 ; N ddhaguru ; G 30
+U 2595 ; WX 622 ; N nnaguru ; G 31
+U 2596 ; WX 542 ; N taguru ; G 32
+U 2597 ; WX 598 ; N thaguru ; G 33
+U 2598 ; WX 617 ; N daguru ; G 34
+U 2599 ; WX 593 ; N dhaguru ; G 35
+U 2600 ; WX 648 ; N naguru ; G 36
+U 2602 ; WX 593 ; N paguru ; G 37
+U 2603 ; WX 579 ; N phaguru ; G 38
+U 2604 ; WX 608 ; N baguru ; G 39
+U 2605 ; WX 577 ; N bhaguru ; G 40
+U 2606 ; WX 596 ; N maguru ; G 41
+U 2607 ; WX 695 ; N yaguru ; G 42
+U 2608 ; WX 579 ; N raguru ; G 43
+U 2610 ; WX 674 ; N laguru ; G 44
+U 2611 ; WX 674 ; N lanuktaguru ; G 45
+U 2613 ; WX 567 ; N vaguru ; G 46
+U 2614 ; WX 603 ; N sanuktaguru ; G 47
+U 2616 ; WX 596 ; N saguru ; G 48
+U 2617 ; WX 576 ; N haguru ; G 49
+U 2620 ; WX 0 ; N nuktaguru ; G 50
+U 2622 ; WX 235 ; N aamatraguru ; G 51
+U 2623 ; WX 259 ; N imatraguru ; G 52
+U 2624 ; WX 259 ; N iimatraguru ; G 53
+U 2625 ; WX 0 ; N umatraguru ; G 54
+U 2626 ; WX 0 ; N uumatraguru ; G 55
+U 2631 ; WX 0 ; N eematraguru ; G 56
+U 2632 ; WX 0 ; N aimatraguru ; G 57
+U 2635 ; WX 0 ; N oomatraguru ; G 58
+U 2636 ; WX 0 ; N aumatraguru ; G 59
+U 2637 ; WX 0 ; N halantguru ; G 60
+U 2641 ; WX 0 ; N udaatguru ; G 61
+U 2649 ; WX 598 ; N khanuktaguru ; G 62
+U 2650 ; WX 750 ; N ganuktaguru ; G 63
+U 2651 ; WX 626 ; N januktaguru ; G 64
+U 2652 ; WX 569 ; N rraguru ; G 65
+U 2654 ; WX 579 ; N phanuktaguru ; G 66
+U 2662 ; WX 551 ; N zeroguru ; G 67
+U 2663 ; WX 551 ; N oneguru ; G 68
+U 2664 ; WX 551 ; N twoguru ; G 69
+U 2665 ; WX 551 ; N threeguru ; G 70
+U 2666 ; WX 551 ; N fourguru ; G 71
+U 2667 ; WX 551 ; N fiveguru ; G 72
+U 2668 ; WX 551 ; N sixguru ; G 73
+U 2669 ; WX 551 ; N sevenguru ; G 74
+U 2670 ; WX 551 ; N eightguru ; G 75
+U 2671 ; WX 551 ; N nineguru ; G 76
+U 2672 ; WX 0 ; N tippiguru ; G 77
+U 2673 ; WX 0 ; N addakguru ; G 78
+U 2674 ; WX 557 ; N iriguru ; G 79
+U 2675 ; WX 662 ; N uraguru ; G 80
+U 2676 ; WX 1484 ; N ekonkarguru ; G 81
+U 2677 ; WX 0 ; N yakashguru ; G 82
+U 2678 ; WX 280 ; N uni0A76 ; G 83
+U 8203 ; WX 0 ; N uni200B ; G 299
+U 8204 ; WX 0 ; N uni200C ; G 300
+U 8205 ; WX 0 ; N uni200D ; G 301
+U 8208 ; WX 340 ; N uni2010 ; G 298
+U 8211 ; WX 500 ; N endash.guru ; G 273
+U 8212 ; WX 1000 ; N emdash.guru ; G 274
+U 8216 ; WX 312 ; N quoteleft.guru ; G 275
+U 8217 ; WX 312 ; N quoteright.guru ; G 276
+U 8220 ; WX 500 ; N quotedblleft.guru ; G 277
+U 8221 ; WX 500 ; N quotedblright.guru ; G 278
+U 8230 ; WX 804 ; N ellipsis.guru ; G 279
+U 8377 ; WX 551 ; N uni20B9.guru ; G 283
+U 8722 ; WX 551 ; N minus.guru ; G 282
+U 9676 ; WX 566 ; N uni25CC ; G 302
+U 9772 ; WX 949 ; N uni262C ; G 84
+U 43056 ; WX 237 ; N uniA830 ; G 288
+U 43057 ; WX 437 ; N uniA831 ; G 289
+U 43058 ; WX 637 ; N uniA832 ; G 290
+U 43059 ; WX 622 ; N uniA833 ; G 291
+U 43060 ; WX 622 ; N uniA834 ; G 292
+U 43061 ; WX 622 ; N uniA835 ; G 293
+U 43062 ; WX 460 ; N uniA836 ; G 294
+U 43063 ; WX 509 ; N uniA837 ; G 295
+U 43064 ; WX 307 ; N uniA838 ; G 296
+U 43065 ; WX 337 ; N uniA839 ; G 297
+EndCharMetrics
+EndFontMetrics

@@ -5,7 +5,7 @@
             <!-- Left side - Menu toggle & Search -->
             <div class="flex items-center space-x-4">
                 <!-- Sidebar Toggle -->
-                <button @click="sidebarOpen = !sidebarOpen" class="text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-gray-700 hover:text-green-600 dark:hover:text-green-400 p-2 rounded-lg focus:outline-none transition-all">
+                <button @click="toggleSidebar()" class="text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-gray-700 hover:text-green-600 dark:hover:text-green-400 p-2 rounded-lg focus:outline-none transition-all">
                     <i class="fas fa-bars text-xl"></i>
                 </button>
                 
@@ -21,7 +21,7 @@
             <!-- Right side - Dark Mode, Notifications & Profile -->
             <div class="flex items-center space-x-3">
                 <!-- Dark Mode Toggle -->
-                <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)" 
+                <button @click="toggleDark()"
                         class="p-2.5 text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-gray-700 hover:text-green-600 dark:hover:text-green-400 rounded-lg transition-all">
                     <i class="fas text-xl" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i>
                 </button>
@@ -73,15 +73,16 @@
                 </div>
                 
                 <!-- Profile -->
+                @php $navAdmin = auth()->guard('admin')->user(); @endphp
                 <div class="relative" x-data="{ profileOpen: false }">
                     <button @click="profileOpen = !profileOpen" 
                             class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
-                        <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->guard('admin')->user()->name ?? 'Admin User') }}&background=10b981&color=fff" 
+                        <img src="{{ $navAdmin?->avatar_url ?? $navAdmin?->initialsAvatarUrl() ?? 'https://ui-avatars.com/api/?name=Admin&background=10b981&color=fff' }}" 
                              alt="Profile" 
-                             class="w-10 h-10 rounded-full ring-2 ring-green-500">
+                             class="w-10 h-10 rounded-full object-cover ring-2 ring-green-500">
                         <div class="hidden md:block text-left">
-                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ auth()->guard('admin')->user()->name ?? 'Admin User' }}</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ auth()->guard('admin')->user()->email ?? '' }}</p>
+                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $navAdmin?->name ?? 'Admin' }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $navAdmin?->email ?? '' }}</p>
                         </div>
                         <i class="fas fa-chevron-down text-sm text-gray-400 dark:text-gray-500"></i>
                     </button>
@@ -92,8 +93,8 @@
                          x-transition
                          class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden z-50">
                         <div class="p-4 bg-green-gradient text-white">
-                            <p class="font-bold">{{ auth()->guard('admin')->user()->name ?? 'Admin User' }}</p>
-                            <p class="text-xs text-green-100">{{ auth()->guard('admin')->user()->email ?? '' }}</p>
+                            <p class="font-bold">{{ $navAdmin?->name ?? 'Admin' }}</p>
+                            <p class="text-xs text-green-100">{{ $navAdmin?->email ?? '' }}</p>
                         </div>
                         <div class="py-2">
                             <a href="{{ route('admin.profile') }}" class="flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Vendor\Concerns\ListsVendorLogistics;
 use App\Http\Controllers\Vendor\Concerns\ManagesOrderLive;
 use App\Models\Category;
 use App\Models\CreateOrder;
@@ -10,6 +11,7 @@ use App\Models\Items;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\VendorCustomer;
+use App\Support\PdfIndicFonts;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -21,6 +23,7 @@ use Illuminate\Validation\ValidationException;
 
 class VendorOrderController extends Controller
 {
+    use ListsVendorLogistics;
     use ManagesOrderLive;
 
     /** @var string Session payload for multi-step direct order creation */
@@ -72,6 +75,54 @@ class VendorOrderController extends Controller
         ];
 
         return view('vendor.orders.index', compact('orders', 'statusCounts'));
+    }
+
+    public function deliveries(Request $request)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+        }
+
+        $orders = $this->deliveriesPaginator($vendor);
+
+        return view('vendor.logistics.index', [
+            'type' => 'deliveries',
+            'orders' => $orders,
+            'pageTitle' => __('vendor.deliveries'),
+            'pageSubtitle' => __('vendor.deliveries_page_subtitle'),
+            'countLabel' => trans_choice('vendor.dashboard_outgoing_choice', $orders->total()),
+            'countBadgeClass' => 'bg-sky-50 text-sky-800 ring-1 ring-sky-100',
+            'emptyMessage' => __('vendor.dashboard_outgoing_empty'),
+            'todayRingClass' => 'ring-1 ring-emerald-200/80 bg-emerald-50/40',
+            'tomorrowRingClass' => 'ring-1 ring-sky-200/70 bg-sky-50/35',
+            'timeBadgeClass' => 'text-emerald-900 ring-1 ring-emerald-300/70 bg-emerald-100',
+        ]);
+    }
+
+    public function returns(Request $request)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+        }
+
+        $orders = $this->returnsPaginator($vendor);
+
+        return view('vendor.logistics.index', [
+            'type' => 'returns',
+            'orders' => $orders,
+            'pageTitle' => __('vendor.returns'),
+            'pageSubtitle' => __('vendor.returns_page_subtitle'),
+            'countLabel' => trans_choice('vendor.dashboard_returns_choice', $orders->total()),
+            'countBadgeClass' => 'bg-violet-50 text-violet-800 ring-1 ring-violet-100',
+            'emptyMessage' => __('vendor.dashboard_returns_empty'),
+            'todayRingClass' => 'ring-1 ring-violet-200/80 bg-violet-50/40',
+            'tomorrowRingClass' => 'ring-1 ring-violet-200/50 bg-violet-50/25',
+            'timeBadgeClass' => 'text-violet-900 ring-1 ring-violet-300/70 bg-violet-100',
+        ]);
     }
 
     /**
@@ -974,6 +1025,7 @@ class VendorOrderController extends Controller
             $summaries[] = [
                 'item_id' => (int) $row['item_id'],
                 'name' => $item->name,
+                'photo_url' => $item->photo_url,
                 'quantity' => $qty,
                 'price_type' => $linePriceType,
                 'billing_units' => $row['billing_units'] ?? null,
@@ -1180,17 +1232,25 @@ class VendorOrderController extends Controller
 
         $order->load(['customer', 'items.item.category', 'vendor']);
 
+        $locale = session('language') ?? Auth::user()?->language ?? config('app.locale');
+        app()->setLocale($locale);
+
         $safeOrderNumber = preg_replace('/[^A-Za-z0-9_\-]/', '-', (string) ($order->order_number ?? 'invoice-'.$order->id));
         $filename = 'invoice-'.$safeOrderNumber.'.pdf';
+
+        PdfIndicFonts::ensureInstalled();
 
         $pdf = Pdf::loadView('vendor.orders.print', [
             'order' => $order,
             'autoprint' => false,
             'forPdf' => true,
+            'isInvoice' => true,
+            'pdfFontFamily' => PdfIndicFonts::cssFontFamily(),
         ])->setPaper('a4')
-            ->setOption('defaultFont', 'DejaVu Sans')
+            ->setOption('defaultFont', PdfIndicFonts::defaultFontFamily())
             ->setOption('isHtml5ParserEnabled', true)
-            ->setOption('isRemoteEnabled', false);
+            ->setOption('isRemoteEnabled', false)
+            ->setOption('enable_font_subsetting', true);
 
         return $pdf->download($filename);
     }
