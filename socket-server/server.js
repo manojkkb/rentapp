@@ -2,25 +2,69 @@ import crypto from 'crypto';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
-import { createServer } from 'http';
+import fs from 'fs';
+import { createServer as createHttpServer } from 'http';
+import { createServer as createHttpsServer } from 'https';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Server } from 'socket.io';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+const isProduction = process.env.APP_ENV === 'production';
 const PORT = Number(process.env.SOCKET_PORT || 6001);
+const HOST = process.env.SOCKET_HOST || (isProduction ? '0.0.0.0' : '127.0.0.1');
 const SECRET = process.env.SOCKET_SERVER_SECRET || '';
 const APP_URL = process.env.APP_URL || 'http://127.0.0.1:8000';
+const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || '';
+const SSL_KEY_PATH = process.env.SOCKET_SSL_KEY || '';
+const SSL_CERT_PATH = process.env.SOCKET_SSL_CERT || '';
 
-const allowedOrigins = [
-    APP_URL,
+const devOrigins = [
     'http://127.0.0.1:8000',
     'http://localhost:8000',
     'http://127.0.0.1:5173',
     'http://localhost:5173',
-].filter(Boolean);
+];
+
+const allowedOrigins = [
+    ...new Set([APP_URL, SOCKET_SERVER_URL, ...(isProduction ? [] : devOrigins)].filter(Boolean)),
+];
+
+function useTls() {
+    return Boolean(SSL_KEY_PATH && SSL_CERT_PATH);
+}
+
+if (isProduction && !useTls()) {
+    console.error('APP_ENV=production requires SOCKET_SSL_KEY and SOCKET_SSL_CERT in .env');
+    process.exit(1);
+}
+
+function createNodeServer(app) {
+    if (useTls()) {
+        return createHttpsServer(
+            {
+                key: fs.readFileSync(SSL_KEY_PATH),
+                cert: fs.readFileSync(SSL_CERT_PATH),
+            },
+            app,
+        );
+    }
+
+    return createHttpServer(app);
+}
+
+function publicUrl() {
+    if (SOCKET_SERVER_URL) {
+        return SOCKET_SERVER_URL.replace(/\/$/, '');
+    }
+
+    const scheme = useTls() ? 'https' : 'http';
+    const displayHost = HOST === '0.0.0.0' ? 'localhost' : HOST;
+
+    return `${scheme}://${displayHost}:${PORT}`;
+}
 
 function verifyToken(token) {
     if (!token || !SECRET) {
@@ -60,7 +104,7 @@ const app = express();
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '32kb' }));
 
-const httpServer = createServer(app);
+const httpServer = createNodeServer(app);
 const io = new Server(httpServer, {
     cors: {
         origin: allowedOrigins,
@@ -105,6 +149,8 @@ app.get('/health', (_req, res) => {
     res.json({ ok: true, service: 'rentkia-socket' });
 });
 
-httpServer.listen(PORT, '127.0.0.1', () => {
-    console.log(`Socket.IO server listening on http://127.0.0.1:${PORT}`);
+httpServer.listen(PORT, HOST, () => {
+    const scheme = useTls() ? 'https' : 'http';
+    console.log(`Socket.IO server [${process.env.APP_ENV || 'local'}] ${scheme}://${HOST}:${PORT}`);
+    console.log(`Public URL: ${publicUrl()}`);
 });

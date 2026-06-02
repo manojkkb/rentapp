@@ -80,7 +80,7 @@
             </li>
             @endvendorCan
 
-            @vendorCan('orders.view')
+            @vendorCan('deliveries.view')
             <li>
                 <a href="{{ route('vendor.deliveries.index') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
@@ -95,6 +95,9 @@
                     <span class="min-w-0 truncate">{{ __('vendor.deliveries') }}</span>
                 </a>
             </li>
+            @endvendorCan
+
+            @vendorCan('returns.view')
             <li>
                 <a href="{{ route('vendor.returns.index') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
@@ -262,6 +265,7 @@
             </li>
             @endvendorCan
 
+            @vendorCan('support.view')
             <li>
                 <a href="{{ route('vendor.support') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
@@ -276,6 +280,7 @@
                     <span class="min-w-0 truncate">{{ __('vendor.help_support') }}</span>
                 </a>
             </li>
+            @endvendorCan
         </ul>
     </nav>
 

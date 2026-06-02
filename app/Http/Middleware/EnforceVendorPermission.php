@@ -11,7 +11,12 @@ class EnforceVendorPermission
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $permission = VendorAccess::permissionForRoute($request->route()?->getName());
+        $routeName = $request->route()?->getName();
+        $permission = VendorAccess::permissionForRoute($routeName);
+
+        if ($permission === null && $routeName === 'vendor.orders.rental-status') {
+            $permission = VendorAccess::permissionForRentalStatusRequest($request);
+        }
 
         if ($permission === null) {
             return $next($request);
@@ -19,7 +24,16 @@ class EnforceVendorPermission
 
         $access = VendorAccess::current();
 
-        if (! $access || ! $access->can($permission)) {
+        $allowed = $access && $access->can($permission);
+
+        if (! $allowed && $routeName === 'vendor.orders.rental-status') {
+            $fallback = $request->filled('delivered') || $request->filled('returned')
+                ? 'orders.edit'
+                : null;
+            $allowed = $fallback && $access && $access->can($fallback);
+        }
+
+        if (! $allowed) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,

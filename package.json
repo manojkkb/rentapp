@@ -6,7 +6,7 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "socket": "node socket-server/server.js"
+        "socket": "npm run start --prefix socket-server"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.2.1",

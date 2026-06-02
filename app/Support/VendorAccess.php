@@ -106,9 +106,6 @@ class VendorAccess
             'vendor.language.switch',
             'vendor.logout',
             'vendor.manifest',
-            'vendor.support',
-            'vendor.support.messages.store',
-            'vendor.support.socket-token',
         ];
 
         if (in_array($routeName, $alwaysAllowed, true)) {
@@ -127,12 +124,25 @@ class VendorAccess
             return match ($routeName) {
                 'vendor.staff.index' => 'staff.view',
                 'vendor.staff.create', 'vendor.staff.store' => 'staff.invite',
+                'vendor.staff.destroy' => 'staff.remove',
                 default => 'staff.edit',
             };
         }
 
-        if (in_array($routeName, ['vendor.deliveries.index', 'vendor.returns.index'], true)) {
-            return 'orders.view';
+        if ($routeName === 'vendor.deliveries.index') {
+            return 'deliveries.view';
+        }
+
+        if ($routeName === 'vendor.returns.index') {
+            return 'returns.view';
+        }
+
+        if ($routeName === 'vendor.orders.rental-status') {
+            return null;
+        }
+
+        if (str_starts_with($routeName, 'vendor.support')) {
+            return 'support.view';
         }
 
         if (str_starts_with($routeName, 'vendor.orders.create')) {
@@ -144,6 +154,10 @@ class VendorAccess
                 return 'orders.view';
             }
 
+            if ($routeName === 'vendor.orders.update-status') {
+                return 'orders.cancel';
+            }
+
             return 'orders.edit';
         }
 
@@ -151,6 +165,7 @@ class VendorAccess
             return match ($routeName) {
                 'vendor.items.index', 'vendor.items.fetch' => 'items.view',
                 'vendor.items.create', 'vendor.items.store' => 'items.create',
+                'vendor.items.destroy' => 'items.delete',
                 default => 'items.edit',
             };
         }
@@ -179,10 +194,29 @@ class VendorAccess
         }
 
         if (str_starts_with($routeName, 'vendor.subscription.')) {
-            return 'settings.view';
+            return match ($routeName) {
+                'vendor.subscription.plans' => 'settings.view',
+                default => 'settings.edit',
+            };
         }
 
         return null;
+    }
+
+    /**
+     * Permission for rental-status PATCH (delivered vs returned actions).
+     */
+    public static function permissionForRentalStatusRequest(\Illuminate\Http\Request $request): ?string
+    {
+        if ($request->filled('delivered')) {
+            return 'deliveries.manage';
+        }
+
+        if ($request->filled('returned')) {
+            return 'returns.manage';
+        }
+
+        return 'orders.edit';
     }
 
     /** @return Collection<int, string> */

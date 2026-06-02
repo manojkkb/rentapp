@@ -101,7 +101,8 @@
     @endforelse
 </div>
 
-{{-- Inline Alpine component (must be in DOM before Alpine.start — do not use @section('scripts')) --}}
+@push('modals')
+{{-- Rendered outside scrollable <main> so the permission list is not clipped --}}
 <div
     id="role-permission-modal"
     x-data="{
@@ -182,18 +183,18 @@
     @open-role-modal.window="open($event.detail)"
     @keydown.escape.window="if (visible) close()"
 >
-    <div x-show="visible" class="fixed inset-0 z-50 flex items-end justify-center p-2 sm:items-center sm:p-4" role="dialog" aria-modal="true">
+    <div x-show="visible" x-transition.opacity class="fixed inset-0 z-[100] flex items-end justify-center p-2 sm:items-center sm:p-4" role="dialog" aria-modal="true">
         <div class="fixed inset-0 bg-black/50" @click="close()"></div>
-        <div class="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
+        <div class="relative z-10 flex h-[min(90dvh,720px)] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl sm:h-auto sm:max-h-[90dvh]">
             <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3">
                 <h3 class="text-lg font-semibold text-gray-900" x-text="modalTitle"></h3>
                 <button type="button" @click="close()" class="rounded-md p-1 text-gray-500 hover:bg-gray-100" aria-label="Close">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <form :action="formAction" method="POST" class="flex min-h-0 flex-1 flex-col" @submit="submitForm($event)">
+            <form :action="formAction" method="POST" class="flex min-h-0 flex-1 flex-col overflow-hidden" @submit="submitForm($event)">
                 @csrf
-                <div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+                <div class="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain px-4 py-4 [-webkit-overflow-scrolling:touch]">
                     <div>
                         <label class="mb-1 block text-sm font-medium text-gray-700">{{ __('vendor.staff_permissions_role_name') }}</label>
                         <input type="text" name="name" x-model="name" required maxlength="100"
@@ -220,8 +221,8 @@
                                                            value="{{ $permission->id }}"
                                                            :checked="isSelected({{ $permission->id }})"
                                                            @change="togglePermission({{ $permission->id }})"
-                                                           class="mt-0.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
-                                                    <span class="text-sm text-gray-700">{{ $permission->label() }}</span>
+                                                           class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                                                    <span class="min-w-0 text-sm leading-snug text-gray-700">{{ $permission->label() }}</span>
                                                 </label>
                                             @endforeach
                                         </div>
@@ -245,4 +246,5 @@
         </div>
     </div>
 </div>
+@endpush
 @endsection

@@ -56,6 +56,8 @@
     <!-- Mobile Bottom Navigation -->
     @include('vendor.layouts.mobile-nav')
 
+    @stack('modals')
+
     @php
         $pwaHomePath = parse_url(route('vendor.home', [], false), PHP_URL_PATH) ?: '/vendor/home';
         $pwaSwScope = rtrim(str_replace('\\', '/', dirname($pwaHomePath)), '/') . '/';
