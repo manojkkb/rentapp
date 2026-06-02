@@ -10,6 +10,8 @@ import { fileURLToPath } from 'url';
 import { Server } from 'socket.io';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Laravel .env first, then socket-server/.env (host/port/ssl overrides only)
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const isProduction = process.env.APP_ENV === 'production';
@@ -34,6 +36,11 @@ function useTls() {
 
 if (isProduction && !useTls()) {
     console.error('APP_ENV=production requires SOCKET_SSL_KEY and SOCKET_SSL_CERT.');
+    process.exit(1);
+}
+
+if (!SECRET) {
+    console.error('SOCKET_SERVER_SECRET is missing. Set it in project .env (same value Laravel uses).');
     process.exit(1);
 }
 
@@ -178,8 +185,15 @@ const io = new Server(httpServer, {
 });
 
 io.use((socket, next) => {
-    const payload = verifyToken(socket.handshake.auth?.token);
+    const token = socket.handshake.auth?.token;
+    if (!token) {
+        next(new Error('Unauthorized'));
+        return;
+    }
+
+    const payload = verifyToken(token);
     if (!payload) {
+        console.warn('Socket auth failed: token invalid or expired (check SOCKET_SERVER_SECRET matches Laravel)');
         next(new Error('Unauthorized'));
         return;
     }
