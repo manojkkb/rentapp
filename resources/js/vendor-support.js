@@ -107,6 +107,23 @@ function vendorSupportChatFactory(config = {}) {
             setTimeout(() => this.scrollToBottom(), 300);
         },
 
+        focusComposer() {
+            this.$nextTick(() => {
+                const input = this.$refs.messageInput;
+                if (input && typeof input.focus === 'function') {
+                    input.focus();
+                }
+            });
+        },
+
+        onEnterKey(event) {
+            if (event.shiftKey) {
+                return;
+            }
+            event.preventDefault();
+            this.send();
+        },
+
         updateTicketStatusFromMessage(msg) {
             if (!msg?.sender_type) {
                 return;
@@ -163,6 +180,7 @@ function vendorSupportChatFactory(config = {}) {
                 alert('Could not send message. Please try again.');
             } finally {
                 this.sending = false;
+                this.focusComposer();
             }
         },
 
