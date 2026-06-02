@@ -4,8 +4,14 @@
         <div class="flex items-center justify-between">
             <!-- Left side - Menu toggle & Search -->
             <div class="flex items-center space-x-4">
-                <!-- Sidebar Toggle -->
-                <button @click="toggleSidebar()" class="text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-gray-700 hover:text-green-600 dark:hover:text-green-400 p-2 rounded-lg focus:outline-none transition-all">
+                <!-- Sidebar Toggle (mobile) -->
+                <button
+                    type="button"
+                    @click.stop="toggleSidebar()"
+                    class="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 text-gray-700 transition-all hover:bg-green-50 hover:text-green-600 focus:outline-none focus:ring-2 focus:ring-green-500/30 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-green-400 md:hidden touch-manipulation"
+                    aria-label="Open menu"
+                    :aria-expanded="sidebarOpen"
+                >
                     <i class="fas fa-bars text-xl"></i>
                 </button>
                 

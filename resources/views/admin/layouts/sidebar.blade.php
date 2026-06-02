@@ -1,24 +1,33 @@
 <!-- Modern Green Sidebar -->
 <aside
-       class="admin-sidebar fixed inset-y-0 left-0 z-30 flex h-full w-72 max-h-[100dvh] min-h-0 flex-shrink-0 -translate-x-full flex-col overflow-y-auto border-r border-gray-200 bg-white transition-transform duration-300 dark:border-gray-700 dark:bg-gray-800 md:static md:max-h-none md:translate-x-0"
-       :class="{ 'translate-x-0': sidebarOpen }"
-       @click.away="if (window.innerWidth < 768) sidebarOpen = false">
-    
+    class="admin-sidebar fixed inset-y-0 left-0 z-50 flex h-full w-72 max-h-[100dvh] min-h-0 flex-shrink-0 flex-col overflow-y-auto overscroll-contain border-r border-gray-200 bg-white shadow-xl transition-transform duration-300 ease-out dark:border-gray-700 dark:bg-gray-800 md:static md:z-auto md:max-h-none md:w-72 md:translate-x-0 md:shadow-none"
+    :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'"
+>
     <!-- Logo -->
-    <div class="p-5 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10">
-        <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 bg-green-gradient rounded-xl flex items-center justify-center">
-                <i class="fas fa-home text-white text-xl"></i>
+    <div class="sticky top-0 z-10 border-b border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
+        <div class="flex items-center justify-between gap-2">
+            <div class="flex min-w-0 items-center space-x-3">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-gradient">
+                    <i class="fas fa-home text-xl text-white"></i>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="truncate text-xl font-bold text-gray-900 dark:text-white">Rentkia</h1>
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Admin Panel</p>
+                </div>
             </div>
-            <div>
-                <h1 class="text-xl font-bold text-gray-900 dark:text-white">Rentkia</h1>
-                <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Admin Panel</p>
-            </div>
+            <button
+                type="button"
+                @click="closeSidebar()"
+                class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 md:hidden touch-manipulation"
+                aria-label="Close menu"
+            >
+                <i class="fas fa-times text-lg"></i>
+            </button>
         </div>
     </div>
     
     <!-- Navigation Menu -->
-    <nav class="p-3 space-y-1">
+    <nav class="space-y-1 p-3" @click="if ($event.target.closest('a[href]')) closeSidebar()">
         
         <!-- 1. Dashboard -->
         <div x-data="{ open: {{ request()->routeIs('admin.dashboard*') ? 'true' : 'false' }} }">

@@ -26,9 +26,11 @@
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         }
 
-        /* Sidebar visible on desktop even before Alpine loads */
+        /* Desktop: sidebar always visible */
         @media (min-width: 768px) {
-            .admin-sidebar { transform: translateX(0) !important; }
+            .admin-sidebar {
+                transform: translateX(0) !important;
+            }
         }
     </style>
 
@@ -39,28 +41,45 @@
     x-data="{
         darkMode: localStorage.getItem('darkMode') === 'true',
         sidebarOpen: false,
-        toggleSidebar() { this.sidebarOpen = !this.sidebarOpen },
+        isMobile() { return window.innerWidth < 768 },
+        toggleSidebar() {
+            if (this.isMobile()) {
+                this.sidebarOpen = !this.sidebarOpen;
+            }
+        },
+        closeSidebar() {
+            if (this.isMobile()) {
+                this.sidebarOpen = false;
+            }
+        },
         toggleDark() {
             this.darkMode = !this.darkMode;
             localStorage.setItem('darkMode', this.darkMode);
         }
     }"
-    x-init="sidebarOpen = window.innerWidth < 768 ? false : true"
+    x-init="sidebarOpen = !isMobile()"
     :class="{ 'dark': darkMode }"
-    @resize.window="if (window.innerWidth >= 768) { sidebarOpen = true }"
+    @resize.window="sidebarOpen = !isMobile()"
 >
-    {{-- Mobile overlay only; hidden by default so page is never blocked without JS --}}
-    <div
-        class="fixed inset-0 z-20 hidden bg-black/50 md:hidden"
-        :class="sidebarOpen ? 'block' : 'hidden'"
-        @click="sidebarOpen = false"
-        aria-hidden="true"
-    ></div>
-
     <div class="flex h-full min-h-0 overflow-hidden">
+        {{-- Mobile backdrop (do not use @click.away on sidebar — it fires when opening via menu button) --}}
+        <div
+            x-show="sidebarOpen && isMobile()"
+            x-transition:enter="transition-opacity ease-out duration-200"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition-opacity ease-in duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            @click="closeSidebar()"
+            class="fixed inset-0 z-40 bg-black/50 md:hidden"
+            x-cloak
+            aria-hidden="true"
+        ></div>
+
         @include('admin.layouts.sidebar')
 
-        <div class="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div class="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:z-0">
             @include('admin.layouts.navbar')
 
             <main class="min-h-0 flex-1 overflow-x-hidden @yield('main_class', 'overflow-y-auto p-4 sm:p-6')">
