@@ -23,26 +23,32 @@ function vendorSupportChatFactory(config = {}) {
         body: '',
         sending: false,
         connected: false,
+        socketError: '',
         mobileTab: 'chat',
         ticketStatus: config.ticketStatus || 'open',
         socket: null,
-        socketUrl: config.socketUrl || 'http://127.0.0.1:6001',
+        socketUrl: config.socketUrl || '',
         socketToken: config.socketToken || '',
+        socketConfigured: config.socketConfigured !== false,
         sendUrl: config.sendUrl || '',
 
         init() {
-            if (!this.socketUrl || !this.socketToken) {
+            if (!this.socketConfigured || !this.socketUrl || !this.socketToken) {
+                this.socketError = 'Live chat is not configured on the server.';
                 return;
             }
 
             this.socket = io(this.socketUrl, {
                 auth: { token: this.socketToken },
-                transports: ['websocket', 'polling'],
-                secure: this.socketUrl.startsWith('https://'),
+                transports: ['polling', 'websocket'],
+                reconnection: true,
+                reconnectionAttempts: 10,
+                reconnectionDelay: 2000,
             });
 
             this.socket.on('connect', () => {
                 this.connected = true;
+                this.socketError = '';
             });
 
             this.socket.on('disconnect', () => {
@@ -50,8 +56,9 @@ function vendorSupportChatFactory(config = {}) {
             });
 
             this.socket.on('connect_error', (err) => {
-                console.error('Support socket connect_error:', err?.message || err);
                 this.connected = false;
+                this.socketError = err?.message || 'Could not connect to chat server.';
+                console.error('Support socket connect_error:', this.socketError);
             });
 
             this.socket.on('new-message', (msg) => {
@@ -152,5 +159,4 @@ function registerVendorSupportChat() {
 
 document.addEventListener('alpine:init', registerVendorSupportChat);
 
-// If this script loads after Alpine.start() (e.g. cached order), register immediately
 registerVendorSupportChat();

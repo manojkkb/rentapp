@@ -59,6 +59,10 @@ class SupportSocketToken
 
         $encoded = rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
         $secret = (string) config('services.socket.secret', '');
+        if ($secret === '') {
+            return '';
+        }
+
         $signature = hash_hmac('sha256', $encoded, $secret);
 
         return $encoded.'.'.$signature;

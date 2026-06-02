@@ -14,6 +14,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const isProduction = process.env.APP_ENV === 'production';
 const PORT = Number(process.env.SOCKET_PORT || 6001);
+const BROADCAST_PORT = Number(process.env.SOCKET_BROADCAST_PORT || 6002);
 const SECRET = process.env.SOCKET_SERVER_SECRET || '';
 const APP_URL = process.env.APP_URL || 'http://127.0.0.1:8000';
 const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || '';
@@ -29,6 +30,11 @@ const devOrigins = [
 
 function useTls() {
     return Boolean(SSL_KEY_PATH && SSL_CERT_PATH);
+}
+
+if (isProduction && !useTls()) {
+    console.error('APP_ENV=production requires SOCKET_SSL_KEY and SOCKET_SSL_CERT.');
+    process.exit(1);
 }
 
 /** @param {string} url */
@@ -65,8 +71,16 @@ const allowedOrigins = [
     ]),
 ];
 
-const HOST =
-    process.env.SOCKET_HOST || (isProduction && useTls() ? '0.0.0.0' : '127.0.0.1');
+function corsOrigin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+    }
+
+    callback(new Error(`CORS blocked: ${origin}`));
+}
+
+const HOST = process.env.SOCKET_HOST || (isProduction ? '0.0.0.0' : '127.0.0.1');
 
 function createNodeServer(app) {
     if (useTls()) {
@@ -127,14 +141,32 @@ function verifyToken(token) {
     }
 }
 
+function handleBroadcast(req, res, io) {
+    const headerSecret = req.headers['x-socket-secret'];
+    if (!SECRET || headerSecret !== SECRET) {
+        return res.status(403).json({ ok: false, error: 'Forbidden' });
+    }
+
+    const conversationId = req.body?.conversation_id;
+    const message = req.body?.message;
+
+    if (!conversationId || !message?.id) {
+        return res.status(422).json({ ok: false, error: 'Invalid payload' });
+    }
+
+    io.to(`conversation:${conversationId}`).emit('new-message', message);
+
+    return res.json({ ok: true });
+}
+
 const app = express();
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json({ limit: '32kb' }));
 
 const httpServer = createNodeServer(app);
 const io = new Server(httpServer, {
     cors: {
-        origin: allowedOrigins,
+        origin: corsOrigin,
         credentials: true,
     },
 });
@@ -154,23 +186,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {});
 });
 
-app.post('/internal/broadcast', (req, res) => {
-    const headerSecret = req.headers['x-socket-secret'];
-    if (!SECRET || headerSecret !== SECRET) {
-        return res.status(403).json({ ok: false, error: 'Forbidden' });
-    }
-
-    const conversationId = req.body?.conversation_id;
-    const message = req.body?.message;
-
-    if (!conversationId || !message?.id) {
-        return res.status(422).json({ ok: false, error: 'Invalid payload' });
-    }
-
-    io.to(`conversation:${conversationId}`).emit('new-message', message);
-
-    return res.json({ ok: true });
-});
+app.post('/internal/broadcast', (req, res) => handleBroadcast(req, res, io));
 
 app.get('/health', (_req, res) => {
     res.json({ ok: true, service: 'rentkia-socket' });
@@ -178,6 +194,16 @@ app.get('/health', (_req, res) => {
 
 httpServer.listen(PORT, HOST, () => {
     const scheme = useTls() ? 'https' : 'http';
-    console.log(`Socket.IO server [${process.env.APP_ENV || 'local'}] ${scheme}://${HOST}:${PORT}`);
+    console.log(`Socket.IO [${process.env.APP_ENV || 'local'}] ${scheme}://${HOST}:${PORT}`);
     console.log(`Public URL: ${publicUrl()}`);
 });
+
+if (isProduction) {
+    const broadcastApp = express();
+    broadcastApp.use(express.json({ limit: '32kb' }));
+    broadcastApp.post('/internal/broadcast', (req, res) => handleBroadcast(req, res, io));
+
+    createHttpServer(broadcastApp).listen(BROADCAST_PORT, '127.0.0.1', () => {
+        console.log(`Broadcast (internal) http://127.0.0.1:${BROADCAST_PORT}/internal/broadcast`);
+    });
+}

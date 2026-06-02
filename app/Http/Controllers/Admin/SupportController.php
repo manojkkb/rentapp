@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SupportConversation;
 use App\Models\SupportMessage;
 use App\Services\SupportSocketBroadcast;
-use App\Support\SupportSocketToken;
+use App\Support\SocketSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -65,12 +65,19 @@ class SupportController extends Controller
             ->get()
             ->map(fn (SupportMessage $m) => $m->toBroadcastArray());
 
+        $socket = SocketSupport::chatConnection(
+            $conversation->id,
+            (int) Auth::guard('admin')->id(),
+            'admin',
+        );
+
         return view('admin.support.show', [
             'conversation' => $conversation,
             'ticketStatus' => $conversation->resolveTicketStatus(),
             'messages' => $messages,
-            'socketToken' => SupportSocketToken::generate($conversation->id, (int) Auth::guard('admin')->id(), 'admin'),
-            'socketUrl' => config('services.socket.url'),
+            'socketUrl' => $socket['socketUrl'],
+            'socketToken' => $socket['socketToken'],
+            'socketConfigured' => $socket['socketConfigured'],
         ]);
     }
 

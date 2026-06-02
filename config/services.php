@@ -43,9 +43,17 @@ return [
      ],
 
     'socket' => [
-        'url' => env('SOCKET_SERVER_URL')
-            ?: (env('APP_ENV') === 'production' ? rtrim((string) env('APP_URL', ''), '/') : 'http://127.0.0.1:6001'),
-        'broadcast_url' => env('SOCKET_BROADCAST_URL', 'http://127.0.0.1:6001/internal/broadcast'),
+        'url' => env('SOCKET_SERVER_URL') ?: (
+            env('APP_ENV') === 'production'
+                ? rtrim((string) env('APP_URL', ''), '/').':'.env('SOCKET_PORT', 6001)
+                : 'http://127.0.0.1:6001'
+        ),
+        // Production: HTTP on localhost only (Node listens on SOCKET_BROADCAST_PORT)
+        'broadcast_url' => env('SOCKET_BROADCAST_URL') ?: (
+            env('APP_ENV') === 'production'
+                ? 'http://127.0.0.1:'.env('SOCKET_BROADCAST_PORT', 6002).'/internal/broadcast'
+                : 'http://127.0.0.1:6001/internal/broadcast'
+        ),
         'secret' => env('SOCKET_SERVER_SECRET'),
     ],
 

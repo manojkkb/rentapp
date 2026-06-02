@@ -15,6 +15,7 @@
         'messages' => $messages,
         'socketUrl' => $socketUrl,
         'socketToken' => $socketToken,
+        'socketConfigured' => $socketConfigured,
         'sendUrl' => route('admin.support.messages.store', $conversation),
         'ticketStatus' => $ticketStatus,
     ]))"
@@ -63,6 +64,13 @@
 
         <p class="mt-2 hidden text-xs text-gray-500 dark:text-gray-400 sm:block"
            x-text="ticketStatus === 'open' ? 'Vendor is waiting for your reply.' : 'You replied last — ticket is closed until vendor messages again.'"></p>
+
+        <p
+            x-show="socketError"
+            x-cloak
+            class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+            x-text="socketError"
+        ></p>
     </div>
 
     {{-- Chat panel --}}

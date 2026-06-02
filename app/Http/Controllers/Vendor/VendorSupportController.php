@@ -7,7 +7,7 @@ use App\Models\SupportConversation;
 use App\Models\SupportMessage;
 use App\Services\SupportSocketBroadcast;
 use App\Support\PlatformSettings;
-use App\Support\SupportSocketToken;
+use App\Support\SocketSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,12 +34,15 @@ class VendorSupportController extends Controller
         $supportPhone = trim((string) PlatformSettings::get('support_phone', ''));
         $supportEmail = trim((string) PlatformSettings::get('support_email', ''));
 
+        $socket = SocketSupport::chatConnection($conversation->id, (int) Auth::id(), 'vendor');
+
         return view('vendor.support.index', [
             'conversation' => $conversation,
             'ticketStatus' => $conversation->resolveTicketStatus(),
             'messages' => $messages,
-            'socketToken' => SupportSocketToken::generate($conversation->id, (int) Auth::id(), 'vendor'),
-            'socketUrl' => config('services.socket.url'),
+            'socketUrl' => $socket['socketUrl'],
+            'socketToken' => $socket['socketToken'],
+            'socketConfigured' => $socket['socketConfigured'],
             'supportPhone' => $supportPhone,
             'supportEmail' => $supportEmail,
             'whatsappUrl' => $this->whatsappUrl($supportPhone),
@@ -85,8 +88,10 @@ class VendorSupportController extends Controller
 
         $conversation = $this->resolveConversation((int) $vendor->id, (int) Auth::id());
 
+        $socket = SocketSupport::chatConnection($conversation->id, (int) Auth::id(), 'vendor');
+
         return response()->json([
-            'token' => SupportSocketToken::generate($conversation->id, (int) Auth::id(), 'vendor'),
+            'token' => $socket['socketToken'],
         ]);
     }
 
