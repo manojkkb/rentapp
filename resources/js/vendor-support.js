@@ -38,6 +38,7 @@ function vendorSupportChatFactory(config = {}) {
             this.socket = io(this.socketUrl, {
                 auth: { token: this.socketToken },
                 transports: ['websocket', 'polling'],
+                secure: this.socketUrl.startsWith('https://'),
             });
 
             this.socket.on('connect', () => {
@@ -45,6 +46,11 @@ function vendorSupportChatFactory(config = {}) {
             });
 
             this.socket.on('disconnect', () => {
+                this.connected = false;
+            });
+
+            this.socket.on('connect_error', (err) => {
+                console.error('Support socket connect_error:', err?.message || err);
                 this.connected = false;
             });
 

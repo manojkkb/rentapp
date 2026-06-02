@@ -43,7 +43,8 @@ return [
      ],
 
     'socket' => [
-        'url' => env('SOCKET_SERVER_URL', 'http://127.0.0.1:6001'),
+        'url' => env('SOCKET_SERVER_URL')
+            ?: (env('APP_ENV') === 'production' ? rtrim((string) env('APP_URL', ''), '/') : 'http://127.0.0.1:6001'),
         'broadcast_url' => env('SOCKET_BROADCAST_URL', 'http://127.0.0.1:6001/internal/broadcast'),
         'secret' => env('SOCKET_SERVER_SECRET'),
     ],

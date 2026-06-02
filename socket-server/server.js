@@ -14,7 +14,6 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const isProduction = process.env.APP_ENV === 'production';
 const PORT = Number(process.env.SOCKET_PORT || 6001);
-const HOST = process.env.SOCKET_HOST || (isProduction ? '0.0.0.0' : '127.0.0.1');
 const SECRET = process.env.SOCKET_SERVER_SECRET || '';
 const APP_URL = process.env.APP_URL || 'http://127.0.0.1:8000';
 const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || '';
@@ -28,18 +27,46 @@ const devOrigins = [
     'http://localhost:5173',
 ];
 
-const allowedOrigins = [
-    ...new Set([APP_URL, SOCKET_SERVER_URL, ...(isProduction ? [] : devOrigins)].filter(Boolean)),
-];
-
 function useTls() {
     return Boolean(SSL_KEY_PATH && SSL_CERT_PATH);
 }
 
-if (isProduction && !useTls()) {
-    console.error('APP_ENV=production requires SOCKET_SSL_KEY and SOCKET_SSL_CERT in .env');
-    process.exit(1);
+/** @param {string} url */
+function originVariants(url) {
+    const origins = new Set();
+    if (!url) {
+        return origins;
+    }
+
+    try {
+        const parsed = new URL(url);
+        origins.add(parsed.origin);
+
+        const { hostname, protocol, port } = parsed;
+        const portSuffix = port ? `:${port}` : '';
+
+        if (hostname.startsWith('www.')) {
+            origins.add(`${protocol}//${hostname.slice(4)}${portSuffix}`);
+        } else {
+            origins.add(`${protocol}//www.${hostname}${portSuffix}`);
+        }
+    } catch {
+        origins.add(url.replace(/\/$/, ''));
+    }
+
+    return origins;
 }
+
+const allowedOrigins = [
+    ...new Set([
+        ...originVariants(APP_URL),
+        ...originVariants(SOCKET_SERVER_URL),
+        ...(isProduction ? [] : devOrigins),
+    ]),
+];
+
+const HOST =
+    process.env.SOCKET_HOST || (isProduction && useTls() ? '0.0.0.0' : '127.0.0.1');
 
 function createNodeServer(app) {
     if (useTls()) {
