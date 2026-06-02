@@ -31,6 +31,7 @@ function vendorSupportChatFactory(config = {}) {
         socketToken: config.socketToken || '',
         socketConfigured: config.socketConfigured !== false,
         sendUrl: config.sendUrl || '',
+        freshConnectAttempted: false,
 
         init() {
             if (!this.socketConfigured || !this.socketUrl || !this.socketToken) {
@@ -38,33 +39,7 @@ function vendorSupportChatFactory(config = {}) {
                 return;
             }
 
-            this.socket = io(this.socketUrl, {
-                auth: { token: this.socketToken },
-                transports: ['polling', 'websocket'],
-                reconnection: true,
-                reconnectionAttempts: 10,
-                reconnectionDelay: 2000,
-            });
-
-            this.socket.on('connect', () => {
-                this.connected = true;
-                this.socketError = '';
-            });
-
-            this.socket.on('disconnect', () => {
-                this.connected = false;
-            });
-
-            this.socket.on('connect_error', (err) => {
-                this.connected = false;
-                this.socketError = err?.message || 'Could not connect to chat server.';
-                console.error('Support socket connect_error:', this.socketError);
-            });
-
-            this.socket.on('new-message', (msg) => {
-                this.appendMessage(msg);
-                this.updateTicketStatusFromMessage(msg);
-            });
+            this.connectSocket();
 
             this.$nextTick(() => this.scrollToBottom());
 
@@ -73,6 +48,58 @@ function vendorSupportChatFactory(config = {}) {
                     this.$nextTick(() => this.scrollToBottom());
                 });
             }
+        },
+
+        isSessionUnknownError(err) {
+            const message = err?.message || '';
+            return message.includes('Session ID unknown') || err?.data?.code === 1;
+        },
+
+        connectSocket({ forceNew = true } = {}) {
+            if (this.socket) {
+                this.socket.removeAllListeners();
+                this.socket.disconnect();
+                this.socket = null;
+            }
+
+            const useHttps = this.socketUrl.startsWith('https://');
+
+            this.socket = io(this.socketUrl, {
+                auth: { token: this.socketToken },
+                transports: useHttps ? ['websocket'] : ['polling', 'websocket'],
+                forceNew,
+                reconnection: true,
+                reconnectionAttempts: 10,
+                reconnectionDelay: 2000,
+            });
+
+            this.socket.on('connect', () => {
+                this.connected = true;
+                this.socketError = '';
+                this.freshConnectAttempted = false;
+            });
+
+            this.socket.on('disconnect', () => {
+                this.connected = false;
+            });
+
+            this.socket.on('connect_error', (err) => {
+                this.connected = false;
+
+                if (this.isSessionUnknownError(err) && !this.freshConnectAttempted) {
+                    this.freshConnectAttempted = true;
+                    this.connectSocket({ forceNew: true });
+                    return;
+                }
+
+                this.socketError = err?.message || 'Could not connect to chat server.';
+                console.error('Support socket connect_error:', this.socketError, err);
+            });
+
+            this.socket.on('new-message', (msg) => {
+                this.appendMessage(msg);
+                this.updateTicketStatusFromMessage(msg);
+            });
         },
 
         onComposerFocus() {

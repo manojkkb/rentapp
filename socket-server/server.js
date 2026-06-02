@@ -169,12 +169,28 @@ const io = new Server(httpServer, {
         origin: corsOrigin,
         credentials: true,
     },
+    connectionStateRecovery: {
+        maxDisconnectionDuration: 120000,
+        skipMiddlewares: true,
+    },
+    pingTimeout: 60000,
+    pingInterval: 25000,
+});
+
+io.use((socket, next) => {
+    const payload = verifyToken(socket.handshake.auth?.token);
+    if (!payload) {
+        next(new Error('Unauthorized'));
+        return;
+    }
+
+    socket.data.authPayload = payload;
+    next();
 });
 
 io.on('connection', (socket) => {
-    const payload = verifyToken(socket.handshake.auth?.token);
+    const payload = socket.data.authPayload;
     if (!payload) {
-        socket.disconnect(true);
         return;
     }
 
