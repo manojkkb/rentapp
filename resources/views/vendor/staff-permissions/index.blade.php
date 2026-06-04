@@ -71,7 +71,7 @@
                     <button type="button"
                             @click="$dispatch('open-role-modal', {
                                 mode: 'edit',
-                                id: {{ $role->id }},
+                                id: @js($role->uuid),
                                 name: @js($role->name),
                                 description: @js($role->description ?? ''),
                                 permissions: @js($role->permissions->pluck('id')->values()->all())
@@ -108,12 +108,12 @@
     x-data="{
         visible: false,
         mode: 'create',
-        roleId: null,
+        roleUuid: null,
         name: '',
         description: '',
         selected: [],
         storeUrl: @js(route('vendor.staff-permissions.store')),
-        updateUrlTemplate: @js(route('vendor.staff-permissions.update', ['staffPermission' => '__ID__'])),
+        updateUrlBase: @js(url('vendor/staff-permissions')),
         labels: {
             add: @js(__('vendor.staff_permissions_add_role')),
             edit: @js(__('vendor.staff_permissions_edit_role')),
@@ -122,14 +122,14 @@
             return this.mode === 'edit' ? this.labels.edit : this.labels.add;
         },
         get formAction() {
-            if (this.mode === 'edit' && this.roleId) {
-                return this.updateUrlTemplate.replace('__ID__', this.roleId);
+            if (this.mode === 'edit' && this.roleUuid) {
+                return `${this.updateUrlBase}/${this.roleUuid}`;
             }
             return this.storeUrl;
         },
         open(detail) {
             this.mode = detail.mode || 'create';
-            this.roleId = detail.id ?? null;
+            this.roleUuid = detail.id ?? null;
             this.name = detail.name ?? '';
             this.description = detail.description ?? '';
             this.selected = Array.isArray(detail.permissions)

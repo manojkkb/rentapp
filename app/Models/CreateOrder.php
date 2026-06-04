@@ -53,7 +53,9 @@ final class CreateOrder
         return [
             'customer_id' => [
                 'required',
-                Rule::exists('vendor_customers', 'id')->where('vendor_id', $vendorId),
+                Rule::exists('vendor_customers', 'id')->where(function ($query) use ($vendorId) {
+                    $query->where('vendor_id', $vendorId)->where('is_active', true);
+                }),
             ],
             'event_name' => ['nullable', 'string', 'max:255'],
             'cart_name' => ['nullable', 'string', 'max:255'],

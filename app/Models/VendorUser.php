@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuid;
+use App\Models\Concerns\RoutesByUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class VendorUser extends Model
 {
+    use HasUuid, RoutesByUuid;
+
     protected $fillable = [
+        'uuid',
         'vendor_id',
         'user_id',
         'is_owner',
@@ -17,14 +22,14 @@ class VendorUser extends Model
         'last_login_at',
         'permissions',
     ];
-    
+
     protected $casts = [
         'is_owner' => 'boolean',
         'is_active' => 'boolean',
         'last_login_at' => 'datetime',
         'permissions' => 'array',
     ];
-    
+
     /**
      * Get the vendor
      */
@@ -32,7 +37,7 @@ class VendorUser extends Model
     {
         return $this->belongsTo(Vendor::class);
     }
-    
+
     /**
      * Get the user
      */

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuid;
+use App\Models\Concerns\RoutesByUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
 
 class Items extends Model
 {
-    use SoftDeletes;
+    use HasUuid, RoutesByUuid, SoftDeletes;
 
     /** @var list<string> */
     public const CONDITION_STATUSES = [
@@ -27,58 +29,44 @@ class Items extends Model
     ];
 
     protected $fillable = [
+        'uuid',
         'vendor_id',
         'category_id',
         'name',
+        'item_code',
         'slug',
         'photo',
         'description',
         'price',
-        'price_type',
+        'rental_period',
         'security_deposit',
         'replacement_cost',
-        'late_fee_per_day',
-        'is_damage_protection',
-        'minimum_rental_duration',
-        'maximum_rental_duration',
-        'weight',
-        'dimension_length',
-        'dimension_width',
-        'dimension_height',
+        'late_fee',
+        'min_rental_duration',
+        'max_rental_duration',
         'condition_status',
-        'total_stock',
-        'available_stock',
-        'rented_stock',
         'damaged_stock',
         'maintenance_stock',
         'stock',
         'manage_stock',
         'is_available',
         'is_active',
-        'meta_title',
-        'meta_description',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'is_available' => 'boolean',
         'manage_stock' => 'boolean',
-        'is_damage_protection' => 'boolean',
         'price' => 'decimal:2',
         'security_deposit' => 'decimal:2',
         'replacement_cost' => 'decimal:2',
-        'late_fee_per_day' => 'decimal:2',
-        'weight' => 'decimal:3',
-        'dimension_length' => 'decimal:2',
-        'dimension_width' => 'decimal:2',
-        'dimension_height' => 'decimal:2',
-        'minimum_rental_duration' => 'integer',
-        'maximum_rental_duration' => 'integer',
-        'total_stock' => 'integer',
-        'available_stock' => 'integer',
-        'rented_stock' => 'integer',
+        'late_fee' => 'decimal:2',
+        'min_rental_duration' => 'integer',
+        'max_rental_duration' => 'integer',
         'damaged_stock' => 'integer',
         'maintenance_stock' => 'integer',
+        'stock' => 'integer',
+        'deleted_at' => 'datetime',
     ];
 
     /**
@@ -94,73 +82,88 @@ class Items extends Model
         return $out;
     }
 
-    /**
-     * Get the vendor that owns the item
-     */
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(Vendor::class);
     }
 
-    /**
-     * Get the category of the item
-     */
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
-    /**
-     * Get all order items for this item
-     */
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class, 'item_id');
     }
 
-    /**
-     * Get all activities for this item
-     */
     public function activities(): HasMany
     {
         return $this->hasMany(ItemActivity::class, 'item_id');
     }
 
-    /**
-     * Scope a query to only include active items
-     */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
-    /**
-     * Scope a query to only include available items
-     */
     public function scopeAvailable($query)
     {
         return $query->where('is_available', true);
     }
 
+    public static function codeFromId(int $id): string
+    {
+        return 'ITM-'.str_pad((string) $id, 6, '0', STR_PAD_LEFT);
+    }
+
+    public static function normalizeItemCode(string $code): string
+    {
+        return strtoupper(preg_replace('/\s+/', '-', trim($code)) ?? '');
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Items $item) {
+            if (empty($item->item_code)) {
+                $item->item_code = 'PENDING';
+            }
+        });
+
+        static::created(function (Items $item) {
+            if ($item->item_code === 'PENDING') {
+                $item->updateQuietly(['item_code' => self::codeFromId($item->id)]);
+            }
+        });
+    }
+
     /**
-     * Allowed values for items.price_type and order_items.price_type.
+     * Total units (rentable + damaged + maintenance).
+     */
+    public function getTotalStockAttribute(): int
+    {
+        return (int) $this->stock
+            + (int) $this->damaged_stock
+            + (int) $this->maintenance_stock;
+    }
+
+    /**
+     * Allowed values for items.rental_period and order_items.rental_period.
      *
      * @return list<string>
      */
-    public static function priceTypeKeys(): array
+    public static function rentalPeriodKeys(): array
     {
         return ['per_minute', 'per_hour', 'per_day', 'per_week', 'per_month', 'per_year', 'fixed'];
     }
 
     /**
-     * Localized labels for item / order line forms (vendor lang file).
-     *
      * @return array<string, string>
      */
-    public static function priceTypeSelectOptions(): array
+    public static function rentalPeriodSelectOptions(): array
     {
         $out = [];
-        foreach (self::priceTypeKeys() as $key) {
+        foreach (self::rentalPeriodKeys() as $key) {
             $out[$key] = $key === 'fixed'
                 ? __('vendor.price_fixed')
                 : __("vendor.{$key}");
@@ -169,14 +172,11 @@ class Items extends Model
         return $out;
     }
 
-    public static function priceTypeUsesBillingUnits(string $priceType): bool
+    public static function rentalPeriodUsesBillingUnits(string $rentalPeriod): bool
     {
-        return $priceType !== 'fixed';
+        return $rentalPeriod !== 'fixed';
     }
 
-    /**
-     * Public URL for the item photo on S3, or null.
-     */
     public function getPhotoUrlAttribute(): ?string
     {
         if (! $this->photo) {
@@ -186,9 +186,9 @@ class Items extends Model
         return Storage::disk('s3')->url($this->photo);
     }
 
-    public static function billingUnitsFieldLabel(string $priceType): string
+    public static function billingUnitsFieldLabel(string $rentalPeriod): string
     {
-        return match ($priceType) {
+        return match ($rentalPeriod) {
             'per_minute' => __('vendor.number_of_minutes'),
             'per_hour' => __('vendor.number_of_hours'),
             'per_day' => __('vendor.number_of_days'),

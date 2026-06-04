@@ -588,7 +588,11 @@
                         if (data.success) {
                             this.step = 2;
                             this.startResendTimer();
-                            this.showNotification('OTP sent successfully!', 'success');
+                            let msg = 'OTP sent successfully!';
+                            if (data.otp) {
+                                msg = 'Dev OTP: ' + data.otp;
+                            }
+                            this.showNotification(msg, 'success');
                             
                             // Focus first OTP input
                             setTimeout(() => document.getElementById('otp1')?.focus(), 100);

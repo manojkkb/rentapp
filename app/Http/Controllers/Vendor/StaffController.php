@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Vendor\Concerns\RedirectsIfNumericRouteKey;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Models\VendorRole;
@@ -15,6 +16,8 @@ use Illuminate\Validation\Rule;
 
 class StaffController extends Controller
 {
+    use RedirectsIfNumericRouteKey;
+
     public function index(Request $request)
     {
         $vendor = Auth::user()->currentVendor();
@@ -165,7 +168,7 @@ class StaffController extends Controller
         }
     }
 
-    public function edit($id)
+    public function edit(Request $request, VendorUser $staff)
     {
         $vendor = Auth::user()->currentVendor();
 
@@ -173,10 +176,11 @@ class StaffController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
-        $vendorUser = VendorUser::where('id', $id)
-            ->where('vendor_id', $vendor->id)
-            ->with('vendorRole')
-            ->firstOrFail();
+        $vendorUser = $this->authorizeStaff($vendor, $staff);
+
+        if ($redirect = $this->redirectIfNumericRouteKey($request, $vendorUser, 'vendor.staff.edit')) {
+            return $redirect;
+        }
 
         if ($vendorUser->is_owner) {
             return back()->withErrors(['error' => __('vendor.staff_owner_locked')]);
@@ -188,7 +192,7 @@ class StaffController extends Controller
         return view('vendor.staff.edit', compact('vendor', 'staffUser', 'vendorUser', 'roles'));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, VendorUser $staff)
     {
         $vendor = Auth::user()->currentVendor();
 
@@ -196,9 +200,7 @@ class StaffController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
-        $vendorUser = VendorUser::where('id', $id)
-            ->where('vendor_id', $vendor->id)
-            ->firstOrFail();
+        $vendorUser = $this->authorizeStaff($vendor, $staff);
 
         if ($vendorUser->is_owner) {
             return back()->withErrors(['error' => __('vendor.staff_owner_locked')]);
@@ -256,7 +258,7 @@ class StaffController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(VendorUser $staff)
     {
         $vendor = Auth::user()->currentVendor();
 
@@ -264,9 +266,7 @@ class StaffController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
-        $vendorUser = VendorUser::where('id', $id)
-            ->where('vendor_id', $vendor->id)
-            ->firstOrFail();
+        $vendorUser = $this->authorizeStaff($vendor, $staff);
 
         if ($vendorUser->is_owner) {
             return back()->withErrors(['error' => __('vendor.staff_owner_locked')]);
@@ -278,7 +278,7 @@ class StaffController extends Controller
             ->with('success', __('vendor.staff_deleted'));
     }
 
-    public function toggleStatus($id)
+    public function toggleStatus(VendorUser $staff)
     {
         $vendor = Auth::user()->currentVendor();
 
@@ -286,9 +286,7 @@ class StaffController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
-        $vendorUser = VendorUser::where('id', $id)
-            ->where('vendor_id', $vendor->id)
-            ->firstOrFail();
+        $vendorUser = $this->authorizeStaff($vendor, $staff);
 
         if ($vendorUser->is_owner) {
             return back()->withErrors(['error' => __('vendor.staff_owner_locked')]);
@@ -301,6 +299,15 @@ class StaffController extends Controller
         $status = $vendorUser->is_active ? __('vendor.activated') : __('vendor.deactivated');
 
         return back()->with('success', __('vendor.staff_status_changed', ['status' => $status]));
+    }
+
+    private function authorizeStaff(Vendor $vendor, VendorUser $staff): VendorUser
+    {
+        if ($staff->vendor_id !== $vendor->id) {
+            abort(403, 'Unauthorized access');
+        }
+
+        return $staff->loadMissing('vendorRole');
     }
 
     private function vendorRoles(Vendor $vendor)

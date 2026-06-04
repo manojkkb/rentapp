@@ -178,11 +178,12 @@
                         x-model="body"
                         rows="1"
                         maxlength="2000"
+                        :readonly="sending"
                         x-ref="messageInput"
                         @focus="onComposerFocus()"
-                        class="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-gray-300 px-3 py-2.5 text-base leading-snug focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 sm:text-sm"
+                        class="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-gray-300 px-3 py-2.5 text-base leading-snug focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 read-only:bg-gray-50 sm:text-sm"
                         placeholder="{{ __('vendor.support_message_placeholder') }}"
-                        @keydown.enter="onEnterKey($event)"
+                        @keydown="onComposerKeydown($event)"
                     ></textarea>
                     <button
                         type="submit"

@@ -72,7 +72,7 @@ class VendorController extends Controller
             ->get()
             ->map(function ($order) {
                 return [
-                    'id' => $order->id,
+                    'id' => $order->uuid,
                     'customer_name' => $order->customer->name ?? 'N/A',
                     'items_count' => $order->items->count(),
                     'total_amount' => (float) $order->grand_total,
@@ -90,7 +90,7 @@ class VendorController extends Controller
             ->get()
             ->map(function ($item) {
                 return [
-                    'id' => $item->id,
+                    'id' => $item->uuid,
                     'name' => $item->name,
                     'price' => (float) $item->price,
                     'orders_count' => (int) ($item->order_items_count ?? 0),
@@ -102,7 +102,7 @@ class VendorController extends Controller
 
         $outgoingQuery = $vendor->orders()
             ->whereNull('delivered_at')
-            ->whereIn('status', ['confirmed', 'ongoing']);
+            ->whereIn('status', ['confirmed']);
 
         $outgoingCount = (clone $outgoingQuery)->count();
 
@@ -126,7 +126,7 @@ class VendorController extends Controller
                 $sched = $this->dashboardLogisticsDayTime($handoffAt);
 
                 return [
-                    'id' => $order->id,
+                    'id' => $order->uuid,
                     'order_number' => $order->order_number,
                     'customer_name' => $order->customer->name ?? 'N/A',
                     'fulfillment_type' => $order->fulfillment_type ?? 'pickup',
@@ -143,7 +143,7 @@ class VendorController extends Controller
         $returnsQuery = $vendor->orders()
             ->whereNull('returned_at')
             ->whereNotNull('delivered_at')
-            ->whereIn('status', ['confirmed', 'ongoing']);
+            ->whereIn('status', ['confirmed']);
 
         $returnCount = (clone $returnsQuery)->count();
 
@@ -160,7 +160,7 @@ class VendorController extends Controller
                 $sched = $this->dashboardLogisticsDayTime($order->end_at);
 
                 return [
-                    'id' => $order->id,
+                    'id' => $order->uuid,
                     'order_number' => $order->order_number,
                     'customer_name' => $order->customer->name ?? 'N/A',
                     'day_line' => $sched['day_line'],

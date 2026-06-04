@@ -136,4 +136,14 @@ class VendorSubscription
             'vendor.manifest',
         ];
     }
+
+    /** @return list<string> */
+    public static function exemptApiPathPrefixes(): array
+    {
+        return [
+            'api/v1/auth',
+            'api/v1/profile',
+            'api/v1/subscription',
+        ];
+    }
 }

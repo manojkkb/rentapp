@@ -110,11 +110,12 @@
                     x-model="body"
                     rows="1"
                     maxlength="2000"
+                    :readonly="sending"
                     x-ref="messageInput"
                     @focus="onComposerFocus()"
-                    class="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-gray-300 px-3 py-2.5 text-base leading-snug focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white sm:text-sm"
+                    class="max-h-32 min-h-[44px] flex-1 resize-none rounded-xl border border-gray-300 px-3 py-2.5 text-base leading-snug focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 read-only:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:read-only:bg-gray-900 sm:text-sm"
                     placeholder="Reply to vendor…"
-                    @keydown.enter="onEnterKey($event)"
+                    @keydown="onComposerKeydown($event)"
                 ></textarea>
                 <button
                     type="submit"

@@ -38,7 +38,7 @@ class OrderItem extends Model
         'returned_qty',
         'damaged_qty',
         'lost_qty',
-        'price_type',
+        'rental_period',
         'rent_type',
         'billing_units',
         'start_at',
@@ -82,6 +82,8 @@ class OrderItem extends Model
         'end_at' => 'datetime',
         'delivered_at' => 'datetime',
         'returned_at' => 'datetime',
+        'quantity' => 'integer',
+        'rent_days' => 'integer',
         'rental_duration_minutes' => 'integer',
         'returned_qty' => 'integer',
         'damaged_qty' => 'integer',
@@ -91,13 +93,13 @@ class OrderItem extends Model
     ];
 
     /**
-     * Line amount from snapshot fields (price × quantity × billing units by price_type).
+     * Line amount from snapshot fields (price × quantity × billing units by rental_period).
      */
     public function lineSubtotal(): float
     {
         $price = (float) $this->price;
         $qty = (int) $this->quantity;
-        $type = $this->price_type ?? 'per_day';
+        $type = $this->rental_period ?? 'per_day';
 
         if ($type === 'fixed') {
             return round($price * $qty, 2);
@@ -120,7 +122,7 @@ class OrderItem extends Model
         $tp = $this->lineSubtotal();
         $this->total_price = $tp;
         $this->subtotal = $tp;
-        $this->rent_type = $this->price_type ?: 'per_day';
+        $this->rent_type = $this->rental_period ?: 'per_day';
         $this->final_amount = round(
             (float) $tp
                 - (float) ($this->discount_amount ?? 0)

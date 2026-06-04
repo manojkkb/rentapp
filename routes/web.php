@@ -17,6 +17,7 @@ use App\Http\Controllers\Vendor\StaffController;
 use App\Http\Controllers\Vendor\StaffPermissionController;
 use App\Http\Controllers\Vendor\SubscriptionVendorController;
 use App\Http\Controllers\Vendor\VendorCalendarController;
+use App\Http\Controllers\Vendor\GlobalSearchController;
 use App\Http\Controllers\Vendor\VendorController;
 use App\Http\Controllers\Vendor\VendorCouponController;
 use App\Http\Controllers\Vendor\VendorCustomerController;
@@ -106,6 +107,7 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
 
         Route::get('/home', [VendorController::class, 'home'])->name('home');
         Route::get('/dashboard/stats', [VendorController::class, 'getDashboardStats'])->name('dashboard.stats');
+        Route::get('/search', GlobalSearchController::class)->name('search');
 
         // Profile
         Route::get('/profile', [VendorController::class, 'profile'])->name('profile');
@@ -118,7 +120,7 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
 
         // Staff Management
         Route::resource('staff', StaffController::class)->except(['show']);
-        Route::post('staff/{id}/toggle', [StaffController::class, 'toggleStatus'])->name('staff.toggle');
+        Route::post('staff/{staff}/toggle', [StaffController::class, 'toggleStatus'])->name('staff.toggle');
 
         // Staff roles & permissions
         Route::get('staff-permissions', [StaffPermissionController::class, 'index'])->name('staff-permissions.index');
@@ -133,12 +135,14 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
 
         // Items
         Route::get('items/fetch', [ItemController::class, 'fetchItems'])->name('items.fetch');
-        Route::resource('items', ItemController::class)->except(['show']);
+        Route::post('items/quick-store', [ItemController::class, 'storeQuickForOrderWizard'])->name('items.quick-store');
+        Route::resource('items', ItemController::class);
         Route::post('items/{item}/toggle', [ItemController::class, 'toggleStatus'])->name('items.toggle');
         Route::post('items/{item}/availability', [ItemController::class, 'toggleAvailability'])->name('items.availability');
 
         // Customers
-        Route::resource('customers', VendorCustomerController::class)->except(['show']);
+        Route::resource('customers', VendorCustomerController::class)->except(['show', 'destroy']);
+        Route::post('customers/{customer}/toggle', [VendorCustomerController::class, 'toggleStatus'])->name('customers.toggle');
 
         Route::resource('coupons', VendorCouponController::class);
         Route::post('coupons/{coupon}/toggle', [VendorCouponController::class, 'toggleStatus'])->name('coupons.toggle');

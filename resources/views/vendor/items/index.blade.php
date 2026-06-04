@@ -307,7 +307,10 @@
                                     </div>
                                 @endif
                                 <div class="min-w-0">
-                                    <p class="text-sm font-semibold text-gray-900">{{ $item->name }}</p>
+                                    <a href="{{ route('vendor.items.show', $item) }}" class="text-sm font-semibold text-gray-900 hover:text-emerald-700">
+                                        {{ $item->name }}
+                                    </a>
+                                    <p class="mt-0.5 font-mono text-[10px] text-gray-500">{{ $item->item_code }}</p>
                                     <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full mt-1">
                                     <i class="fas fa-tag mr-1.5"></i>
                                         {{ $item->category->name ?? 'N/A' }}
@@ -320,7 +323,7 @@
                         <td class="px-4 py-3">
                             <p class="text-sm font-semibold text-gray-900">₹{{ number_format($item->price, 2) }}</p>
                             <p class="text-xs text-gray-500">
-                                {{ $priceTypes[$item->price_type] ?? $item->price_type }}
+                                {{ $rentalPeriods[$item->rental_period] ?? $item->rental_period }}
                             </p>
                         </td>
 
@@ -328,8 +331,8 @@
                         <td class="px-4 py-3">
                             <div>
                                 @if($item->manage_stock)
-                                    <span class="text-sm {{ ($item->available_stock ?? $item->stock) > 0 ? 'text-gray-900' : 'text-red-600 font-semibold' }}">
-                                        {{ $item->available_stock ?? $item->stock }} {{ __('vendor.available_units') }}
+                                    <span class="text-sm {{ ($item->stock) > 0 ? 'text-gray-900' : 'text-red-600 font-semibold' }}">
+                                        {{ $item->stock }} {{ __('vendor.available_units') }}
                                     </span>
                                 @else
                                     <span class="text-xs text-gray-500">{{ __('vendor.not_available') }}</span>
@@ -346,21 +349,15 @@
 
                         <!-- Status -->
                         <td class="px-4 py-3">
-                            <div class="inline-block" x-data="{ isActive: {{ $item->is_active ? 'true' : 'false' }} }">
-                                <form action="{{ route('vendor.items.toggle', $item->id) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
-                                    @csrf
-                                    <button type="submit"
-                                            class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" 
-                                            :class="isActive ? 'bg-emerald-500' : 'bg-gray-300'"
-                                            :title="isActive ? 'Click to deactivate' : 'Click to activate'">
-                                        <span class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform" 
-                                              :class="isActive ? 'translate-x-6' : 'translate-x-1'"></span>
-                                    </button>
-                                </form>
-                                <div class="mt-1">
-                                    <span class="text-xs font-medium" :class="isActive ? 'text-emerald-700' : 'text-gray-500'" x-text="isActive ? '{{ __('vendor.active') }}' : '{{ __('vendor.inactive') }}'"></span>
-                                </div>
-                            </div>
+                            @if($item->is_active)
+                                <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                    {{ __('vendor.active') }}
+                                </span>
+                            @else
+                                <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">
+                                    {{ __('vendor.inactive') }}
+                                </span>
+                            @endif
                         </td>
 
                         <!-- Actions -->
@@ -390,12 +387,17 @@
                                              $el.style.left = (rect.right - 192) + 'px';
                                          }
                                      })">
-                                    <a href="{{ route('vendor.items.edit', $item->id) }}" 
+                                    <a href="{{ route('vendor.items.show', $item) }}"
+                                       class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100">
+                                        <i class="fas fa-eye w-5 text-gray-500 mr-3"></i>
+                                        {{ __('vendor.view') }}
+                                    </a>
+                                    <a href="{{ route('vendor.items.edit', $item) }}" 
                                        class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                         <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
                                         {{ __('vendor.edit') }}
                                     </a>
-                                    <form action="{{ route('vendor.items.destroy', $item->id) }}" 
+                                    <form action="{{ route('vendor.items.destroy', $item) }}" 
                                           method="POST" 
                                           onsubmit="return confirm('{{ __('vendor.confirm_delete') }}');">
                                         @csrf
@@ -432,14 +434,15 @@
                                 </div>
                             @endif
                             <div class="flex-1 min-w-0">
-                                <h3 class="text-base font-semibold text-gray-900 truncate">
+                                <a href="{{ route('vendor.items.show', $item) }}" class="block truncate text-base font-semibold text-gray-900 hover:text-emerald-700">
                                     {{ $item->name }}
-                                </h3>
+                                </a>
+                                <p class="mt-0.5 font-mono text-[10px] text-gray-500">{{ $item->item_code }}</p>
                                 @if($item->manage_stock)
                                     <p class="text-xs text-gray-500 mt-0.5 flex items-center">
                                         <i class="fas fa-box-open text-xs mr-1"></i>
-                                        <span class="{{ ($item->available_stock ?? $item->stock) > 0 ? '' : 'text-red-600 font-semibold' }}">
-                                            {{ $item->available_stock ?? $item->stock }} {{ __('vendor.stock') }}
+                                        <span class="{{ ($item->stock) > 0 ? '' : 'text-red-600 font-semibold' }}">
+                                            {{ $item->stock }} {{ __('vendor.stock') }}
                                         </span>
                                     </p>
                                 @endif
@@ -464,12 +467,17 @@
                                  x-transition:leave-end="opacity-0 scale-95"
                                  class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
                                  style="display: none;">
-                                <a href="{{ route('vendor.items.edit', $item->id) }}" 
+                                <a href="{{ route('vendor.items.show', $item) }}"
+                                   class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
+                                    <i class="fas fa-eye w-5 text-gray-500 mr-3"></i>
+                                    {{ __('vendor.view') }}
+                                </a>
+                                <a href="{{ route('vendor.items.edit', $item) }}"
                                    class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
                                     <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
                                     {{ __('vendor.edit_item') }}
                                 </a>
-                                <form action="{{ route('vendor.items.destroy', $item->id) }}" 
+                                <form action="{{ route('vendor.items.destroy', $item) }}" 
                                       method="POST" 
                                       onsubmit="return confirm('{{ __('vendor.confirm_delete') }}');">
                                     @csrf
@@ -489,7 +497,7 @@
                         <div>
                             <p class="text-lg font-bold text-gray-900">₹{{ number_format($item->price, 2) }}</p>
                             <p class="text-xs text-gray-500">
-                                {{ $priceTypes[$item->price_type] ?? $item->price_type }}
+                                {{ $rentalPeriods[$item->rental_period] ?? $item->rental_period }}
                             </p>
                         </div>
                         @if($item->is_available)
@@ -505,22 +513,17 @@
                         @endif
                     </div>
 
-                    <!-- Status Toggle -->
                     <div class="flex items-center justify-between">
                         <span class="text-sm font-medium text-gray-700">{{ __('vendor.status') }}</span>
-                        <div class="inline-block" x-data="{ isActive: {{ $item->is_active ? 'true' : 'false' }} }">
-                            <form action="{{ route('vendor.items.toggle', $item->id) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
-                                @csrf
-                                <button type="submit"
-                                        class="relative inline-flex items-center h-7 rounded-full w-12 transition-colors focus:outline-none active:ring-2 active:ring-offset-2 active:ring-emerald-500" 
-                                        :class="isActive ? 'bg-emerald-500' : 'bg-gray-300'"
-                                        :title="isActive ? '{{ __('vendor.inactive') }}' : '{{ __('vendor.active') }}'">
-                                    <span class="inline-block w-5 h-5 transform bg-white rounded-full transition-transform shadow-md" 
-                                          :class="isActive ? 'translate-x-6' : 'translate-x-1'"></span>
-                                </button>
-                            </form>
-                            <span class="ml-2 text-xs font-semibold" :class="isActive ? 'text-emerald-700' : 'text-gray-600'" x-text="isActive ? '{{ __('vendor.active') }}' : '{{ __('vendor.inactive') }}'"></span>
-                        </div>
+                        @if($item->is_active)
+                            <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                {{ __('vendor.active') }}
+                            </span>
+                        @else
+                            <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">
+                                {{ __('vendor.inactive') }}
+                            </span>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -570,7 +573,99 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadingIndicator = document.getElementById('loading-indicator');
     const itemsTotalCount = document.getElementById('items-total-count');
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    const itemPriceTypeLabels = @json($priceTypes);
+    const itemRentalPeriodLabels = @json($rentalPeriods);
+    const itemsBaseUrl = @json(url('vendor/items'));
+    const itemsViewLabel = @json(__('vendor.view'));
+    const itemsEditLabel = @json(__('vendor.edit'));
+    const itemsEditItemLabel = @json(__('vendor.edit_item'));
+    const itemsDeleteLabel = @json(__('vendor.delete'));
+    const itemsConfirmDelete = @json(__('vendor.confirm_delete'));
+
+    function buildItemActionsMenu(uuid, placement = 'desktop') {
+        const viewUrl = `${itemsBaseUrl}/${uuid}`;
+        const editUrl = `${itemsBaseUrl}/${uuid}/edit`;
+        const deleteUrl = `${itemsBaseUrl}/${uuid}`;
+
+        if (placement === 'mobile') {
+            return `
+                <div class="relative ml-2 flex-shrink-0" x-data="{ mobileDropdownOpen: false }">
+                    <button @click="mobileDropdownOpen = !mobileDropdownOpen"
+                            class="p-2 hover:bg-gray-100 rounded-lg transition-colors active:bg-gray-200"
+                            type="button">
+                        <i class="fas fa-ellipsis-vertical text-gray-600 text-lg"></i>
+                    </button>
+                    <div x-show="mobileDropdownOpen"
+                         @click.away="mobileDropdownOpen = false"
+                         x-transition
+                         class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
+                         style="display: none;">
+                        <a href="${viewUrl}"
+                           class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
+                            <i class="fas fa-eye w-5 text-gray-500 mr-3"></i>
+                            ${itemsViewLabel}
+                        </a>
+                        <a href="${editUrl}"
+                           class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
+                            <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
+                            ${itemsEditItemLabel}
+                        </a>
+                        <form action="${deleteUrl}" method="POST" onsubmit="return confirm(${JSON.stringify(itemsConfirmDelete)});">
+                            <input type="hidden" name="_token" value="${csrfToken}">
+                            <input type="hidden" name="_method" value="DELETE">
+                            <button type="submit"
+                                    class="w-full text-left block px-4 py-3 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors">
+                                <i class="fas fa-trash w-5 mr-3"></i>
+                                ${itemsDeleteLabel}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="relative inline-block" x-data="{ dropdownOpen: false }">
+                <button @click="dropdownOpen = !dropdownOpen"
+                        class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        type="button"
+                        x-ref="dropdownButton">
+                    <i class="fas fa-ellipsis-vertical text-gray-600"></i>
+                </button>
+                <div x-show="dropdownOpen"
+                     @click.away="dropdownOpen = false"
+                     x-transition
+                     class="fixed w-48 bg-white rounded-lg shadow-2xl border border-gray-200 py-1"
+                     style="display: none; z-index: 9999;"
+                     x-init="$watch('dropdownOpen', value => {
+                         if (value) {
+                             let rect = $refs.dropdownButton.getBoundingClientRect();
+                             $el.style.top = rect.bottom + 5 + 'px';
+                             $el.style.left = (rect.right - 192) + 'px';
+                         }
+                     })">
+                    <a href="${viewUrl}"
+                       class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100">
+                        <i class="fas fa-eye w-5 text-gray-500 mr-3"></i>
+                        ${itemsViewLabel}
+                    </a>
+                    <a href="${editUrl}"
+                       class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
+                        ${itemsEditLabel}
+                    </a>
+                    <form action="${deleteUrl}" method="POST" onsubmit="return confirm(${JSON.stringify(itemsConfirmDelete)});">
+                        <input type="hidden" name="_token" value="${csrfToken}">
+                        <input type="hidden" name="_method" value="DELETE">
+                        <button type="submit"
+                                class="w-full text-left block px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                            <i class="fas fa-trash w-5 mr-3"></i>
+                            ${itemsDeleteLabel}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        `;
+    }
 
     console.log('Filter script loaded');
     
@@ -676,7 +771,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         items.forEach(item => {
-            const priceType = itemPriceTypeLabels[item.price_type] || item.price_type;
+            const priceType = itemRentalPeriodLabels[item.rental_period] || item.rental_period;
             const categoryName = item.category ? item.category.name : 'N/A';
             const itemPrice = parseFloat(item.price).toFixed(2);
             const safePhotoUrl = item.photo_url ? String(item.photo_url).replace(/"/g, '&quot;') : '';
@@ -690,7 +785,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="flex items-start gap-3">
                             ${thumbDesktop}
                             <div class="min-w-0">
-                            <p class="text-sm font-semibold text-gray-900">${item.name}</p>
+                            <a href="{{ url('vendor/items') }}/${item.uuid}" class="text-sm font-semibold text-gray-900 hover:text-emerald-700">${item.name}</a>
+                            ${item.item_code ? `<p class="mt-0.5 font-mono text-[10px] text-gray-500">${item.item_code}</p>` : ''}
                             <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full mt-1">
                                 <i class="fas fa-tag mr-1.5"></i>${categoryName}
                             </span>
@@ -703,39 +799,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                     <td class="px-4 py-3">
                         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            (item.available_stock ?? item.stock ?? 0) > 10 ? 'bg-emerald-100 text-emerald-700' : 
-                            ((item.available_stock ?? item.stock ?? 0) > 0 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700')
+                            (item.stock ?? 0) > 10 ? 'bg-emerald-100 text-emerald-700' : 
+                            ((item.stock ?? 0) > 0 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700')
                         }">
-                            <i class="fas fa-cubes text-xs mr-1"></i>${item.available_stock ?? item.stock ?? 0}
+                            <i class="fas fa-cubes text-xs mr-1"></i>${item.stock ?? 0}
                         </span>
                     </td>
                     <td class="px-4 py-3">
-                        ${item.is_available ? 
-                            '<span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full"><i class="fas fa-check-circle mr-1"></i>{{ __("vendor.available_for_rent") }}</span>' :
-                            '<span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded-full"><i class="fas fa-times-circle mr-1"></i>{{ __("vendor.not_available") }}</span>'
+                        ${item.is_active
+                            ? '<span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">{{ __("vendor.active") }}</span>'
+                            : '<span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">{{ __("vendor.inactive") }}</span>'
                         }
                     </td>
                     <td class="px-4 py-3 text-right">
-                        <div class="flex items-center justify-end space-x-2">
-                            <form action="{{ url('vendor/items') }}/${item.id}/toggle" method="POST" class="inline">
-                                <input type="hidden" name="_token" value="${csrfToken}">
-                                <button type="submit" class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none ${item.is_active ? 'bg-emerald-500' : 'bg-gray-300'}">
-                                    <span class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform shadow-md ${item.is_active ? 'translate-x-6' : 'translate-x-1'}"></span>
-                                </button>
-                            </form>
-                            <a href="{{ url('vendor/items') }}/${item.id}/edit"
-                               class="inline-flex p-1 text-emerald-600 hover:text-emerald-900 text-sm"
-                               title="{{ __('vendor.edit_item') }}">
-                                <i class="fas fa-edit" aria-hidden="true"></i>
-                            </a>
-                            <form action="{{ url('vendor/items') }}/${item.id}" method="POST" class="inline" onsubmit="return confirm('{{ __('vendor.confirm_delete') }}');">
-                                <input type="hidden" name="_token" value="${csrfToken}">
-                                <input type="hidden" name="_method" value="DELETE">
-                                <button type="submit" class="text-red-600 hover:text-red-900 text-sm">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
-                        </div>
+                        ${buildItemActionsMenu(item.uuid, 'desktop')}
                     </td>
                 </tr>
             `;
@@ -753,7 +830,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         items.forEach(item => {
-            const priceType = itemPriceTypeLabels[item.price_type] || item.price_type;
+            const priceType = itemRentalPeriodLabels[item.rental_period] || item.rental_period;
             const categoryName = item.category ? item.category.name : 'N/A';
             const itemPrice = parseFloat(item.price).toFixed(2);
             const safePhotoUrlM = item.photo_url ? String(item.photo_url).replace(/"/g, '&quot;') : '';
@@ -767,17 +844,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="flex items-start gap-3 flex-1 min-w-0">
                             ${thumbMobile}
                             <div class="flex-1 min-w-0">
-                            <h3 class="text-sm font-semibold text-gray-900 mb-1">${item.name}</h3>
+                            <h3 class="text-sm font-semibold text-gray-900 mb-1">
+                                <a href="{{ url('vendor/items') }}/${item.uuid}" class="hover:text-emerald-700">${item.name}</a>
+                            </h3>
+                            ${item.item_code ? `<p class="mb-1 font-mono text-[10px] text-gray-500">${item.item_code}</p>` : ''}
                             <span class="inline-flex items-center px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
                                 <i class="fas fa-tag mr-1"></i>${categoryName}
                             </span>
                             </div>
                         </div>
-                        <a href="{{ url('vendor/items') }}/${item.id}/edit"
-                           class="ml-2 inline-flex shrink-0 p-1 text-emerald-600 hover:text-emerald-900"
-                           title="{{ __('vendor.edit_item') }}">
-                            <i class="fas fa-edit text-lg" aria-hidden="true"></i>
-                        </a>
+                        ${buildItemActionsMenu(item.uuid, 'mobile')}
                     </div>
                     <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
                         <div>
@@ -785,9 +861,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             <p class="text-xs text-gray-500">${priceType}</p>
                         </div>
                         <span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold ${
-                            (item.available_stock ?? item.stock ?? 0) > 10 ? 'bg-emerald-100 text-emerald-700' : ((item.available_stock ?? item.stock ?? 0) > 0 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700')
+                            (item.stock ?? 0) > 10 ? 'bg-emerald-100 text-emerald-700' : ((item.stock ?? 0) > 0 ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700')
                         } rounded-full">
-                            <i class="fas fa-cubes mr-1"></i>${item.available_stock ?? item.stock ?? 0}
+                            <i class="fas fa-cubes mr-1"></i>${item.stock ?? 0}
                         </span>
                     </div>
                 </div>
@@ -799,6 +875,10 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         itemsContent.innerHTML = desktopTableHtml + mobileCardsHtml;
+
+        if (window.Alpine && typeof window.Alpine.initTree === 'function') {
+            window.Alpine.initTree(itemsContent);
+        }
     }
     
     if (categoryFilter) {

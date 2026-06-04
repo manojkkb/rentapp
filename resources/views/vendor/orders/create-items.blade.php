@@ -8,30 +8,38 @@
 <div class="mx-auto max-w-5xl pb-[max(4.25rem,env(safe-area-inset-bottom))] max-md:pb-[max(11rem,env(safe-area-inset-bottom))] md:pb-0">
     @include('vendor.orders.partials.wizard-steps', ['current' => 2, 'compact' => true])
 
-    @if($catalogItems->isEmpty())
-        <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950 sm:p-5">
-            <p class="text-sm font-medium sm:text-base">{{ __('vendor.order_wizard_no_catalog_items') }}</p>
-            <a href="{{ route('vendor.items.create') }}" class="mt-2 inline-flex h-10 items-center text-sm font-semibold text-amber-900 underline [touch-action:manipulation] sm:mt-3">{{ __('vendor.add_new_item') }}</a>
-        </div>
-    @else
-        <script>
-            function orderWizardItemsPage() {
-                const p = {
-                    items: @json($catalogItemsForJs),
-                    billingUnitsLabels: @json($billingUnitsLabels),
-                    initialQty: @json($initialQty),
-                    initialUnits: @json($initialUnits),
-                    bookingDefaultUnitsByPriceType: @json($bookingDefaultUnitsByPriceType ?? []),
-                };
-                return {
-                    items: p.items,
-                    billingUnitsLabels: p.billingUnitsLabels,
-                    bookingDefaultUnitsByPriceType: p.bookingDefaultUnitsByPriceType,
-                    searchQuery: '',
-                    selectedCategory: '',
-                    lineQty: {},
-                    lineUnits: {},
-                    init() {
+    <script>
+        function orderWizardItemsPage() {
+            const p = {
+                items: @json($catalogItemsForJs),
+                billingUnitsLabels: @json($billingUnitsLabels),
+                initialQty: @json($initialQty),
+                initialUnits: @json($initialUnits),
+                bookingDefaultUnitsByPriceType: @json($bookingDefaultUnitsByPriceType ?? []),
+                quickStoreUrl: @json(route('vendor.items.quick-store')),
+                categoryStoreUrl: @json(route('vendor.categories.store')),
+                categories: @json($categories->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values()),
+            };
+            return {
+                items: p.items,
+                billingUnitsLabels: p.billingUnitsLabels,
+                bookingDefaultUnitsByPriceType: p.bookingDefaultUnitsByPriceType,
+                quickStoreUrl: p.quickStoreUrl,
+                categoryStoreUrl: p.categoryStoreUrl,
+                categories: p.categories,
+                searchQuery: '',
+                selectedCategory: '',
+                showAddCategoryInline: false,
+                newCategoryName: '',
+                categoryInlineError: '',
+                categoryCreateSaving: false,
+                lineQty: {},
+                lineUnits: {},
+                showAddItemModal: false,
+                quickItemSaving: false,
+                quickItemError: '',
+                quickItem: { name: '', category_id: '', price: '', rental_period: 'per_day' },
+                init() {
                         const qty = {};
                         const units = {};
                         p.items.forEach((item) => {
@@ -56,8 +64,57 @@
                     get filteredItems() {
                         return this.items.filter((item) => this.matchesFilter(item));
                     },
+                    openAddCategoryInline() {
+                        this.showAddCategoryInline = true;
+                        this.categoryInlineError = '';
+                        this.$nextTick(() => document.getElementById('orderWizardNewCategoryName')?.focus());
+                    },
+                    closeAddCategoryInline() {
+                        this.showAddCategoryInline = false;
+                        this.categoryInlineError = '';
+                    },
+                    async saveQuickCategory() {
+                        const name = (this.newCategoryName || '').trim();
+                        if (!name) {
+                            this.categoryInlineError = @json(__('vendor.order_wizard_category_name_required'));
+                            return;
+                        }
+                        if (this.categoryCreateSaving) return;
+                        this.categoryInlineError = '';
+                        this.categoryCreateSaving = true;
+                        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+                        try {
+                            const res = await fetch(this.categoryStoreUrl, {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': csrf,
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                body: JSON.stringify({ name, is_active: 1 }),
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (!res.ok || !data.success || !data.category) {
+                                const errs = data.errors ? Object.values(data.errors).flat() : [];
+                                this.categoryInlineError = data.message || errs[0] || @json(__('vendor.order_wizard_category_create_failed'));
+                                return;
+                            }
+                            const cat = { id: data.category.id, name: data.category.name };
+                            const rest = this.categories.filter((c) => String(c.id) !== String(cat.id));
+                            this.categories = [cat, ...rest];
+                            this.quickItem.category_id = String(cat.id);
+                            this.showAddCategoryInline = false;
+                            this.newCategoryName = '';
+                        } catch (e) {
+                            this.categoryInlineError = @json(__('vendor.order_wizard_category_create_failed'));
+                        } finally {
+                            this.categoryCreateSaving = false;
+                        }
+                    },
                     billingUnitsLabelForLine(item) {
-                        const t = item.price_type;
+                        const t = item.rental_period;
                         return this.billingUnitsLabels[t] || '';
                     },
                     isSelected(itemId) {
@@ -68,7 +125,7 @@
                     },
                     defaultBillingUnitsFor(item) {
                         const map = this.bookingDefaultUnitsByPriceType || {};
-                        const t = item.price_type;
+                        const t = item.rental_period;
                         const raw = map[t];
                         const v = raw !== undefined && raw !== null ? parseFloat(String(raw)) : NaN;
                         return Number.isFinite(v) ? v : 1;
@@ -131,18 +188,96 @@
                         }
                         this.lineUnits = { ...this.lineUnits, [item.id]: v };
                     },
+                    openAddItemModal() {
+                        this.quickItemError = '';
+                        this.showAddCategoryInline = false;
+                        this.newCategoryName = '';
+                        this.categoryInlineError = '';
+                        this.quickItem = { name: '', category_id: '', price: '', rental_period: 'per_day' };
+                        this.showAddItemModal = true;
+                        document.documentElement.classList.add('overflow-hidden');
+                        this.$nextTick(() => document.getElementById('orderWizardQuickItemName')?.focus());
+                    },
+                    closeAddItemModal() {
+                        if (this.quickItemSaving) return;
+                        this.showAddItemModal = false;
+                        document.documentElement.classList.remove('overflow-hidden');
+                    },
+                    async saveQuickItem() {
+                        if (this.quickItemSaving) return;
+                        this.quickItemError = '';
+                        const name = (this.quickItem.name || '').trim();
+                        const categoryId = this.quickItem.category_id;
+                        const price = parseFloat(String(this.quickItem.price));
+                        if (!name || !categoryId) {
+                            this.quickItemError = @json(__('vendor.order_wizard_quick_item_required'));
+                            return;
+                        }
+                        if (!Number.isFinite(price) || price < 0) {
+                            this.quickItemError = @json(__('vendor.order_wizard_quick_item_price_invalid'));
+                            return;
+                        }
+                        this.quickItemSaving = true;
+                        try {
+                            const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+                            const res = await fetch(this.quickStoreUrl, {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': csrf,
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                body: JSON.stringify({
+                                    name,
+                                    category_id: categoryId,
+                                    price,
+                                    rental_period: this.quickItem.rental_period || 'per_day',
+                                }),
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (!res.ok || !data.success) {
+                                const errs = data.errors ? Object.values(data.errors).flat() : [];
+                                this.quickItemError = data.message || errs[0] || @json(__('vendor.order_wizard_item_create_failed'));
+                                return;
+                            }
+                            const item = data.item;
+                            if (!this.items.some((i) => i.id === item.id)) {
+                                this.items = [...this.items, item];
+                                this.lineQty = { ...this.lineQty, [item.id]: 0 };
+                                this.lineUnits = { ...this.lineUnits, [item.id]: null };
+                            }
+                            this.addLine(item);
+                            this.searchQuery = '';
+                            this.selectedCategory = '';
+                            this.showAddItemModal = false;
+                            document.documentElement.classList.remove('overflow-hidden');
+                        } catch (e) {
+                            this.quickItemError = @json(__('vendor.order_wizard_item_create_failed'));
+                        } finally {
+                            this.quickItemSaving = false;
+                        }
+                    },
                 };
-            }
-        </script>
+        }
+    </script>
 
-        <div x-data="orderWizardItemsPage()" x-init="init()">
+    <div x-data="orderWizardItemsPage()" x-init="init()">
             <form action="{{ route('vendor.orders.create.step2') }}" method="POST"
                   class="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-sm ring-1 ring-gray-100"
                   id="order-items-step-form">
                 @csrf
 
                 <div class="flex-shrink-0 space-y-2 border-b border-gray-100 bg-gray-50/80 px-3 py-2.5 sm:space-y-2 sm:px-4 sm:py-3">
-                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+                    <div class="flex justify-end" x-show="items.length > 0" x-cloak>
+                        <button type="button"
+                                @click="openAddItemModal()"
+                                class="inline-flex h-10 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm shadow-emerald-600/15 transition [touch-action:manipulation] hover:bg-emerald-700 active:bg-emerald-800 sm:w-auto sm:min-w-[9rem]">
+                            {{ __('vendor.add_new_item') }}
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3" x-show="items.length > 0" x-cloak>
                         <div>
                             <label for="order-wizard-items-search" class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500 sm:text-xs">{{ __('vendor.search_items') }}</label>
                             <div class="relative">
@@ -186,6 +321,19 @@
                     </div>
                 </div>
 
+                <div x-show="items.length === 0" x-cloak
+                     class="flex min-h-[12rem] flex-col items-center justify-center border-b border-gray-100 px-4 py-10 text-center sm:min-h-[14rem]">
+                    <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-amber-50 ring-1 ring-amber-100">
+                        <i class="fas fa-box-open text-2xl text-amber-600" aria-hidden="true"></i>
+                    </div>
+                    <p class="max-w-sm text-sm font-medium text-gray-800 sm:text-base">{{ __('vendor.order_wizard_no_catalog_items') }}</p>
+                    <button type="button"
+                            @click="openAddItemModal()"
+                            class="mt-4 inline-flex h-10 min-w-[9rem] items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm shadow-emerald-600/15 transition [touch-action:manipulation] hover:bg-emerald-700 active:bg-emerald-800">
+                        {{ __('vendor.add_new_item') }}
+                    </button>
+                </div>
+
                 <div x-show="items.length > 0 && filteredItems.length === 0" x-cloak
                      class="flex min-h-[9rem] flex-col items-center justify-center border-b border-gray-100 px-4 py-8 text-center sm:min-h-[10rem] sm:py-10">
                     <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-gray-100">
@@ -200,7 +348,7 @@
                     </button>
                 </div>
 
-                <div class="max-h-[min(78vh,38rem)] overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] md:max-h-[min(82vh,42rem)]">
+                <div x-show="items.length > 0" x-cloak class="max-h-[min(78vh,38rem)] overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] md:max-h-[min(82vh,42rem)]">
                     <style>
                         @media (max-width: 767px) {
                             .order-wizard-items-table thead { display: none !important; }
@@ -396,7 +544,8 @@
                     </button>
                 </x-order-wizard-actions>
             </form>
-        </div>
-    @endif
+
+        @include('vendor.orders.partials.quick-item-modal')
+    </div>
 </div>
 @endsection

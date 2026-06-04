@@ -24,7 +24,6 @@ class VendorCalendarController extends Controller
             $statusColors = [
                 'pending'    => ['bg' => '#f59e0b', 'border' => '#d97706', 'text' => '#000'],
                 'confirmed'  => ['bg' => '#3b82f6', 'border' => '#2563eb', 'text' => '#fff'],
-                'ongoing'    => ['bg' => '#10b981', 'border' => '#059669', 'text' => '#fff'],
                 'completed'  => ['bg' => '#6b7280', 'border' => '#4b5563', 'text' => '#fff'],
                 'cancelled'  => ['bg' => '#ef4444', 'border' => '#dc2626', 'text' => '#fff'],
                 'overdue'    => ['bg' => '#f97316', 'border' => '#ea580c', 'text' => '#fff'],
@@ -34,7 +33,7 @@ class VendorCalendarController extends Controller
                 $colors = $statusColors[$order->status] ?? $statusColors['pending'];
 
                 return [
-                    'id'              => $order->id,
+                    'id'              => $order->uuid,
                     'title'           => '#' . $order->order_number . ' - ' . ($order->customer->name ?? 'Walk-in'),
                     'start'           => $order->start_at->toIso8601String(),
                     'backgroundColor' => $colors['bg'],
@@ -87,7 +86,6 @@ class VendorCalendarController extends Controller
             $statusColors = [
                 'pending'    => ['bg' => '#f59e0b', 'border' => '#d97706', 'text' => '#000'],
                 'confirmed'  => ['bg' => '#3b82f6', 'border' => '#2563eb', 'text' => '#fff'],
-                'ongoing'    => ['bg' => '#10b981', 'border' => '#059669', 'text' => '#fff'],
                 'completed'  => ['bg' => '#6b7280', 'border' => '#4b5563', 'text' => '#fff'],
                 'cancelled'  => ['bg' => '#ef4444', 'border' => '#dc2626', 'text' => '#fff'],
                 'overdue'    => ['bg' => '#f97316', 'border' => '#ea580c', 'text' => '#fff'],
@@ -96,7 +94,7 @@ class VendorCalendarController extends Controller
             $colors = $statusColors[$order->status] ?? $statusColors['pending'];
 
             return [
-                'id'              => $order->id,
+                'id'              => $order->uuid,
                 'title'           => '#' . $order->order_number . ' - ' . ($order->customer->name ?? 'Walk-in'),
                 'start'           => $order->start_at->toIso8601String(),
                 'backgroundColor' => $colors['bg'],

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Vendor;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Vendor\Concerns\ListsVendorLogistics;
 use App\Http\Controllers\Vendor\Concerns\ManagesOrderLive;
+use App\Http\Controllers\Vendor\Concerns\RedirectsIfNumericRouteKey;
 use App\Models\Category;
 use App\Models\CreateOrder;
 use App\Models\Items;
@@ -25,6 +26,7 @@ class VendorOrderController extends Controller
 {
     use ListsVendorLogistics;
     use ManagesOrderLive;
+    use RedirectsIfNumericRouteKey;
 
     /** @var string Session payload for multi-step direct order creation */
     private const ORDER_CREATE_WIZARD_KEY = 'vendor_order_create_wizard';
@@ -41,7 +43,10 @@ class VendorOrderController extends Controller
         }
 
         $query = Order::where('vendor_id', $vendor->id)
-            ->with(['customer', 'items']);
+            ->with([
+                'customer' => fn ($q) => $q->withTrashed(),
+                'items',
+            ]);
 
         // Filter by status if provided
         if ($request->has('status') && $request->status != '') {
@@ -69,7 +74,6 @@ class VendorOrderController extends Controller
             'all' => Order::where('vendor_id', $vendor->id)->count(),
             'pending' => Order::where('vendor_id', $vendor->id)->where('status', 'pending')->count(),
             'confirmed' => Order::where('vendor_id', $vendor->id)->where('status', 'confirmed')->count(),
-            'ongoing' => Order::where('vendor_id', $vendor->id)->where('status', 'ongoing')->count(),
             'completed' => Order::where('vendor_id', $vendor->id)->where('status', 'completed')->count(),
             'cancelled' => Order::where('vendor_id', $vendor->id)->where('status', 'cancelled')->count(),
         ];
@@ -141,6 +145,7 @@ class VendorOrderController extends Controller
         }
 
         $customers = VendorCustomer::where('vendor_id', $vendor->id)
+            ->where('is_active', true)
             ->orderBy('name')
             ->get();
 
@@ -206,7 +211,8 @@ class VendorOrderController extends Controller
             ->get();
 
         $categories = Category::query()
-            ->whereIn('id', $catalogItems->pluck('category_id')->unique()->filter())
+            ->where('vendor_id', $vendor->id)
+            ->where('is_active', true)
             ->orderBy('name')
             ->get();
 
@@ -230,34 +236,39 @@ class VendorOrderController extends Controller
             $initialQty[$id] = (int) old('lines.'.$id.'.quantity', $lineQty[$id] ?? 0);
             $bu = old('lines.'.$id.'.billing_units', $lineUnits[$id] ?? null);
             $initialUnits[$id] = $bu !== null && $bu !== '' ? (float) $bu : null;
-            $pt = in_array($i->price_type ?? '', Items::priceTypeKeys(), true) ? $i->price_type : 'per_day';
-            if ($initialUnits[$id] === null && Items::priceTypeUsesBillingUnits($pt) && isset($bookingDefaultsByPriceType[$pt])) {
+            $pt = in_array($i->rental_period ?? '', Items::rentalPeriodKeys(), true) ? $i->rental_period : 'per_day';
+            if ($initialUnits[$id] === null && Items::rentalPeriodUsesBillingUnits($pt) && isset($bookingDefaultsByPriceType[$pt])) {
                 $initialUnits[$id] = $bookingDefaultsByPriceType[$pt];
             }
         }
 
         $catalogItemsForJs = $catalogItems->map(function (Items $i) {
             $id = $i->id;
-            $pt = in_array($i->price_type ?? '', Items::priceTypeKeys(), true) ? $i->price_type : 'per_day';
+            $pt = in_array($i->rental_period ?? '', Items::rentalPeriodKeys(), true) ? $i->rental_period : 'per_day';
 
             return [
                 'id' => $id,
+                'uuid' => $i->uuid,
+                'item_code' => $i->item_code,
+                'slug' => $i->slug,
                 'name' => $i->name,
                 'price' => (float) $i->price,
                 'photo_url' => $i->photo_url,
                 'category_id' => $i->category_id,
                 'category' => $i->category ? ['id' => $i->category->id, 'name' => $i->category->name] : null,
-                'stock' => (int) ($i->available_stock ?? $i->stock ?? 0),
+                'stock' => (int) ($i->stock ?? 0),
                 'manage_stock' => (bool) ($i->manage_stock ?? false),
-                'price_type' => $pt,
-                'uses_billing_units' => Items::priceTypeUsesBillingUnits($pt),
+                'rental_period' => $pt,
+                'uses_billing_units' => Items::rentalPeriodUsesBillingUnits($pt),
             ];
         })->values();
 
-        $billingUnitsLabels = collect(Items::priceTypeKeys())
-            ->filter(fn ($k) => Items::priceTypeUsesBillingUnits($k))
+        $billingUnitsLabels = collect(Items::rentalPeriodKeys())
+            ->filter(fn ($k) => Items::rentalPeriodUsesBillingUnits($k))
             ->mapWithKeys(fn ($k) => [$k => Items::billingUnitsFieldLabel($k)])
             ->all();
+
+        $rentalPeriods = Items::rentalPeriodSelectOptions();
 
         return view('vendor.orders.create-items', [
             'catalogItems' => $catalogItems,
@@ -267,6 +278,7 @@ class VendorOrderController extends Controller
             'initialQty' => $initialQty,
             'initialUnits' => $initialUnits,
             'bookingDefaultUnitsByPriceType' => $bookingDefaultsByPriceType,
+            'rentalPeriods' => $rentalPeriods,
             'wizard' => $wizard,
         ]);
     }
@@ -328,8 +340,8 @@ class VendorOrderController extends Controller
                     ->withErrors(['lines' => __('vendor.order_wizard_invalid_item')])
                     ->withInput();
             }
-            $type = $item->price_type ?? 'per_day';
-            if (Items::priceTypeUsesBillingUnits($type) && empty($row['billing_units'])) {
+            $type = $item->rental_period ?? 'per_day';
+            if (Items::rentalPeriodUsesBillingUnits($type) && empty($row['billing_units'])) {
                 return redirect()
                     ->route('vendor.orders.create.items')
                     ->withErrors(['lines' => __('vendor.order_wizard_billing_units_required')])
@@ -425,13 +437,13 @@ class VendorOrderController extends Controller
                 ->withErrors(['line' => __('vendor.order_wizard_invalid_item')]);
         }
 
-        $type = $item->price_type ?? 'per_day';
-        if (! in_array($type, Items::priceTypeKeys(), true)) {
+        $type = $item->rental_period ?? 'per_day';
+        if (! in_array($type, Items::rentalPeriodKeys(), true)) {
             $type = 'per_day';
         }
 
         $billing = null;
-        if (Items::priceTypeUsesBillingUnits($type)) {
+        if (Items::rentalPeriodUsesBillingUnits($type)) {
             if ($request->input('billing_units') === null || $request->input('billing_units') === '') {
                 return redirect()
                     ->route('vendor.orders.create.summary')
@@ -451,7 +463,7 @@ class VendorOrderController extends Controller
                 'item_id' => (int) $validated['item_id'],
                 'quantity' => (int) $validated['quantity'],
             ];
-            if (Items::priceTypeUsesBillingUnits($type)) {
+            if (Items::rentalPeriodUsesBillingUnits($type)) {
                 $lines[$i]['billing_units'] = $billing;
             }
             $found = true;
@@ -871,7 +883,7 @@ class VendorOrderController extends Controller
     }
 
     /**
-     * Default billing-unit counts from wizard rental window (step 1), keyed by price_type.
+     * Default billing-unit counts from wizard rental window (step 1), keyed by rental_period.
      * {@see persistWizardLinesOnOrder} uses the same per_day rule as {@see ManagesOrderLive::orderRentDays()}.
      *
      * @param  array<string, mixed>  $wizard
@@ -895,8 +907,8 @@ class VendorOrderController extends Controller
         }
 
         $out = [];
-        foreach (Items::priceTypeKeys() as $key) {
-            if ($key === 'fixed' || ! Items::priceTypeUsesBillingUnits($key)) {
+        foreach (Items::rentalPeriodKeys() as $key) {
+            if ($key === 'fixed' || ! Items::rentalPeriodUsesBillingUnits($key)) {
                 continue;
             }
             $out[$key] = $this->defaultBillingUnitsBetween($start, $end, $key);
@@ -905,16 +917,16 @@ class VendorOrderController extends Controller
         return $out;
     }
 
-    private function defaultBillingUnitsBetween(Carbon $start, Carbon $end, string $priceType): float
+    private function defaultBillingUnitsBetween(Carbon $start, Carbon $end, string $rentalPeriod): float
     {
-        if ($priceType === 'per_day') {
+        if ($rentalPeriod === 'per_day') {
             $days = max(1, (int) ceil($start->diffInDays($end)));
 
             return round((float) $days, 2);
         }
 
         $seconds = abs($start->diffInSeconds($end));
-        $raw = match ($priceType) {
+        $raw = match ($rentalPeriod) {
             'per_minute' => $seconds / 60,
             'per_hour' => $seconds / 3600,
             'per_week' => $seconds / (86400 * 7),
@@ -979,12 +991,12 @@ class VendorOrderController extends Controller
             if (! $item) {
                 continue;
             }
-            $type = $item->price_type ?? 'per_day';
+            $type = $item->rental_period ?? 'per_day';
             $entry = [
                 'item_id' => $itemId,
                 'quantity' => $qty,
             ];
-            if (Items::priceTypeUsesBillingUnits($type)) {
+            if (Items::rentalPeriodUsesBillingUnits($type)) {
                 $bu = $row['billing_units'] ?? null;
                 $entry['billing_units'] = $bu !== null && $bu !== '' ? (float) $bu : null;
             }
@@ -997,7 +1009,7 @@ class VendorOrderController extends Controller
 
     /**
      * @param  list<array{item_id: int, quantity: int, billing_units?: float|null}>  $lines
-     * @return list<array{item_id: int, name: string, quantity: int, price_type: string, billing_units: float|null, unit_price: float, line_total: float}>
+     * @return list<array{item_id: int, name: string, quantity: int, rental_period: string, billing_units: float|null, unit_price: float, line_total: float}>
      */
     private function orderCreateWizardLineSummaries($vendor, array $lines): array
     {
@@ -1007,20 +1019,20 @@ class VendorOrderController extends Controller
             if (! $item) {
                 continue;
             }
-            $linePriceType = $item->price_type ?? 'per_day';
-            if (! in_array($linePriceType, Items::priceTypeKeys(), true)) {
-                $linePriceType = 'per_day';
+            $lineRentalPeriod = $item->rental_period ?? 'per_day';
+            if (! in_array($lineRentalPeriod, Items::rentalPeriodKeys(), true)) {
+                $lineRentalPeriod = 'per_day';
             }
             $billingUnits = $this->normalizedBillingUnits(
                 isset($row['billing_units']) ? (float) $row['billing_units'] : null,
-                $linePriceType
+                $lineRentalPeriod
             );
             $qty = (int) $row['quantity'];
             $temp = new OrderItem([
                 'price' => $item->price,
                 'quantity' => $qty,
-                'price_type' => $linePriceType,
-                'billing_units' => Items::priceTypeUsesBillingUnits($linePriceType) ? $billingUnits : null,
+                'rental_period' => $lineRentalPeriod,
+                'billing_units' => Items::rentalPeriodUsesBillingUnits($lineRentalPeriod) ? $billingUnits : null,
             ]);
             $lineTotal = $temp->lineSubtotal();
             $summaries[] = [
@@ -1028,7 +1040,7 @@ class VendorOrderController extends Controller
                 'name' => $item->name,
                 'photo_url' => $item->photo_url,
                 'quantity' => $qty,
-                'price_type' => $linePriceType,
+                'rental_period' => $lineRentalPeriod,
                 'billing_units' => $row['billing_units'] ?? null,
                 'unit_price' => (float) $item->price,
                 'line_total' => $lineTotal,
@@ -1061,19 +1073,19 @@ class VendorOrderController extends Controller
             if (! $item) {
                 continue;
             }
-            $linePriceType = $item->price_type ?? 'per_day';
-            if (! in_array($linePriceType, Items::priceTypeKeys(), true)) {
-                $linePriceType = 'per_day';
+            $lineRentalPeriod = $item->rental_period ?? 'per_day';
+            if (! in_array($lineRentalPeriod, Items::rentalPeriodKeys(), true)) {
+                $lineRentalPeriod = 'per_day';
             }
             $billingUnits = $this->normalizedBillingUnits(
                 isset($row['billing_units']) ? (float) $row['billing_units'] : null,
-                $linePriceType
+                $lineRentalPeriod
             );
             $temp = new OrderItem([
                 'price' => $item->price,
                 'quantity' => $qty,
-                'price_type' => $linePriceType,
-                'billing_units' => Items::priceTypeUsesBillingUnits($linePriceType) ? $billingUnits : null,
+                'rental_period' => $lineRentalPeriod,
+                'billing_units' => Items::rentalPeriodUsesBillingUnits($lineRentalPeriod) ? $billingUnits : null,
             ]);
             $subTotal += $temp->lineSubtotal();
         }
@@ -1113,14 +1125,14 @@ class VendorOrderController extends Controller
                 continue;
             }
 
-            $linePriceType = $item->price_type;
-            if (! in_array($linePriceType, Items::priceTypeKeys(), true)) {
-                $linePriceType = 'per_day';
+            $lineRentalPeriod = $item->rental_period;
+            if (! in_array($lineRentalPeriod, Items::rentalPeriodKeys(), true)) {
+                $lineRentalPeriod = 'per_day';
             }
 
             $billingUnits = $this->normalizedBillingUnits(
                 isset($itemData['billing_units']) ? (float) $itemData['billing_units'] : null,
-                $linePriceType
+                $lineRentalPeriod
             );
 
             $existing = OrderItem::where('order_id', $order->id)->where('item_id', $item->id)->first();
@@ -1128,8 +1140,8 @@ class VendorOrderController extends Controller
             if ($existing) {
                 $existing->update([
                     'quantity' => $existing->quantity + (int) $itemData['quantity'],
-                    'price_type' => $linePriceType,
-                    'billing_units' => Items::priceTypeUsesBillingUnits($linePriceType) ? $billingUnits : null,
+                    'rental_period' => $lineRentalPeriod,
+                    'billing_units' => Items::rentalPeriodUsesBillingUnits($lineRentalPeriod) ? $billingUnits : null,
                     'start_at' => $order->start_at,
                     'end_at' => $order->end_at,
                     'rent_days' => $rentDays,
@@ -1143,8 +1155,8 @@ class VendorOrderController extends Controller
                     'item_name' => $item->name,
                     'price' => $item->price,
                     'quantity' => (int) $itemData['quantity'],
-                    'price_type' => $linePriceType,
-                    'billing_units' => Items::priceTypeUsesBillingUnits($linePriceType) ? $billingUnits : null,
+                    'rental_period' => $lineRentalPeriod,
+                    'billing_units' => Items::rentalPeriodUsesBillingUnits($lineRentalPeriod) ? $billingUnits : null,
                     'start_at' => $order->start_at,
                     'end_at' => $order->end_at,
                     'rent_days' => $rentDays,
@@ -1164,15 +1176,27 @@ class VendorOrderController extends Controller
     /**
      * Display the specified order
      */
-    public function show(Order $order)
+    public function show(Request $request, Order $order)
     {
         $vendor = Auth::user()->currentVendor();
 
-        if (! $vendor || $order->vendor_id !== $vendor->id) {
-            return redirect()->route('vendor.select')->withErrors(['error' => 'Unauthorized access']);
+        if (! $vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor to continue']);
         }
 
-        $order->load(['customer', 'items.item', 'coupon']);
+        if ($order->vendor_id !== $vendor->id) {
+            return redirect()->route('vendor.orders.index')->withErrors(['error' => 'This order belongs to another store.']);
+        }
+
+        if ($redirect = $this->redirectIfNumericRouteKey($request, $order, 'vendor.orders.show')) {
+            return $redirect;
+        }
+
+        $order->load([
+            'customer' => fn ($q) => $q->withTrashed(),
+            'items.item',
+            'coupon',
+        ]);
 
         $catalogItems = Items::query()
             ->where('vendor_id', $vendor->id)
@@ -1182,8 +1206,8 @@ class VendorOrderController extends Controller
             ->orderBy('name')
             ->get();
 
-        $orderBillingLabels = collect(Items::priceTypeKeys())
-            ->filter(fn ($k) => Items::priceTypeUsesBillingUnits($k))
+        $orderBillingLabels = collect(Items::rentalPeriodKeys())
+            ->filter(fn ($k) => Items::rentalPeriodUsesBillingUnits($k))
             ->mapWithKeys(fn ($k) => [$k => Items::billingUnitsFieldLabel($k)])
             ->all();
 
@@ -1211,7 +1235,11 @@ class VendorOrderController extends Controller
             abort(403);
         }
 
-        $order->load(['customer', 'items.item.category', 'vendor']);
+        $order->load([
+            'customer' => fn ($q) => $q->withTrashed(),
+            'items.item.category',
+            'vendor',
+        ]);
 
         return view('vendor.orders.print', [
             'order' => $order,
@@ -1231,7 +1259,11 @@ class VendorOrderController extends Controller
             abort(403);
         }
 
-        $order->load(['customer', 'items.item.category', 'vendor']);
+        $order->load([
+            'customer' => fn ($q) => $q->withTrashed(),
+            'items.item.category',
+            'vendor',
+        ]);
 
         $locale = session('language') ?? Auth::user()?->language ?? config('app.locale');
         app()->setLocale($locale);
@@ -1305,7 +1337,7 @@ class VendorOrderController extends Controller
             ],
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.billing_units' => 'nullable|numeric|min:0',
-            'items.*.price_type' => ['nullable', 'string', Rule::in(Items::priceTypeKeys())],
+            'items.*.rental_period' => ['nullable', 'string', Rule::in(Items::rentalPeriodKeys())],
             'remove_item_ids' => 'nullable|array',
             'remove_item_ids.*' => [
                 'integer',
@@ -1394,7 +1426,7 @@ class VendorOrderController extends Controller
 
                 foreach ($lineRows as $row) {
                     $qty = (int) $row['quantity'];
-                    $priceTypeInput = $row['price_type'] ?? null;
+                    $rentalPeriodInput = $row['rental_period'] ?? null;
                     $billingIn = isset($row['billing_units']) ? (float) $row['billing_units'] : null;
 
                     if (! empty($row['order_item_id'])) {
@@ -1402,14 +1434,14 @@ class VendorOrderController extends Controller
                         if (! $oi) {
                             continue;
                         }
-                        $lineType = $priceTypeInput ?: ($oi->price_type ?? ($oi->item?->price_type ?? 'per_day'));
-                        $lineType = in_array($lineType, Items::priceTypeKeys(), true) ? $lineType : 'per_day';
+                        $lineType = $rentalPeriodInput ?: ($oi->rental_period ?? ($oi->item?->rental_period ?? 'per_day'));
+                        $lineType = in_array($lineType, Items::rentalPeriodKeys(), true) ? $lineType : 'per_day';
                         $units = $this->normalizedBillingUnits($billingIn, $lineType);
 
                         $oi->update([
                             'quantity' => $qty,
-                            'price_type' => $lineType,
-                            'billing_units' => Items::priceTypeUsesBillingUnits($lineType) ? $units : null,
+                            'rental_period' => $lineType,
+                            'billing_units' => Items::rentalPeriodUsesBillingUnits($lineType) ? $units : null,
                             'start_at' => $order->start_at,
                             'end_at' => $order->end_at,
                             'rent_days' => $rentDays,
@@ -1418,8 +1450,8 @@ class VendorOrderController extends Controller
                         $oi->refreshLineTotals();
                     } elseif (! empty($row['item_id'])) {
                         $item = Items::where('vendor_id', $vendor->id)->where('id', $row['item_id'])->firstOrFail();
-                        $lineType = $priceTypeInput ?: ($item->price_type ?? 'per_day');
-                        $lineType = in_array($lineType, Items::priceTypeKeys(), true) ? $lineType : 'per_day';
+                        $lineType = $rentalPeriodInput ?: ($item->rental_period ?? 'per_day');
+                        $lineType = in_array($lineType, Items::rentalPeriodKeys(), true) ? $lineType : 'per_day';
                         $units = $this->normalizedBillingUnits($billingIn, $lineType);
 
                         $oi = OrderItem::create([
@@ -1428,8 +1460,8 @@ class VendorOrderController extends Controller
                             'item_name' => $item->name,
                             'price' => $item->price,
                             'quantity' => $qty,
-                            'price_type' => $lineType,
-                            'billing_units' => Items::priceTypeUsesBillingUnits($lineType) ? $units : null,
+                            'rental_period' => $lineType,
+                            'billing_units' => Items::rentalPeriodUsesBillingUnits($lineType) ? $units : null,
                             'start_at' => $order->start_at,
                             'end_at' => $order->end_at,
                             'rent_days' => $rentDays,
@@ -1525,9 +1557,9 @@ class VendorOrderController extends Controller
         return 0.0;
     }
 
-    protected function normalizedBillingUnits(?float $value, string $linePriceType): float
+    protected function normalizedBillingUnits(?float $value, string $lineRentalPeriod): float
     {
-        if (! Items::priceTypeUsesBillingUnits($linePriceType)) {
+        if (! Items::rentalPeriodUsesBillingUnits($lineRentalPeriod)) {
             return 1.0;
         }
 

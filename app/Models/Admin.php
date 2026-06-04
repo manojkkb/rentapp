@@ -17,6 +17,7 @@ class Admin extends Authenticatable
         'avatar',
         'is_super_admin',
         'is_active',
+        'email_verified_at',
     ];
 
     protected $hidden = [

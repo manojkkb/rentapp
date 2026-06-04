@@ -71,7 +71,6 @@ class InvoiceDocument
         return match ($key) {
             'pending' => __('vendor.pending'),
             'confirmed' => __('vendor.confirmed'),
-            'ongoing' => __('vendor.ongoing'),
             'completed' => __('vendor.completed'),
             'cancelled' => __('vendor.cancelled'),
             default => $status !== '' && $status !== null ? ucfirst(str_replace('_', ' ', $key)) : '—',

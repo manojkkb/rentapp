@@ -41,20 +41,22 @@
                                    placeholder="{{ __('vendor.item_name_placeholder') }}">
                             @error('name')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
                         </div>
-                        <div class="sm:col-span-2">
-                            <label for="category_id" class="{{ $fl }}">{{ __('vendor.category') }} <span class="text-red-500">*</span></label>
-                            <p class="{{ $fh }}">{{ __('vendor.field_hint_category') }}</p>
-                            <select id="category_id" name="category_id" required class="{{ $fc }} @error('category_id') border-red-500 @enderror">
-                                <option value="">{{ __('vendor.select_category') }}</option>
-                                @foreach($categories as $category)
-                                    <option value="{{ $category->id }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('category_id')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-                            @if($categories->isEmpty())
-                                <p class="mt-0.5 text-[10px] text-orange-600">{{ __('vendor.no_categories_found') }} <a href="{{ route('vendor.categories.create') }}" class="underline">{{ __('vendor.create_category_first') }}</a></p>
-                            @endif
+                        <div>
+                            <label for="item_code" class="{{ $fl }}">{{ __('vendor.item_code') }} <span class="font-normal normal-case text-gray-400">({{ __('vendor.optional') }})</span></label>
+                            <p class="{{ $fh }}">{{ __('vendor.field_hint_item_code') }}</p>
+                            <input type="text" id="item_code" name="item_code" value="{{ old('item_code') }}" maxlength="32"
+                                   class="{{ $fc }} font-mono uppercase @error('item_code') border-red-500 @enderror"
+                                   placeholder="{{ __('vendor.item_code_placeholder') }}"
+                                   autocapitalize="characters" spellcheck="false">
+                            @error('item_code')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
                         </div>
+                        @include('vendor.items.partials.category-picker-searchable', [
+                            'categories' => $categories,
+                            'selectedCategoryId' => old('category_id'),
+                            'inputClass' => $fc,
+                            'labelClass' => $fl,
+                            'hintClass' => $fh,
+                        ])
                     </div>
 
                     <div>
@@ -87,14 +89,14 @@
                                 @error('price')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
-                                <label for="price_type" class="{{ $fl }}">{{ __('vendor.price_type') }} <span class="text-red-500">*</span></label>
-                                <p class="{{ $fh }}">{{ __('vendor.field_hint_price_type') }}</p>
-                                <select id="price_type" name="price_type" required class="{{ $fc }} @error('price_type') border-red-500 @enderror">
-                                    @foreach($priceTypes as $key => $label)
-                                        <option value="{{ $key }}" {{ old('price_type', 'per_day') == $key ? 'selected' : '' }}>{{ $label }}</option>
+                                <label for="rental_period" class="{{ $fl }}">{{ __('vendor.rental_period') }} <span class="text-red-500">*</span></label>
+                                <p class="{{ $fh }}">{{ __('vendor.field_hint_rental_period') }}</p>
+                                <select id="rental_period" name="rental_period" required class="{{ $fc }} @error('rental_period') border-red-500 @enderror">
+                                    @foreach($rentalPeriods as $key => $label)
+                                        <option value="{{ $key }}" {{ old('rental_period', 'per_day') == $key ? 'selected' : '' }}>{{ $label }}</option>
                                     @endforeach
                                 </select>
-                                @error('price_type')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
+                                @error('rental_period')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
                             </div>
                         </div>
                     </section>

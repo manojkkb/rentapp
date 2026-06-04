@@ -144,7 +144,6 @@
                         $chip = match ($st) {
                             'pending' => 'border-amber-200/90 bg-amber-50 text-amber-900 hover:bg-amber-100/90',
                             'confirmed' => 'border-sky-200/90 bg-sky-50 text-sky-900 hover:bg-sky-100/90',
-                            'ongoing' => 'border-violet-200/90 bg-violet-50 text-violet-900 hover:bg-violet-100/90',
                             'completed' => 'border-emerald-200/90 bg-emerald-50 text-emerald-900 hover:bg-emerald-100/90',
                             'cancelled' => 'border-rose-200/90 bg-rose-50 text-rose-900 hover:bg-rose-100/90',
                             default => 'border-gray-200 bg-gray-50 text-gray-800',
@@ -152,7 +151,6 @@
                         $label = match ($st) {
                             'pending' => __('vendor.pending'),
                             'confirmed' => __('vendor.confirmed'),
-                            'ongoing' => __('vendor.ongoing'),
                             'completed' => __('vendor.completed'),
                             'cancelled' => __('vendor.cancelled'),
                             default => $st,
@@ -274,7 +272,6 @@
                         $badge = match ($st) {
                             'pending' => 'bg-amber-100 text-amber-800',
                             'confirmed' => 'bg-blue-100 text-blue-800',
-                            'ongoing' => 'bg-indigo-100 text-indigo-800',
                             'completed' => 'bg-emerald-100 text-emerald-800',
                             'cancelled' => 'bg-red-100 text-red-800',
                             default => 'bg-gray-100 text-gray-700',
@@ -321,7 +318,7 @@
             </div>
             <div class="max-h-56 overflow-y-auto overscroll-y-contain p-2 [-webkit-overflow-scrolling:touch]">
                 @forelse($popular as $index => $item)
-                    <a href="{{ route('vendor.items.edit', $item['id']) }}"
+                    <a href="{{ route('vendor.items.show', $item['id']) }}"
                        class="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 last:mb-0 hover:border-gray-100 hover:bg-gray-50/80">
                         <div class="flex min-w-0 items-center gap-2">
                             @if(! empty($item['image']))

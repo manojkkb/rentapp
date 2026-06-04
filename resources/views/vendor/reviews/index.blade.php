@@ -195,7 +195,7 @@
                                 <span class="text-sm text-gray-500">• {{ $review->created_at->diffForHumans() }}</span>
                                 <!-- Order Reference -->
                                 @if ($review->order)
-                                    <span class="text-sm text-gray-500">• Order #{{ $review->order->id }}</span>
+                                    <span class="text-sm text-gray-500">• Order {{ $review->order->uuid }}</span>
                                 @endif
                             </div>
                         </div>
@@ -204,7 +204,7 @@
                     <!-- Action Buttons -->
                     <div class="flex items-center gap-2 mt-4 md:mt-0">
                         <!-- Approval Toggle -->
-                        <form method="POST" action="{{ route('vendor.reviews.toggle', $review->id) }}" class="inline">
+                        <form method="POST" action="{{ route('vendor.reviews.toggle', $review) }}" class="inline">
                             @csrf
                             <button type="submit" 
                                     class="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
@@ -259,7 +259,7 @@
 
                 <!-- Reply Form -->
                 <div x-show="showReplyForm" x-cloak class="mt-4 ml-16">
-                    <form method="POST" action="{{ route('vendor.reviews.reply', $review->id) }}" class="space-y-3">
+                    <form method="POST" action="{{ route('vendor.reviews.reply', $review) }}" class="space-y-3">
                         @csrf
                         <div>
                             <label for="reply-{{ $review->id }}" class="block text-sm font-medium text-gray-700 mb-1">

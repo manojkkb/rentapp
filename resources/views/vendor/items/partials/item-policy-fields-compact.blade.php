@@ -17,7 +17,7 @@
 <div class="space-y-2 rounded-md border border-gray-200 bg-gray-50/80 p-2.5">
     <div>
         <p class="{{ $sh }} mb-1.5">{{ __('vendor.item_fees_section') }}</p>
-        <div class="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div class="grid grid-cols-2 gap-2 md:grid-cols-3">
         <div>
             <label class="{{ $lb }}">{{ __('vendor.security_deposit') }} <span class="text-red-500">*</span></label>
             <p class="{{ $fh }}">{{ __('vendor.field_hint_security_deposit') }}</p>
@@ -31,17 +31,10 @@
             @error('replacement_cost')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
         </div>
         <div>
-            <label class="{{ $lb }}">{{ __('vendor.late_fee_per_day') }} <span class="text-red-500">*</span></label>
-            <p class="{{ $fh }}">{{ __('vendor.field_hint_late_fee_per_day') }}</p>
-            <input type="number" name="late_fee_per_day" step="0.01" min="0" value="{{ $o('late_fee_per_day', 0) }}" required class="{{ $in }} @error('late_fee_per_day') border-red-500 @enderror">
-            @error('late_fee_per_day')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-        </div>
-        <div class="col-span-2 flex flex-col justify-end gap-1 md:col-span-1">
-            <label class="flex cursor-pointer items-center gap-1.5">
-                <input type="checkbox" name="is_damage_protection" value="1" class="h-3.5 w-3.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" @checked(filter_var(old('is_damage_protection', $item?->is_damage_protection ?? false), FILTER_VALIDATE_BOOLEAN))>
-                <span class="text-xs font-medium text-gray-700 leading-tight">{{ __('vendor.is_damage_protection') }}</span>
-            </label>
-            <p class="{{ $fh }} mb-0 pl-5 md:pl-0">{{ __('vendor.field_hint_damage_protection') }}</p>
+            <label class="{{ $lb }}">{{ __('vendor.late_fee') }} <span class="text-red-500">*</span></label>
+            <p class="{{ $fh }}">{{ __('vendor.field_hint_late_fee') }}</p>
+            <input type="number" name="late_fee" step="0.01" min="0" value="{{ $o('late_fee', 0) }}" required class="{{ $in }} @error('late_fee') border-red-500 @enderror">
+            @error('late_fee')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
         </div>
         </div>
     </div>
@@ -53,28 +46,21 @@
         <div>
             <label class="{{ $lb }}">{{ __('vendor.minimum_rental_duration') }} <span class="text-red-500">*</span></label>
             <p class="{{ $fh }}">{{ __('vendor.field_hint_min_rental') }}</p>
-            <input type="number" name="minimum_rental_duration" min="1" max="3650" value="{{ $o('minimum_rental_duration', 1) }}" required class="{{ $in }} @error('minimum_rental_duration') border-red-500 @enderror" title="{{ __('vendor.rental_duration_days_hint') }}">
-            @error('minimum_rental_duration')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
+            <input type="number" name="min_rental_duration" min="1" max="3650" value="{{ $o('min_rental_duration', 1) }}" required class="{{ $in }} @error('min_rental_duration') border-red-500 @enderror" title="{{ __('vendor.rental_duration_days_hint') }}">
+            @error('min_rental_duration')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
         </div>
         <div>
             <label class="{{ $lb }}">{{ __('vendor.maximum_rental_duration') }} <span class="text-red-500">*</span></label>
             <p class="{{ $fh }}">{{ __('vendor.field_hint_max_rental') }}</p>
-            <input type="number" name="maximum_rental_duration" min="1" max="3650" value="{{ $o('maximum_rental_duration', 90) }}" required class="{{ $in }} @error('maximum_rental_duration') border-red-500 @enderror">
-            @error('maximum_rental_duration')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
+            <input type="number" name="max_rental_duration" min="1" max="3650" value="{{ $o('max_rental_duration', 90) }}" required class="{{ $in }} @error('max_rental_duration') border-red-500 @enderror">
+            @error('max_rental_duration')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
         </div>
         </div>
     </div>
 
     <div class="border-t border-gray-200/80 pt-2">
         <p class="{{ $sh }} mb-1.5">{{ __('vendor.item_physical_section') }}</p>
-        <div class="grid grid-cols-2 gap-2 md:grid-cols-5">
-        <div>
-            <label class="{{ $lb }}">{{ __('vendor.weight_kg') }} <span class="text-red-500">*</span></label>
-            <p class="{{ $fh }}">{{ __('vendor.field_hint_weight') }}</p>
-            <input type="number" name="weight" step="0.001" min="0" value="{{ $o('weight', 0) }}" required class="{{ $in }} @error('weight') border-red-500 @enderror">
-            @error('weight')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-        </div>
-        <div>
+        <div class="max-w-xs">
             <label class="{{ $lb }}">{{ __('vendor.condition_status') }} <span class="text-red-500">*</span></label>
             <p class="{{ $fh }}">{{ __('vendor.field_hint_condition') }}</p>
             <select name="condition_status" required class="{{ $in }} @error('condition_status') border-red-500 @enderror">
@@ -84,48 +70,17 @@
             </select>
             @error('condition_status')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
         </div>
-        <div>
-            <label class="{{ $lb }}">{{ __('vendor.dimension_length_cm') }} <span class="text-red-500">*</span></label>
-            <p class="{{ $fh }}">{{ __('vendor.field_hint_dimension_length') }}</p>
-            <input type="number" name="dimension_length" step="0.01" min="0" value="{{ $o('dimension_length', 0) }}" required class="{{ $in }} @error('dimension_length') border-red-500 @enderror">
-            @error('dimension_length')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-        </div>
-        <div>
-            <label class="{{ $lb }}">{{ __('vendor.dimension_width_cm') }} <span class="text-red-500">*</span></label>
-            <p class="{{ $fh }}">{{ __('vendor.field_hint_dimension_width') }}</p>
-            <input type="number" name="dimension_width" step="0.01" min="0" value="{{ $o('dimension_width', 0) }}" required class="{{ $in }} @error('dimension_width') border-red-500 @enderror">
-            @error('dimension_width')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-        </div>
-        <div>
-            <label class="{{ $lb }}">{{ __('vendor.dimension_height_cm') }} <span class="text-red-500">*</span></label>
-            <p class="{{ $fh }}">{{ __('vendor.field_hint_dimension_height') }}</p>
-            <input type="number" name="dimension_height" step="0.01" min="0" value="{{ $o('dimension_height', 0) }}" required class="{{ $in }} @error('dimension_height') border-red-500 @enderror">
-            @error('dimension_height')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-        </div>
-        </div>
     </div>
 
     <div class="border-t border-gray-200/80 pt-2">
         <p class="{{ $sh }} mb-0.5">{{ __('vendor.item_inventory_buckets_section') }}</p>
         <p class="mb-1.5 text-[10px] font-medium leading-snug text-gray-600">{{ __('vendor.item_stock_buckets_hint') }}</p>
-        <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5">
+        <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             <div>
-                <label class="{{ $lb }}">{{ __('vendor.total_stock') }} <span class="text-red-500">*</span></label>
-                <p class="{{ $fh }}">{{ __('vendor.field_hint_total_stock') }}</p>
-                <input type="number" name="total_stock" min="0" value="{{ $o('total_stock', 1) }}" required class="{{ $in }} @error('total_stock') border-red-500 @enderror">
-                @error('total_stock')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-            </div>
-            <div>
-                <label class="{{ $lb }}">{{ __('vendor.available_stock') }} <span class="text-red-500">*</span></label>
-                <p class="{{ $fh }}">{{ __('vendor.field_hint_available_stock') }}</p>
-                <input type="number" name="available_stock" min="0" value="{{ $o('available_stock', 1) }}" required class="{{ $in }} @error('available_stock') border-red-500 @enderror">
-                @error('available_stock')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-            </div>
-            <div>
-                <label class="{{ $lb }}">{{ __('vendor.rented_stock') }} <span class="text-red-500">*</span></label>
-                <p class="{{ $fh }}">{{ __('vendor.field_hint_rented_stock') }}</p>
-                <input type="number" name="rented_stock" min="0" value="{{ $o('rented_stock', 0) }}" required class="{{ $in }} @error('rented_stock') border-red-500 @enderror">
-                @error('rented_stock')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
+                <label class="{{ $lb }}">{{ __('vendor.stock_quantity') }} <span class="text-red-500">*</span></label>
+                <p class="{{ $fh }}">{{ __('vendor.field_hint_stock') }}</p>
+                <input type="number" name="stock" min="0" value="{{ $o('stock', 1) }}" required class="{{ $in }} @error('stock') border-red-500 @enderror">
+                @error('stock')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
             </div>
             <div>
                 <label class="{{ $lb }}">{{ __('vendor.damaged_stock') }} <span class="text-red-500">*</span></label>

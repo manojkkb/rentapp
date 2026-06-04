@@ -22,20 +22,7 @@
             <!-- Right: Search, Notifications, Profile -->
             <div class="flex items-center space-x-2 md:space-x-4">
                 
-                <!-- Search Bar (Hidden on mobile) -->
-                <div class="hidden lg:block">
-                    <div class="relative">
-                        <input type="text" 
-                               placeholder="{{ __('vendor.search_placeholder') }}" 
-                               class="w-64 pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    </div>
-                </div>
-
-                <!-- Mobile Search Icon -->
-                <button class="lg:hidden text-gray-600 hover:text-gray-900 p-2">
-                    <i class="fas fa-search text-lg"></i>
-                </button>
+                @include('vendor.layouts.partials.global-search')
 
                 <!-- Language Selector -->
                 <div class="relative" x-data="{ open: false }">
@@ -136,14 +123,21 @@
                 </div>
 
                 <!-- Profile Dropdown -->
+                @php $navUser = Auth::user(); @endphp
                 <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" 
                             class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50 focus:outline-none">
-                        <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                            {{ strtoupper(substr(Auth::user()->name ?? __('vendor.user'), 0, 1)) }}
-                        </div>
+                        @if($navUser?->avatar_url)
+                            <img src="{{ $navUser->avatar_url }}"
+                                 alt=""
+                                 class="w-8 h-8 rounded-full object-cover ring-2 ring-emerald-500">
+                        @else
+                            <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                                {{ strtoupper(substr($navUser->name ?? __('vendor.user'), 0, 1)) }}
+                            </div>
+                        @endif
                         <span class="hidden md:block text-sm font-medium text-gray-700">
-                            {{ Str::limit(Auth::user()->name ?? __('vendor.user'), 15) }}
+                            {{ Str::limit($navUser->name ?? __('vendor.user'), 15) }}
                         </span>
                         <i class="fas fa-chevron-down text-xs text-gray-500"></i>
                     </button>
@@ -162,8 +156,21 @@
                         
                         <!-- Profile Info -->
                         <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-green-50">
-                            <p class="text-sm font-semibold text-gray-900 truncate">{{ Auth::user()->name ?? __('vendor.user') }}</p>
-                            <p class="text-xs text-gray-600 truncate">{{ Auth::user()->mobile ?? '' }}</p>
+                            <div class="flex items-center space-x-3">
+                                @if($navUser?->avatar_url)
+                                    <img src="{{ $navUser->avatar_url }}"
+                                         alt=""
+                                         class="w-10 h-10 rounded-full object-cover ring-2 ring-emerald-500 flex-shrink-0">
+                                @else
+                                    <div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
+                                        {{ strtoupper(substr($navUser->name ?? __('vendor.user'), 0, 1)) }}
+                                    </div>
+                                @endif
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-gray-900 truncate">{{ $navUser->name ?? __('vendor.user') }}</p>
+                                    <p class="text-xs text-gray-600 truncate">{{ $navUser->mobile ?? '' }}</p>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Menu Items -->

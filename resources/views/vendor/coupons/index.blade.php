@@ -442,7 +442,7 @@ function editCoupon(id) {
     .then(data => {
         if (data.success) {
             const c = data.coupon;
-            document.getElementById('coupon_id').value = c.id;
+            document.getElementById('coupon_id').value = c.uuid;
             document.getElementById('code').value = c.code;
             document.getElementById('name').value = c.name || '';
             document.getElementById('type').value = c.type;

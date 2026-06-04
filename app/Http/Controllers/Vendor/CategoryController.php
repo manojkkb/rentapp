@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Vendor\Concerns\RedirectsIfNumericRouteKey;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -12,6 +13,8 @@ use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
+    use RedirectsIfNumericRouteKey;
+
     /**
      * Display a listing of categories
      */
@@ -133,12 +136,14 @@ class CategoryController extends Controller
                 $category->update(['image' => $path]);
             }
 
-            // Handle AJAX requests
-            if ($request->ajax()) {
+            if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Category created successfully!',
-                    'category' => $category->load('subcategories', 'items'),
+                    'message' => __('vendor.category_added'),
+                    'category' => [
+                        'id' => $category->id,
+                        'name' => $category->name,
+                    ],
                 ]);
             }
 
@@ -161,7 +166,7 @@ class CategoryController extends Controller
     /**
      * Show the form for editing a category
      */
-    public function edit(Category $category)
+    public function edit(Request $request, Category $category)
     {
         $vendor = Auth::user()->currentVendor();
 
@@ -172,6 +177,10 @@ class CategoryController extends Controller
         // Verify category belongs to this vendor
         if ($category->vendor_id != $vendor->id) {
             abort(403, 'Unauthorized action.');
+        }
+
+        if ($redirect = $this->redirectIfNumericRouteKey($request, $category, 'vendor.categories.edit')) {
+            return $redirect;
         }
 
         // Get parent categories for dropdown (excluding this category and its children)
@@ -379,7 +388,7 @@ class CategoryController extends Controller
     /**
      * Display subcategories of a parent category
      */
-    public function subcategories(Category $category)
+    public function subcategories(Request $request, Category $category)
     {
         $vendor = Auth::user()->currentVendor();
 
@@ -390,6 +399,10 @@ class CategoryController extends Controller
         // Verify category belongs to this vendor
         if ($category->vendor_id != $vendor->id) {
             abort(403, 'Unauthorized action.');
+        }
+
+        if ($redirect = $this->redirectIfNumericRouteKey($request, $category, 'vendor.categories.subcategories')) {
+            return $redirect;
         }
 
         // Get subcategories with pagination

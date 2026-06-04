@@ -243,14 +243,14 @@ trait ManagesOrderLive
                 continue;
             }
 
-            $linePriceType = $item->price_type;
-            if (! in_array($linePriceType, Items::priceTypeKeys(), true)) {
-                $linePriceType = 'per_day';
+            $lineRentalPeriod = $item->rental_period;
+            if (! in_array($lineRentalPeriod, Items::rentalPeriodKeys(), true)) {
+                $lineRentalPeriod = 'per_day';
             }
 
             $billingUnits = $this->normalizedBillingUnits(
                 isset($itemData['billing_units']) ? (float) $itemData['billing_units'] : null,
-                $linePriceType
+                $lineRentalPeriod
             );
 
             $existing = OrderItem::where('order_id', $order->id)->where('item_id', $item->id)->first();
@@ -258,8 +258,8 @@ trait ManagesOrderLive
             if ($existing) {
                 $existing->update([
                     'quantity' => $existing->quantity + (int) $itemData['quantity'],
-                    'price_type' => $linePriceType,
-                    'billing_units' => Items::priceTypeUsesBillingUnits($linePriceType) ? $billingUnits : null,
+                    'rental_period' => $lineRentalPeriod,
+                    'billing_units' => Items::rentalPeriodUsesBillingUnits($lineRentalPeriod) ? $billingUnits : null,
                     'start_at' => $order->start_at,
                     'end_at' => $order->end_at,
                     'rent_days' => $rentDays,
@@ -273,8 +273,8 @@ trait ManagesOrderLive
                     'item_name' => $item->name,
                     'price' => $item->price,
                     'quantity' => (int) $itemData['quantity'],
-                    'price_type' => $linePriceType,
-                    'billing_units' => Items::priceTypeUsesBillingUnits($linePriceType) ? $billingUnits : null,
+                    'rental_period' => $lineRentalPeriod,
+                    'billing_units' => Items::rentalPeriodUsesBillingUnits($lineRentalPeriod) ? $billingUnits : null,
                     'start_at' => $order->start_at,
                     'end_at' => $order->end_at,
                     'rent_days' => $rentDays,
@@ -325,20 +325,20 @@ trait ManagesOrderLive
         }
 
         $orderItem->load('item');
-        $nextPriceType = $orderItem->item?->price_type ?? $orderItem->price_type;
-        if (! in_array($nextPriceType, Items::priceTypeKeys(), true)) {
-            $nextPriceType = 'per_day';
+        $nextRentalPeriod = $orderItem->item?->rental_period ?? $orderItem->rental_period;
+        if (! in_array($nextRentalPeriod, Items::rentalPeriodKeys(), true)) {
+            $nextRentalPeriod = 'per_day';
         }
 
         $updates = [
             'quantity' => $request->quantity,
-            'price_type' => $nextPriceType,
+            'rental_period' => $nextRentalPeriod,
         ];
 
-        if ($nextPriceType === 'fixed') {
+        if ($nextRentalPeriod === 'fixed') {
             $updates['billing_units'] = null;
         } elseif ($request->exists('billing_units') && $request->input('billing_units') !== null && $request->input('billing_units') !== '') {
-            $updates['billing_units'] = $this->normalizedBillingUnits((float) $request->billing_units, $nextPriceType);
+            $updates['billing_units'] = $this->normalizedBillingUnits((float) $request->billing_units, $nextRentalPeriod);
         }
 
         $orderItem->update($updates);
@@ -356,7 +356,7 @@ trait ManagesOrderLive
                 'item_id' => $orderItem->item_id,
                 'quantity' => $orderItem->quantity,
                 'price' => $orderItem->item?->price ?? $orderItem->price,
-                'price_type' => $nextPriceType,
+                'rental_period' => $nextRentalPeriod,
                 'billing_units' => (float) ($orderItem->billing_units ?? 1),
                 'line_total' => $orderItem->lineSubtotal(),
             ],

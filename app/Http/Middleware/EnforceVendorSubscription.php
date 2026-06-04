@@ -12,9 +12,7 @@ class EnforceVendorSubscription
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $routeName = $request->route()?->getName();
-
-        if ($routeName && in_array($routeName, VendorSubscription::exemptRouteNames(), true)) {
+        if ($this->isExempt($request)) {
             return $next($request);
         }
 
@@ -33,5 +31,22 @@ class EnforceVendorSubscription
         }
 
         return redirect()->route('vendor.subscription.plans');
+    }
+
+    private function isExempt(Request $request): bool
+    {
+        $routeName = $request->route()?->getName();
+
+        if ($routeName && in_array($routeName, VendorSubscription::exemptRouteNames(), true)) {
+            return true;
+        }
+
+        foreach (VendorSubscription::exemptApiPathPrefixes() as $prefix) {
+            if (str_starts_with($request->path(), $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

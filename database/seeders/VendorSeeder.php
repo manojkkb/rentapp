@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\Vendor;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Services\VendorRoleProvisioner;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -33,7 +33,7 @@ class VendorSeeder extends Seeder
         ]);
 
         // Create the vendor profile
-        Vendor::create([
+        $vendor = Vendor::create([
             'user_id' => $user->id,
             'owner_name' => $user->name,
             'language' => $user->language,
@@ -49,6 +49,17 @@ class VendorSeeder extends Seeder
             'rating' => 4.5,
             'total_reviews' => 10,
         ]);
+
+        $user->vendors()->attach($vendor->id, [
+            'is_owner' => true,
+            'role' => 'owner',
+            'is_active' => true,
+            'last_login_at' => now(),
+        ]);
+
+        $user->setCurrentVendorId($vendor->id);
+
+        app(VendorRoleProvisioner::class)->ensureDefaultRoles($vendor, $user->id);
         
         $this->command->info('✅ Test vendor created successfully!');
         $this->command->info('📱 Mobile: 9876543210');

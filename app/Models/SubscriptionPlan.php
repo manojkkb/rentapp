@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class SubscriptionPlan extends Model
 {
-    //
     protected $fillable = [
         'name',
         'slug',
@@ -29,7 +28,6 @@ class SubscriptionPlan extends Model
         'duration_days' => 'integer',
         'is_active' => 'boolean',
         'is_popular' => 'boolean',
-        
     ];
 
     public function subscriptions()

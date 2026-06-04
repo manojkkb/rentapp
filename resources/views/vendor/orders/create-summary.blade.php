@@ -103,8 +103,8 @@
         <ul class="mt-3 divide-y divide-gray-100 border-t border-gray-100 pt-2 text-[13px] text-gray-800 sm:pt-3 sm:text-sm">
             @foreach($lineSummaries as $row)
                 @php
-                    $linePt = $row['price_type'] ?? 'per_day';
-                    $usesBilling = \App\Models\Items::priceTypeUsesBillingUnits($linePt);
+                    $linePt = $row['rental_period'] ?? 'per_day';
+                    $usesBilling = \App\Models\Items::rentalPeriodUsesBillingUnits($linePt);
                     $bu = $row['billing_units'];
                     $buFmt = ($usesBilling && $bu !== null && $bu !== '')
                         ? (rtrim(rtrim(number_format((float) $bu, 2, '.', ''), '0'), '.') ?: '0')

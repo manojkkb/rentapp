@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Vendor\Concerns\RedirectsIfNumericRouteKey;
 use App\Models\User;
 use App\Models\VendorCustomer;
 use Illuminate\Http\Request;
@@ -12,6 +13,8 @@ use Illuminate\Support\Str;
 
 class VendorCustomerController extends Controller
 {
+    use RedirectsIfNumericRouteKey;
+
     /**
      * Display a listing of customers
      */
@@ -25,13 +28,12 @@ class VendorCustomerController extends Controller
         
         $query = VendorCustomer::where('vendor_id', $vendor->id);
         
-        // Search functionality
-        if ($request->has('search') && $request->search != '') {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('mobile', 'like', '%' . $search . '%')
-                  ->orWhere('address', 'like', '%' . $search . '%');
+        if ($request->filled('search')) {
+            $term = '%' . mb_strtolower(trim($request->search)) . '%';
+            $query->where(function ($q) use ($term) {
+                $q->whereRaw('LOWER(name) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(mobile) LIKE ?', [$term])
+                    ->orWhereRaw("LOWER(COALESCE(address, '')) LIKE ?", [$term]);
             });
         }
         
@@ -98,6 +100,7 @@ class VendorCustomerController extends Controller
             'name' => $request->name,
             'mobile' => $request->mobile,
             'address' => $request->address,
+            'is_active' => true,
         ]);
         
         // AJAX response
@@ -116,12 +119,16 @@ class VendorCustomerController extends Controller
     /**
      * Show the form for editing a customer
      */
-    public function edit(VendorCustomer $customer)
+    public function edit(Request $request, VendorCustomer $customer)
     {
         $vendor = Auth::user()->currentVendor();
         
         if (!$vendor || $customer->vendor_id !== $vendor->id) {
             return redirect()->route('vendor.select')->withErrors(['error' => 'Unauthorized access']);
+        }
+
+        if ($redirect = $this->redirectIfNumericRouteKey($request, $customer, 'vendor.customers.edit')) {
+            return $redirect;
         }
         
         return view('vendor.customers.edit', compact('customer'));
@@ -169,19 +176,32 @@ class VendorCustomerController extends Controller
     }
     
     /**
-     * Remove the specified customer
+     * Toggle customer active status.
      */
-    public function destroy(VendorCustomer $customer)
+    public function toggleStatus(VendorCustomer $customer)
     {
         $vendor = Auth::user()->currentVendor();
-        
-        if (!$vendor || $customer->vendor_id !== $vendor->id) {
-            return redirect()->route('vendor.select')->withErrors(['error' => 'Unauthorized access']);
+
+        if (! $vendor || $customer->vendor_id !== $vendor->id) {
+            abort(403, 'Unauthorized access');
         }
-        
-        $customer->delete();
-        
-        return redirect()->route('vendor.customers.index')
-            ->with('success', 'Customer deleted successfully!');
+
+        $customer->update([
+            'is_active' => ! $customer->is_active,
+        ]);
+
+        $message = $customer->is_active
+            ? __('vendor.customer_activated')
+            : __('vendor.customer_deactivated');
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'is_active' => $customer->is_active,
+            ]);
+        }
+
+        return back()->with('success', $message);
     }
 }

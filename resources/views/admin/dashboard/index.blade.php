@@ -14,7 +14,6 @@
     $statusLabels = [
         'pending' => 'Pending',
         'confirmed' => 'Confirmed',
-        'ongoing' => 'Ongoing',
         'completed' => 'Completed',
         'cancelled' => 'Cancelled',
     ];
@@ -22,7 +21,6 @@
     $statusChip = fn (string $st) => match ($st) {
         'pending' => 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
         'confirmed' => 'border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-800 dark:bg-sky-900/30 dark:text-sky-200',
-        'ongoing' => 'border-violet-200 bg-violet-50 text-violet-900 dark:border-violet-800 dark:bg-violet-900/30 dark:text-violet-200',
         'completed' => 'border-green-200 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200',
         'cancelled' => 'border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200',
         default => 'border-gray-200 bg-gray-50 text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200',

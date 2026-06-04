@@ -6,5 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class AdminRole extends Model
 {
-    //
+    protected $fillable = [
+        'name',
+        'slug',
+        'description',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
 }

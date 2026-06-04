@@ -195,9 +195,21 @@
                              id="vendor-card-{{ $vendor->id }}">
                             <div class="flex items-center justify-between gap-3">
                                 <div class="flex min-w-0 flex-1 items-center space-x-4">
-                                    <div class="bg-green-100 rounded-full p-3 shrink-0">
-                                        <i class="fas fa-store text-green-600 text-xl"></i>
-                                    </div>
+                                    @if($vendor->logo_url)
+                                        <div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-emerald-200 bg-white p-0.5 shadow-sm">
+                                            <img src="{{ $vendor->logo_url }}"
+                                                 alt="{{ $vendor->name }}"
+                                                 class="h-full w-full rounded-full object-cover object-center"
+                                                 loading="lazy"
+                                                 decoding="async">
+                                        </div>
+                                    @else
+                                        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-sm">
+                                            <span class="text-lg font-bold text-white">
+                                                {{ strtoupper(substr($vendor->name, 0, 1)) }}
+                                            </span>
+                                        </div>
+                                    @endif
                                     <div class="min-w-0">
                                         <div class="flex flex-wrap items-center gap-2 mb-1">
                                             <h3 class="font-semibold text-gray-800 text-lg">{{ $vendor->name }}</h3>

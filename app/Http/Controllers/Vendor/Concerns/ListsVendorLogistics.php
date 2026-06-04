@@ -16,7 +16,7 @@ trait ListsVendorLogistics
 
         return $vendor->orders()
             ->whereNull('delivered_at')
-            ->whereIn('status', ['confirmed', 'ongoing'])
+            ->whereIn('status', ['confirmed'])
             ->with(['customer', 'items.item'])
             ->orderByRaw('case
                 when (start_at is not null and date(start_at) = ?)
@@ -39,7 +39,7 @@ trait ListsVendorLogistics
         return $vendor->orders()
             ->whereNull('returned_at')
             ->whereNotNull('delivered_at')
-            ->whereIn('status', ['confirmed', 'ongoing'])
+            ->whereIn('status', ['confirmed'])
             ->with(['customer', 'items.item'])
             ->orderByRaw('case
                 when end_at is not null and date(end_at) = ? then 0
@@ -83,7 +83,7 @@ trait ListsVendorLogistics
             : $customerName;
 
         return [
-            'id' => $order->id,
+            'id' => $order->uuid,
             'order_number' => $order->order_number,
             'event_name' => $eventName !== '' ? $eventName : null,
             'customer_name' => $customerName,
@@ -134,7 +134,7 @@ trait ListsVendorLogistics
             : $customerName;
 
         return [
-            'id' => $order->id,
+            'id' => $order->uuid,
             'order_number' => $order->order_number,
             'event_name' => $eventName !== '' ? $eventName : null,
             'customer_name' => $customerName,

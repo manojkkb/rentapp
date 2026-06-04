@@ -2,212 +2,200 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="#10b981">
     <title>Create Vendor - Rentkia</title>
-    
-    <!-- Vite Assets (includes Tailwind CSS, Alpine.js, Font Awesome, and Inter Font) -->
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    
+
     <style>
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-        
-        body {
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html, body {
             font-family: 'Inter', sans-serif;
             overflow-x: hidden;
             max-width: 100vw;
         }
-        
-        html {
-            overflow-x: hidden;
-            max-width: 100vw;
-        }
-        
+
         .gradient-bg {
             background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
         }
-        
+
         .glass-effect {
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.97);
             backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
             max-width: 100%;
         }
-        
+
         .input-focus:focus {
             border-color: #10b981;
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
         }
-        
-        input, select, textarea {
-            max-width: 100%;
+
+        .form-field {
+            width: 100%;
+            min-height: 3rem;
+            font-size: 1rem;
+            -webkit-appearance: none;
+            appearance: none;
         }
-        
+
+        @supports (padding: max(0px)) {
+            .safe-x {
+                padding-left: max(0.75rem, env(safe-area-inset-left));
+                padding-right: max(0.75rem, env(safe-area-inset-right));
+            }
+            .safe-bottom {
+                padding-bottom: max(1rem, env(safe-area-inset-bottom));
+            }
+        }
+
         @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(5deg); }
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-16px); }
         }
-        
+
         .animated-shape {
             position: absolute;
             border-radius: 50%;
-            opacity: 0.15;
+            opacity: 0.12;
             animation: float 6s ease-in-out infinite;
+            pointer-events: none;
         }
-        
+
         .shape-1 {
-            width: 300px;
-            height: 300px;
+            width: 280px;
+            height: 280px;
             background: #10b981;
-            top: -100px;
-            left: -100px;
-            animation-delay: 0s;
+            top: -80px;
+            left: -80px;
         }
-        
+
         .shape-2 {
-            width: 200px;
-            height: 200px;
+            width: 180px;
+            height: 180px;
             background: #34d399;
-            bottom: -50px;
-            right: -50px;
+            bottom: -40px;
+            right: -40px;
             animation-delay: 2s;
         }
-        
+
         @media (max-width: 640px) {
-            .animated-shape {
-                display: none;
-            }
-            
+            .animated-shape { display: none; }
             .glass-effect {
-                padding: 1.5rem !important;
-                max-width: calc(100vw - 2rem) !important;
-                margin: 0 auto !important;
-                width: 100% !important;
+                padding: 1rem !important;
+                border-radius: 1rem !important;
             }
-            
-            body {
-                padding: 0.75rem !important;
-                padding-top: 1.5rem !important;
-                align-items: flex-start !important;
-            }
-            
-            .max-w-2xl {
-                max-width: 100% !important;
-                width: 100% !important;
-            }
-            
-            .mb-8 {
-                margin-bottom: 1rem !important;
-            }
-            
-            .grid {
-                grid-template-columns: 1fr !important;
-            }
+            .page-title { font-size: 1.375rem !important; line-height: 1.3 !important; }
+            .form-stack > * + * { margin-top: 1.125rem !important; }
+        }
+
+        @media (max-width: 400px) {
+            .glass-effect { padding: 0.875rem !important; }
+            .page-title { font-size: 1.25rem !important; }
         }
     </style>
 </head>
-<body class="gradient-bg min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-    
-    <!-- Animated Background Shapes -->
-    <div class="animated-shape shape-1"></div>
-    <div class="animated-shape shape-2"></div>
-    
-    <!-- Form Container -->
-    <div class="w-full max-w-2xl relative z-10">
-        
-        <!-- Back Button -->
-        <div class="text-left mb-8">
+<body class="gradient-bg min-h-screen min-h-[100dvh] flex flex-col sm:items-center sm:justify-center safe-x safe-bottom relative overflow-x-hidden">
+
+    <div class="animated-shape shape-1" aria-hidden="true"></div>
+    <div class="animated-shape shape-2" aria-hidden="true"></div>
+
+    <main class="w-full max-w-lg mx-auto relative z-10 flex-1 flex flex-col py-3 sm:py-4 px-0 sm:px-4">
+
+        <div class="mb-4 sm:mb-6 shrink-0">
             @if(Session::has('vendor_id'))
-                <a href="{{ route('vendor.home') }}" class="inline-flex items-center text-white hover:text-green-100 transition-colors group">
-                    <i class="fas fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i>
+                <a href="{{ route('vendor.home') }}" class="inline-flex items-center min-h-[44px] text-white hover:text-green-100 transition-colors group text-sm sm:text-base">
+                    <i class="fas fa-arrow-left mr-2 group-hover:-translate-x-0.5 transition-transform" aria-hidden="true"></i>
                     <span class="font-medium">Back to Home</span>
                 </a>
             @else
-                <a href="{{ route('vendor.login') }}" class="inline-flex items-center text-white hover:text-green-100 transition-colors group">
-                    <i class="fas fa-arrow-left mr-2 group-hover:-translate-x-1 transition-transform"></i>
+                <a href="{{ route('vendor.login') }}" class="inline-flex items-center min-h-[44px] text-white hover:text-green-100 transition-colors group text-sm sm:text-base">
+                    <i class="fas fa-arrow-left mr-2 group-hover:-translate-x-0.5 transition-transform" aria-hidden="true"></i>
                     <span class="font-medium">Back to Login</span>
                 </a>
             @endif
         </div>
-        
-        <!-- Form Card -->
-        <div class="glass-effect rounded-2xl p-8 shadow-2xl">
-            
-            <!-- Header -->
-            <div class="text-center mb-8">
-                <div class="flex justify-center mb-4">
-                    <div class="bg-green-600 rounded-full p-4">
-                        <i class="fas fa-store-alt text-white text-3xl"></i>
+
+        <div class="glass-effect rounded-2xl p-5 sm:p-8 shadow-2xl flex-1 sm:flex-none w-full">
+
+            <header class="text-center mb-6 sm:mb-8">
+                <div class="flex justify-center mb-3 sm:mb-4">
+                    <div class="bg-green-600 rounded-full p-3 sm:p-4">
+                        <i class="fas fa-store-alt text-white text-2xl sm:text-3xl" aria-hidden="true"></i>
                     </div>
                 </div>
-                <h1 class="text-3xl font-bold text-gray-800 mb-2">Create Your Vendor Profile</h1>
-                <p class="text-gray-600">Fill in your business details to get started</p>
-            </div>
-            
-            <!-- Success/Error Messages -->
+                <h1 class="page-title text-2xl sm:text-3xl font-bold text-gray-800 mb-1.5 sm:mb-2 px-1">
+                    Create Your Vendor Profile
+                </h1>
+                <p class="text-gray-600 text-sm sm:text-base px-2 leading-snug">
+                    Add your business details to get started
+                </p>
+            </header>
+
             @if (session('success'))
-                <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6 rounded">
-                    <div class="flex items-center">
-                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                        <p class="text-green-700 text-sm">{{ session('success') }}</p>
+                <div class="bg-green-50 border-l-4 border-green-500 p-3 sm:p-4 mb-4 sm:mb-6 rounded" role="status">
+                    <div class="flex items-start gap-2">
+                        <i class="fas fa-check-circle text-green-500 mt-0.5 shrink-0" aria-hidden="true"></i>
+                        <p class="text-green-700 text-sm leading-relaxed">{{ session('success') }}</p>
                     </div>
                 </div>
             @endif
-            
+
             @if ($errors->any())
-                <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded">
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
-                        <div>
+                <div class="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4 mb-4 sm:mb-6 rounded" role="alert">
+                    <div class="flex items-start gap-2">
+                        <i class="fas fa-exclamation-circle text-red-500 mt-0.5 shrink-0" aria-hidden="true"></i>
+                        <div class="min-w-0">
                             @foreach ($errors->all() as $error)
-                                <p class="text-red-700 text-sm">{{ $error }}</p>
+                                <p class="text-red-700 text-sm leading-relaxed">{{ $error }}</p>
                             @endforeach
                         </div>
                     </div>
                 </div>
             @endif
-            
-            <!-- Vendor Creation Form -->
-            <form action="{{ route('vendor.create.submit') }}" method="POST">
+
+            <form action="{{ route('vendor.create.submit') }}" method="POST" class="w-full min-w-0">
                 @csrf
-                
-                <div class="space-y-6">
-                    
-                    <!-- Business Name -->
+
+                <div class="form-stack space-y-5 sm:space-y-6">
+
                     <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-store mr-2 text-green-600"></i>Business Name <span class="text-red-500">*</span>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                            <i class="fas fa-store mr-1.5 text-green-600" aria-hidden="true"></i>
+                            Business Name <span class="text-red-500" aria-label="required">*</span>
                         </label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             id="name"
-                            name="name" 
+                            name="name"
                             value="{{ old('name') }}"
-                            placeholder="Enter your business name"
-                            class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none transition-all"
+                            placeholder="Your business name"
+                            autocomplete="organization"
+                            class="form-field input-focus px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all"
                             required
                             autofocus
                         >
                         @error('name')
-                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            <p class="text-red-500 text-xs mt-1.5">{{ $message }}</p>
                         @enderror
                     </div>
-                    
-                    <!-- Business Category -->
+
                     <div>
-                        <label for="business_category_id" class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-briefcase mr-2 text-green-600"></i>Business Category <span class="text-red-500">*</span>
+                        <label for="business_category_id" class="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                            <i class="fas fa-briefcase mr-1.5 text-green-600" aria-hidden="true"></i>
+                            Business Category <span class="text-red-500" aria-label="required">*</span>
                         </label>
-                        <select 
-                            id="business_category_id" 
-                            name="business_category_id" 
-                            class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none transition-all"
+                        <select
+                            id="business_category_id"
+                            name="business_category_id"
+                            class="form-field input-focus px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all bg-white"
                             required
                         >
-                            <option value="">Select your business category</option>
+                            <option value="">Select category</option>
                             @foreach($categories as $category)
                                 <option value="{{ $category->id }}" {{ old('business_category_id') == $category->id ? 'selected' : '' }}>
                                     {{ $category->name }}
@@ -215,171 +203,65 @@
                             @endforeach
                         </select>
                         @error('business_category_id')
-                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            <p class="text-red-500 text-xs mt-1.5">{{ $message }}</p>
                         @enderror
-                        <p class="text-xs text-gray-500 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>Select the primary category that best describes your business
-                        </p>
                     </div>
-                    
-                    <!-- Owner Name -->
+
                     <div>
-                        <label for="owner_name" class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-user mr-2 text-green-600"></i>Owner/Contact Name
+                        <label for="owner_name" class="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                            <i class="fas fa-user mr-1.5 text-green-600" aria-hidden="true"></i>
+                            Owner / Contact Name
+                            <span class="text-gray-400 font-normal">(optional)</span>
                         </label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             id="owner_name"
-                            name="owner_name" 
+                            name="owner_name"
                             value="{{ old('owner_name') }}"
-                            placeholder="Enter owner or contact person name"
-                            class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none transition-all"
+                            placeholder="Contact person name"
+                            autocomplete="name"
+                            class="form-field input-focus px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-all"
                         >
                         @error('owner_name')
-                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                            <p class="text-red-500 text-xs mt-1.5">{{ $message }}</p>
                         @enderror
                     </div>
-                    
-                    <!-- City and State -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label for="city" class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-city mr-2 text-green-600"></i>City
-                            </label>
-                            <input 
-                                type="text" 
-                                id="city"
-                                name="city" 
-                                value="{{ old('city') }}"
-                                placeholder="City"
-                                class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none transition-all"
-                            >
-                            @error('city')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        
-                        <div>
-                            <label for="state" class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-map mr-2 text-green-600"></i>State
-                            </label>
-                            <input 
-                                type="text" 
-                                id="state"
-                                name="state" 
-                                value="{{ old('state') }}"
-                                placeholder="State"
-                                class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none transition-all"
-                            >
-                            @error('state')
-                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    </div>
-                    
-                    <!-- GST Number -->
-                    <div>
-                        <label for="gst_number" class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-file-invoice mr-2 text-green-600"></i>GST Number (Optional)
-                        </label>
-                        <input 
-                            type="text" 
-                            id="gst_number"
-                            name="gst_number" 
-                            value="{{ old('gst_number') }}"
-                            placeholder="Enter GST number"
-                            class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none transition-all"
-                            maxlength="15"
-                        >
-                        @error('gst_number')
-                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                        @enderror
-                        <p class="text-xs text-gray-500 mt-2">
-                            <i class="fas fa-info-circle mr-1"></i>GST number is optional but recommended for verified status
-                        </p>
-                    </div>
-                    
-                    <!-- Language Preference -->
-                    <div>
-                        <label for="language" class="block text-sm font-medium text-gray-700 mb-2">
-                            <i class="fas fa-globe mr-2 text-green-600"></i>Preferred Language <span class="text-red-500">*</span>
-                        </label>
-                        <select 
-                            id="language"
-                            name="language" 
-                            class="input-focus w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none transition-all"
-                            required
-                        >
-                            <option value="en" {{ old('language') == 'en' ? 'selected' : '' }}>🇬🇧 English</option>
-                            <option value="hi" {{ old('language') == 'hi' ? 'selected' : '' }}>🇮🇳 हिन्दी (Hindi)</option>
-                            <option value="bn" {{ old('language') == 'bn' ? 'selected' : '' }}>🇮🇳 বাংলা (Bengali)</option>
-                            <option value="mr" {{ old('language') == 'mr' ? 'selected' : '' }}>🇮🇳 मराठी (Marathi)</option>
-                            <option value="te" {{ old('language') == 'te' ? 'selected' : '' }}>🇮🇳 తెలుగు (Telugu)</option>
-                            <option value="ta" {{ old('language') == 'ta' ? 'selected' : '' }}>🇮🇳 தமிழ் (Tamil)</option>
-                            <option value="gu" {{ old('language') == 'gu' ? 'selected' : '' }}>🇮🇳 ગુજરાતી (Gujarati)</option>
-                            <option value="ur" {{ old('language') == 'ur' ? 'selected' : '' }}>🇮🇳 اردو (Urdu)</option>
-                            <option value="kn" {{ old('language') == 'kn' ? 'selected' : '' }}>🇮🇳 ಕನ್ನಡ (Kannada)</option>
-                            <option value="or" {{ old('language') == 'or' ? 'selected' : '' }}>🇮🇳 ଓଡ଼ିଆ (Odia)</option>
-                            <option value="ml" {{ old('language') == 'ml' ? 'selected' : '' }}>🇮🇳 മലയാളം (Malayalam)</option>
-                            <option value="pa" {{ old('language') == 'pa' ? 'selected' : '' }}>🇮🇳 ਪੰਜਾਬੀ (Punjabi)</option>
-                        </select>
-                        @error('language')
-                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    
-                    <!-- Important Note -->
-                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                        <div class="flex items-start">
-                            <i class="fas fa-info-circle text-blue-500 mr-3 mt-1"></i>
-                            <div class="text-sm text-blue-700">
-                                <p class="font-semibold mb-1">Important Note:</p>
-                                <p>Your vendor account will be created and activated immediately. However, verification may take 24-48 hours for full access to all features.</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Submit Button -->
-                    <button 
+
+                    <button
                         type="submit"
-                        class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3.5 rounded-lg transition-colors shadow-lg hover:shadow-xl flex items-center justify-center"
+                        class="w-full min-h-[48px] bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-3.5 px-4 rounded-xl transition-colors shadow-lg flex items-center justify-center text-base touch-manipulation"
                     >
-                        <i class="fas fa-check-circle mr-2"></i>Create Vendor Profile
+                        <i class="fas fa-check-circle mr-2" aria-hidden="true"></i>
+                        Create Vendor Profile
                     </button>
-                    
+
                 </div>
             </form>
-            
-            <!-- Already have vendors link -->
+
             @php
                 $userId = Session::get('vendor_auth_user_id');
-                $hasVendors = false;
-                if ($userId) {
-                    $hasVendors = \App\Models\Vendor::where('user_id', $userId)->exists();
-                }
+                $hasVendors = $userId && \App\Models\Vendor::where('user_id', $userId)->exists();
             @endphp
-            
+
             @if($hasVendors)
-                <div class="mt-6 text-center">
-                    <p class="text-sm text-gray-600 mb-3">Already have a vendor?</p>
-                    <a href="{{ route('vendor.select') }}" class="inline-flex items-center text-green-600 hover:text-green-800 font-semibold transition-colors">
-                        <i class="fas fa-arrow-left mr-2"></i>Back to Vendor Selection
+                <div class="mt-5 sm:mt-6 text-center pt-4 border-t border-gray-100">
+                    <p class="text-sm text-gray-600 mb-2">Already have a vendor?</p>
+                    <a href="{{ route('vendor.select') }}" class="inline-flex items-center justify-center min-h-[44px] text-green-600 hover:text-green-800 font-semibold transition-colors text-sm sm:text-base touch-manipulation">
+                        <i class="fas fa-arrow-left mr-2" aria-hidden="true"></i>
+                        Back to Vendor Selection
                     </a>
                 </div>
             @endif
         </div>
-        
-        <!-- Footer Links -->
-        <div class="mt-8 text-center text-white text-sm">
-            <p class="mb-2">© 2026 Rentkia. All rights reserved.</p>
-            <div class="space-x-4">
-                <a href="#" class="hover:underline">Privacy Policy</a>
-                <span>•</span>
-                <a href="#" class="hover:underline">Terms of Service</a>
-                <span>•</span>
-                <a href="#" class="hover:underline">Support</a>
+
+        <footer class="mt-6 sm:mt-8 text-center text-white text-xs sm:text-sm shrink-0 pb-2">
+            <p class="mb-2 opacity-90">© 2026 Rentkia. All rights reserved.</p>
+            <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+                <a href="#" class="hover:underline min-h-[44px] inline-flex items-center px-1">Privacy</a>
+                <a href="#" class="hover:underline min-h-[44px] inline-flex items-center px-1">Terms</a>
+                <a href="#" class="hover:underline min-h-[44px] inline-flex items-center px-1">Support</a>
             </div>
-        </div>
-    </div>
+        </footer>
+    </main>
 </body>
 </html>

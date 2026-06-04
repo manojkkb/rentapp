@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuid;
+use App\Models\Concerns\RoutesByUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CustomerReview extends Model
 {
+    use HasUuid, RoutesByUuid;
+
     protected $fillable = [
+        'uuid',
         'user_id',
         'vendor_id',
         'order_id',
@@ -18,14 +23,16 @@ class CustomerReview extends Model
         'replied_at',
         'helpful_count',
     ];
-    
+
     protected $casts = [
         'is_approved' => 'boolean',
         'replied_at' => 'datetime',
         'rating' => 'integer',
         'helpful_count' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
-    
+
     /**
      * Get the user who wrote the review.
      */
@@ -33,7 +40,7 @@ class CustomerReview extends Model
     {
         return $this->belongsTo(User::class);
     }
-    
+
     /**
      * Get the vendor being reviewed.
      */
@@ -41,7 +48,7 @@ class CustomerReview extends Model
     {
         return $this->belongsTo(Vendor::class);
     }
-    
+
     /**
      * Get the order/booking this review is for.
      */
@@ -49,7 +56,7 @@ class CustomerReview extends Model
     {
         return $this->belongsTo(Order::class);
     }
-    
+
     /**
      * Scope a query to only include approved reviews.
      */
@@ -57,7 +64,7 @@ class CustomerReview extends Model
     {
         return $query->where('is_approved', true);
     }
-    
+
     /**
      * Scope a query to only include reviews with replies.
      */
@@ -65,7 +72,7 @@ class CustomerReview extends Model
     {
         return $query->whereNotNull('vendor_reply');
     }
-    
+
     /**
      * Scope a query to filter by rating.
      */

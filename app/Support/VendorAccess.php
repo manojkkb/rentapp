@@ -89,6 +89,16 @@ class VendorAccess
         return false;
     }
 
+    /** @return list<string> */
+    public function permissionKeys(): array
+    {
+        if ($this->isOwner()) {
+            return VendorPermission::query()->orderBy('key')->pluck('key')->all();
+        }
+
+        return $this->permissions->values()->all();
+    }
+
     /**
      * Resolve required permission for a named vendor route (null = no gate).
      */
@@ -163,8 +173,8 @@ class VendorAccess
 
         if (str_starts_with($routeName, 'vendor.items.')) {
             return match ($routeName) {
-                'vendor.items.index', 'vendor.items.fetch' => 'items.view',
-                'vendor.items.create', 'vendor.items.store' => 'items.create',
+                'vendor.items.index', 'vendor.items.fetch', 'vendor.items.show' => 'items.view',
+                'vendor.items.create', 'vendor.items.store', 'vendor.items.quick-store' => 'items.create',
                 'vendor.items.destroy' => 'items.delete',
                 default => 'items.edit',
             };

@@ -5,7 +5,6 @@
     $orderStatusLabels = [
         'pending' => __('vendor.pending'),
         'confirmed' => __('vendor.confirmed'),
-        'ongoing' => __('vendor.ongoing'),
         'completed' => __('vendor.completed'),
         'cancelled' => __('vendor.cancelled'),
         'overdue' => __('vendor.overdue'),
@@ -71,35 +70,71 @@
     .fc .fc-list-day-cushion, .fc .fc-list-event td { padding-top: 0.65rem; padding-bottom: 0.65rem; }
     .fc .fc-list-event-title { font-weight: 600; line-height: 1.35; }
 
-    .calendar-status-chip { flex: 0 0 auto; scroll-snap-align: start; }
+    .calendar-status-chip { flex: 0 0 auto; scroll-snap-align: start; min-height: 2.75rem; }
     .calendar-status-chip.is-active { background-color: #059669 !important; color: #fff !important; border-color: #059669 !important; }
 
+    .calendar-view-seg button.is-active {
+        background-color: #059669;
+        color: #fff;
+        border-color: #059669;
+        box-shadow: 0 1px 2px rgb(5 150 105 / 0.25);
+    }
+
     @media (max-width: 767px) {
-        .fc .fc-toolbar { flex-direction: column; align-items: stretch; gap: 0.5rem; }
-        .fc .fc-toolbar-title { text-align: center; font-size: 1rem !important; }
-        .fc .fc-toolbar-chunk { display: flex; justify-content: center; gap: 0.45rem !important; flex-wrap: wrap; margin: 0.2rem 0 !important; }
-        .fc .fc-button-group { gap: 0.35rem !important; }
-        .fc .fc-toolbar-chunk:first-child { order: 2; }
+        .fc .fc-header-toolbar { margin-bottom: 0.5rem !important; }
+        .fc .fc-toolbar { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.35rem; }
+        .fc .fc-toolbar-title { text-align: center; font-size: 0.9375rem !important; width: 100%; order: 1; margin: 0.15rem 0 0.35rem; line-height: 1.25; }
+        .fc .fc-toolbar-chunk { display: flex; justify-content: center; gap: 0.35rem !important; flex-wrap: nowrap; margin: 0 !important; }
+        .fc .fc-toolbar-chunk:first-child { order: 2; flex: 1; justify-content: flex-start; }
         .fc .fc-toolbar-chunk:nth-child(2) { order: 1; width: 100%; }
-        .fc .fc-toolbar-chunk:last-child { order: 3; }
-        .fc .fc-button { margin: 0.15rem !important; padding: 0.5rem 0.65rem !important; font-size: 0.75rem !important; min-height: 2.75rem; }
-        .fc .fc-daygrid-day-number { font-size: 0.7rem; padding: 0.2rem 0.35rem; }
-        .fc .fc-event { font-size: 0.6875rem !important; padding: 0.15rem 0.3rem !important; line-height: 1.25 !important; }
-        .fc .fc-col-header-cell-cushion { font-size: 0.65rem; padding: 0.45rem 0.15rem; }
-        .fc .fc-daygrid-more-link { font-size: 0.65rem; }
-        .fc .fc-daygrid-day-frame { min-height: 56px !important; }
-        .fc .fc-scrollgrid { min-width: 100%; }
-        /* Month grid: horizontal pan instead of unreadable squeezed cells */
-        .fc .fc-scroller-harness-liquid .fc-scroller { overflow-x: auto !important; overflow-y: hidden !important; -webkit-overflow-scrolling: touch; }
-        .fc-dayGridMonth-view .fc-scrollgrid { min-width: 36rem; }
-        .fc .fc-list-event { min-height: 3.25rem; }
-        .fc .fc-list-event td { vertical-align: middle; }
+        .fc .fc-toolbar-chunk:last-child { order: 2; flex: 1; justify-content: flex-end; }
+        .fc .fc-header-toolbar .fc-toolbar-chunk:last-child { display: none !important; }
+        .fc .fc-button-group { gap: 0.25rem !important; }
+        .fc .fc-button { margin: 0 !important; padding: 0.55rem 0.85rem !important; font-size: 0.8125rem !important; min-height: 2.75rem; min-width: 2.75rem; }
+        .fc .fc-prev-button, .fc .fc-next-button { font-size: 1rem !important; }
+        .fc .fc-daygrid-day-number { font-size: 0.6875rem; padding: 0.15rem 0.3rem; }
+        .fc .fc-event { font-size: 0.625rem !important; padding: 0.125rem 0.25rem !important; line-height: 1.2 !important; }
+        .fc .fc-col-header-cell-cushion { font-size: 0.625rem; padding: 0.35rem 0.1rem; }
+        .fc .fc-daygrid-more-link { font-size: 0.625rem; font-weight: 700; }
+        .fc .fc-daygrid-day-frame { min-height: 2.75rem !important; }
+        .fc-dayGridMonth-view .fc-scrollgrid,
+        .fc-dayGridMonth-view .fc-scrollgrid-sync-table { width: 100% !important; min-width: 0 !important; max-width: 100% !important; table-layout: fixed !important; }
+        .fc-dayGridMonth-view .fc-scroller-harness,
+        .fc-dayGridMonth-view .fc-scroller { overflow-x: hidden !important; }
+        .fc-dayGridMonth-view .fc-col-header-cell,
+        .fc-dayGridMonth-view .fc-daygrid-day { width: 14.285714% !important; }
+        .fc-dayGridMonth-view .fc-daygrid-day-events { min-height: 0 !important; margin-bottom: 0 !important; }
+        .fc-dayGridMonth-view .fc-daygrid-event-harness { margin-top: 1px !important; }
+        .fc-dayGridMonth-view .fc-event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #calendarWrap { max-width: 100%; overflow-x: hidden; }
+        .fc-listMonth-view .fc-list-table { border-radius: 0.75rem; overflow: hidden; }
+        .fc-listMonth-view .fc-list-day-cushion {
+            background: #ecfdf5 !important;
+            color: #065f46 !important;
+            font-weight: 700 !important;
+            font-size: 0.8125rem !important;
+            padding: 0.65rem 0.85rem !important;
+        }
+        .fc-listMonth-view .fc-list-event {
+            min-height: 3.5rem;
+            border-left: 3px solid #059669;
+            margin: 0.35rem 0.5rem;
+            border-radius: 0.65rem;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+        }
+        .fc-listMonth-view .fc-list-event:hover { background-color: #f0fdf4 !important; }
+        .fc-listMonth-view .fc-list-event-time { font-size: 0.75rem; font-weight: 600; color: #047857; white-space: nowrap; padding-left: 0.75rem !important; }
+        .fc-listMonth-view .fc-list-event-title { font-size: 0.875rem; padding-right: 0.75rem !important; }
+        .fc-listMonth-view .fc-list-event-graphic { padding-left: 0.65rem !important; }
+        .fc-listMonth-view .fc-list-empty { padding: 2rem 1rem; font-size: 0.875rem; color: #6b7280; }
+        .event-modal-row { flex-direction: column; gap: 0.25rem; }
+        .event-modal-row dt { width: auto; }
     }
 
     .status-badge { display: inline-flex; align-items: center; padding: 0.2rem 0.65rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
     .status-pending { background: #fef3c7; color: #92400e; }
     .status-confirmed { background: #dbeafe; color: #1e40af; }
-    .status-ongoing { background: #d1fae5; color: #065f46; }
     .status-completed { background: #f3f4f6; color: #374151; }
     .status-cancelled { background: #fee2e2; color: #991b1b; }
     .status-overdue { background: #ffedd5; color: #9a3412; }
@@ -115,29 +150,29 @@
 @endsection
 
 @section('content')
-<div class="calendar-page max-w-7xl mx-auto w-full min-w-0">
-    <div class="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div class="flex min-w-0 items-center gap-3">
-            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 shadow-sm ring-1 ring-emerald-200/80 sm:h-14 sm:w-14">
-                <i class="fas fa-calendar-alt text-lg text-emerald-600 sm:text-2xl" aria-hidden="true"></i>
+<div class="calendar-page mx-auto w-full min-w-0 max-w-7xl">
+    <div class="mb-3 flex flex-col gap-2.5 sm:mb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div class="flex min-w-0 items-center gap-2.5 sm:gap-3">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 shadow-sm ring-1 ring-emerald-200/80 sm:h-14 sm:w-14">
+                <i class="fas fa-calendar-alt text-base text-emerald-600 sm:text-2xl" aria-hidden="true"></i>
             </div>
             <div class="min-w-0 flex-1">
-                <h1 class="text-lg font-bold tracking-tight text-gray-900 sm:text-2xl">
+                <h1 class="text-base font-bold tracking-tight text-gray-900 sm:text-2xl">
                     {{ __('vendor.booking_calendar') }}
                 </h1>
-                <p class="mt-0.5 line-clamp-2 text-xs text-gray-500 sm:text-sm">
+                <p class="mt-0.5 hidden text-sm text-gray-500 sm:block">
                     {{ __('vendor.view_all_bookings') }}
                 </p>
             </div>
         </div>
-        <div class="flex w-full items-stretch gap-2 sm:w-auto sm:shrink-0 sm:items-center">
-            <div class="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50 to-white px-3 py-2.5 shadow-sm ring-1 ring-emerald-100/80 sm:flex-initial sm:px-4 sm:py-3">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm sm:h-10 sm:w-10">
+        <div class="flex w-full items-stretch sm:w-auto sm:shrink-0">
+            <div class="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50 to-white px-3 py-2 shadow-sm ring-1 ring-emerald-100/80 sm:flex-initial sm:gap-3 sm:px-4 sm:py-3">
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm sm:h-10 sm:w-10">
                     <i class="fas fa-calendar-check text-xs sm:text-sm" aria-hidden="true"></i>
                 </span>
                 <div class="min-w-0 text-left leading-tight">
-                    <p class="text-[10px] font-semibold uppercase tracking-wide text-emerald-800/90 sm:text-xs">{{ __('vendor.calendar_total_bookings') }}</p>
-                    <p class="text-xl font-bold tabular-nums text-emerald-900 sm:text-2xl">{{ $eventCount }}</p>
+                    <p class="text-[10px] font-semibold uppercase tracking-wide text-emerald-800/90">{{ __('vendor.calendar_total_bookings') }}</p>
+                    <p class="text-lg font-bold tabular-nums text-emerald-900 sm:text-2xl">{{ $eventCount }}</p>
                 </div>
             </div>
         </div>
@@ -151,45 +186,56 @@
     @endif
 
     <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md ring-1 ring-black/[0.04]">
-        <div class="p-2 sm:p-4 md:p-5">
-            <div class="mb-3 border-b border-gray-100 pb-3 sm:mb-4 sm:flex sm:items-center sm:justify-between sm:pb-4">
-                <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-700 sm:mb-0">
-                    <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-gray-600" aria-hidden="true">
-                        <i class="fas fa-filter text-sm"></i>
-                    </span>
-                    <span>{{ __('vendor.filter') }}</span>
-                </div>
-
-                {{-- Mobile: horizontal scroll chips --}}
+        <div class="p-2.5 sm:p-4 md:p-5">
+            <div class="mb-2.5 border-b border-gray-100 pb-2.5 sm:mb-4 sm:pb-4">
+                {{-- Mobile: status chips --}}
                 <div class="md:hidden">
-                    <div class="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style="scroll-snap-type: x mandatory;">
+                    <p class="mb-2 text-[11px] font-bold uppercase tracking-wide text-gray-500">{{ __('vendor.filter') }}</p>
+                    <div class="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style="scroll-snap-type: x mandatory;">
                         <button type="button" class="calendar-status-chip is-active rounded-full border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-800 shadow-sm transition active:scale-[0.98]" data-calendar-status="">{{ __('vendor.all') }}</button>
                         <button type="button" class="calendar-status-chip rounded-full border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-800 shadow-sm transition active:scale-[0.98]" data-calendar-status="pending">{{ __('vendor.pending') }}</button>
                         <button type="button" class="calendar-status-chip rounded-full border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-800 shadow-sm transition active:scale-[0.98]" data-calendar-status="confirmed">{{ __('vendor.confirmed') }}</button>
-                        <button type="button" class="calendar-status-chip rounded-full border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-800 shadow-sm transition active:scale-[0.98]" data-calendar-status="ongoing">{{ __('vendor.ongoing') }}</button>
                         <button type="button" class="calendar-status-chip rounded-full border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-800 shadow-sm transition active:scale-[0.98]" data-calendar-status="completed">{{ __('vendor.completed') }}</button>
                         <button type="button" class="calendar-status-chip rounded-full border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-800 shadow-sm transition active:scale-[0.98]" data-calendar-status="cancelled">{{ __('vendor.cancelled') }}</button>
                         <button type="button" class="calendar-status-chip rounded-full border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-800 shadow-sm transition active:scale-[0.98]" data-calendar-status="overdue">{{ __('vendor.overdue') }}</button>
                     </div>
                 </div>
 
+                {{-- Mobile: list / month toggle --}}
+                <div class="calendar-view-seg mt-3 grid grid-cols-2 gap-2 md:hidden" role="group" aria-label="{{ __('vendor.calendar') }}">
+                    <button type="button" id="calendarViewList" class="is-active min-h-[2.75rem] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 shadow-sm transition active:scale-[0.98]">
+                        <i class="fas fa-list mr-1.5 text-emerald-600" aria-hidden="true"></i>{{ __('vendor.list_view') }}
+                    </button>
+                    <button type="button" id="calendarViewMonth" class="min-h-[2.75rem] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 shadow-sm transition active:scale-[0.98]">
+                        <i class="fas fa-calendar mr-1.5 text-emerald-600" aria-hidden="true"></i>{{ __('vendor.month') }}
+                    </button>
+                </div>
+
                 {{-- Tablet/desktop: select --}}
-                <div class="hidden md:block md:min-w-[14rem]">
-                    <label for="calendarStatusFilter" class="sr-only">{{ __('vendor.filter') }}</label>
-                    <select id="calendarStatusFilter" class="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-3 pr-10 text-sm font-medium text-gray-900 shadow-sm ring-1 ring-gray-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
-                        <option value="">{{ __('vendor.all_statuses') }}</option>
-                        <option value="pending">{{ __('vendor.pending') }}</option>
-                        <option value="confirmed">{{ __('vendor.confirmed') }}</option>
-                        <option value="ongoing">{{ __('vendor.ongoing') }}</option>
-                        <option value="completed">{{ __('vendor.completed') }}</option>
-                        <option value="cancelled">{{ __('vendor.cancelled') }}</option>
-                        <option value="overdue">{{ __('vendor.overdue') }}</option>
-                    </select>
+                <div class="hidden md:flex md:items-center md:justify-between">
+                    <div class="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-gray-600" aria-hidden="true">
+                            <i class="fas fa-filter text-sm"></i>
+                        </span>
+                        <span>{{ __('vendor.filter') }}</span>
+                    </div>
+                    <div class="md:min-w-[14rem]">
+                        <label for="calendarStatusFilter" class="sr-only">{{ __('vendor.filter') }}</label>
+                        <select id="calendarStatusFilter" class="w-full rounded-xl border border-gray-300 bg-white py-2.5 pl-3 pr-10 text-sm font-medium text-gray-900 shadow-sm ring-1 ring-gray-200 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
+                            <option value="">{{ __('vendor.all_statuses') }}</option>
+                            <option value="pending">{{ __('vendor.pending') }}</option>
+                            <option value="confirmed">{{ __('vendor.confirmed') }}</option>
+                            <option value="completed">{{ __('vendor.completed') }}</option>
+                            <option value="cancelled">{{ __('vendor.cancelled') }}</option>
+                            <option value="overdue">{{ __('vendor.overdue') }}</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            <p class="mb-2 text-center text-[11px] font-medium text-gray-400 md:hidden">{{ __('vendor.calendar_month_swipe_hint') }}</p>
-            <div id="calendar" class="min-w-0"></div>
+            <div id="calendarWrap" class="min-w-0 max-w-full overflow-x-hidden">
+                <div id="calendar" class="min-w-0"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -220,19 +266,19 @@
 
             <div class="flex-1 overflow-y-auto px-5 py-4">
                 <dl class="space-y-0 divide-y divide-gray-100">
-                    <div class="flex gap-3 py-3 first:pt-0">
+                    <div class="event-modal-row flex gap-3 py-3 first:pt-0">
                         <dt class="w-24 shrink-0 text-[11px] font-bold uppercase tracking-wide text-gray-500">{{ __('vendor.customer') }}</dt>
                         <dd class="min-w-0 flex-1 text-sm font-medium text-gray-900" id="eventCustomer">—</dd>
                     </div>
-                    <div class="flex gap-3 py-3">
+                    <div class="event-modal-row flex gap-3 py-3">
                         <dt class="w-24 shrink-0 text-[11px] font-bold uppercase tracking-wide text-gray-500">{{ __('vendor.mobile') }}</dt>
                         <dd class="min-w-0 flex-1 text-sm font-medium text-gray-900" id="eventMobile">—</dd>
                     </div>
-                    <div class="flex gap-3 py-3">
+                    <div class="event-modal-row flex gap-3 py-3">
                         <dt class="w-24 shrink-0 text-[11px] font-bold uppercase tracking-wide text-gray-500">{{ __('vendor.period') }}</dt>
                         <dd class="min-w-0 flex-1 text-sm font-medium text-gray-900" id="eventPeriod">—</dd>
                     </div>
-                    <div class="flex gap-3 py-3">
+                    <div class="event-modal-row flex gap-3 py-3">
                         <dt class="w-24 shrink-0 text-[11px] font-bold uppercase tracking-wide text-gray-500">{{ __('vendor.total') }}</dt>
                         <dd class="text-base font-bold text-emerald-700" id="eventTotal">—</dd>
                     </div>
@@ -267,15 +313,28 @@ document.addEventListener('DOMContentLoaded', function() {
     const orderShowBase = @json($orderShowBase);
     const filterSelect = document.getElementById('calendarStatusFilter');
     const statusChips = document.querySelectorAll('[data-calendar-status]');
+    const viewListBtn = document.getElementById('calendarViewList');
+    const viewMonthBtn = document.getElementById('calendarViewMonth');
 
     const MQ_MOBILE = 768;
+    const MOBILE_NAV_H = 64;
 
     function isMobileLayout() {
         return window.innerWidth < MQ_MOBILE;
     }
 
     function getListContentHeight() {
-        return Math.max(340, Math.min(720, window.innerHeight - 240));
+        const rect = calendarEl.getBoundingClientRect();
+        const bottomInset = MOBILE_NAV_H + 12;
+        return Math.max(300, window.innerHeight - rect.top - bottomInset);
+    }
+
+    function mobileHeaderToolbar() {
+        return { left: 'prev', center: 'title', right: 'next' };
+    }
+
+    function desktopHeaderToolbar() {
+        return { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listMonth' };
     }
 
     function syncChipsFromValue(value) {
@@ -284,6 +343,40 @@ document.addEventListener('DOMContentLoaded', function() {
             var b = btn.getAttribute('data-calendar-status') || '';
             btn.classList.toggle('is-active', b === v);
         });
+    }
+
+    function updateMobileViewUi() {
+        if (!isMobileLayout()) {
+            return;
+        }
+        const isList = calendar.view.type.startsWith('list');
+        viewListBtn?.classList.toggle('is-active', isList);
+        viewMonthBtn?.classList.toggle('is-active', !isList);
+    }
+
+    function applyMobileCalendarOptions() {
+        const mobile = isMobileLayout();
+        calendar.setOption('headerToolbar', mobile ? mobileHeaderToolbar() : desktopHeaderToolbar());
+        calendar.setOption('contentHeight', mobile ? getListContentHeight() : 'auto');
+        calendar.setOption('dayMaxEvents', mobile ? 1 : true);
+        if (mobile) {
+            calendar.setOption('views', {
+                listMonth: { buttonText: @json(__('vendor.list_view')) },
+                dayGridMonth: {
+                    dayHeaderFormat: { weekday: 'narrow' },
+                    dayMaxEventRows: 1
+                }
+            });
+        } else {
+            calendar.setOption('views', {
+                listMonth: { buttonText: @json(__('vendor.list_view')) },
+                dayGridMonth: {
+                    dayHeaderFormat: { weekday: 'short' }
+                }
+            });
+        }
+        updateMobileViewUi();
+        calendar.updateSize();
     }
 
     function setFilterValue(value) {
@@ -310,9 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: isMobileLayout() ? 'listMonth' : 'dayGridMonth',
-        headerToolbar: isMobileLayout()
-            ? { left: 'prev,next', center: 'title', right: 'listMonth,dayGridMonth' }
-            : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listMonth' },
+        headerToolbar: isMobileLayout() ? mobileHeaderToolbar() : desktopHeaderToolbar(),
         buttonText: {
             today: @json(__('vendor.today')),
             month: @json(__('vendor.month')),
@@ -320,33 +411,35 @@ document.addEventListener('DOMContentLoaded', function() {
             list: @json(__('vendor.list_view'))
         },
         views: {
-            listMonth: { buttonText: @json(__('vendor.list_view')) }
+            listMonth: { buttonText: @json(__('vendor.list_view')) },
+            dayGridMonth: {
+                dayHeaderFormat: isMobileLayout() ? { weekday: 'narrow' } : { weekday: 'short' }
+            }
         },
         height: 'auto',
         contentHeight: isMobileLayout() ? getListContentHeight() : 'auto',
-        navLinks: true,
+        navLinks: !isMobileLayout(),
         editable: false,
-        dayMaxEvents: isMobileLayout() ? 2 : true,
+        dayMaxEvents: isMobileLayout() ? 1 : true,
+        dayMaxEventRows: isMobileLayout() ? 1 : false,
         moreLinkClick: 'popover',
         eventDisplay: 'block',
         fixedWeekCount: false,
+        noEventsContent: @json(__('vendor.no_orders_found')),
         eventTimeFormat: {
             hour: 'numeric',
             minute: '2-digit',
             meridiem: 'short'
         },
+        datesSet: function() {
+            updateMobileViewUi();
+        },
         windowResize: function() {
-            const mobile = window.innerWidth < MQ_MOBILE;
+            const mobile = isMobileLayout();
             if (mobile && calendar.view.type === 'timeGridWeek') {
                 calendar.changeView('listMonth');
             }
-            calendar.setOption('contentHeight', mobile ? getListContentHeight() : 'auto');
-            calendar.setOption('dayMaxEvents', mobile ? 2 : true);
-            calendar.setOption('headerToolbar', mobile
-                ? { left: 'prev,next', center: 'title', right: 'listMonth,dayGridMonth' }
-                : { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listMonth' }
-            );
-            calendar.updateSize();
+            applyMobileCalendarOptions();
         },
         events: loadFilteredEvents,
         eventClick: function(info) {
@@ -358,6 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
     calendar.render();
 
     syncChipsFromValue(filterSelect ? filterSelect.value : '');
+    updateMobileViewUi();
 
     if (filterSelect) {
         filterSelect.addEventListener('change', function() {
@@ -373,6 +467,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    viewListBtn?.addEventListener('click', function() {
+        calendar.changeView('listMonth');
+        applyMobileCalendarOptions();
+    });
+
+    viewMonthBtn?.addEventListener('click', function() {
+        calendar.changeView('dayGridMonth');
+        applyMobileCalendarOptions();
+    });
+
     window.showEventDetail = function(event) {
         const p = event.extendedProps;
 
@@ -384,7 +488,14 @@ document.addEventListener('DOMContentLoaded', function() {
         statusEl.className = 'status-badge status-' + raw;
 
         document.getElementById('eventCustomer').textContent = p.customer_name;
-        document.getElementById('eventMobile').textContent = p.customer_mobile || @json(__('vendor.na'));
+
+        const mobileEl = document.getElementById('eventMobile');
+        const telRaw = (p.customer_mobile || '').replace(/[^0-9+]/g, '');
+        if (telRaw.length >= 7) {
+            mobileEl.innerHTML = '<a href="tel:' + telRaw + '" class="font-semibold text-emerald-700 underline-offset-2 hover:underline">' + (p.customer_mobile || telRaw) + '</a>';
+        } else {
+            mobileEl.textContent = p.customer_mobile || @json(__('vendor.na'));
+        }
 
         document.getElementById('eventPeriod').textContent = p.start_at + '  →  ' + p.end_at;
 

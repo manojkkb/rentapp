@@ -59,73 +59,17 @@ class AuthVendorCtrl extends Controller
             'password.min' => 'Password must be at least 6 characters',
         ]);
         
-        // Find user by mobile number
-        $user = User::where('mobile', $request->mobile)
-                    ->first();
-        
-        // Check if user exists and password is correct
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        $user = User::where('mobile', $request->mobile)->first();
+
+        if (! $user || ! $user->password || ! Hash::check($request->password, $user->password)) {
             return back()
                 ->withInput($request->only('mobile'))
                 ->withErrors(['mobile' => 'Invalid mobile number or password']);
         }
-        
-        // Get vendors this user has access to
-        $vendors = $user->vendors()->where('is_active', true)->get();
-        
-        // Check if user has any active vendors
-        if ($vendors->isEmpty()) {
-            return back()
-                ->withInput($request->only('mobile'))
-                ->withErrors(['mobile' => 'No active vendor accounts found for this user']);
-        }
-        
-        // Log in the user
+
         Auth::login($user, $request->has('remember'));
-        
-        // If user has only one vendor, select it automatically
-        if ($vendors->count() === 1) {
-            $vendor = $vendors->first();
-            
-            // Check if vendor is verified
-            if (!$vendor->is_verified) {
-                Auth::logout();
-                return back()
-                    ->withInput($request->only('mobile'))
-                    ->withErrors(['mobile' => 'Your vendor account is pending verification. Please contact support.']);
-            }
-            
-            // Update last login time
-            $user->vendors()->updateExistingPivot($vendor->id, [
-                'last_login_at' => now(),
-            ]);
 
-            $user->setCurrentVendorId($vendor->id);
-
-            Session::put('language', $vendor->language ?? $user->language ?? 'en');
-
-            return redirect()
-                ->route('vendor.home')
-                ->with('success', 'Welcome back to ' . $vendor->name . '!');
-        }
-
-        if ($user->vendor_id) {
-            $defaultVendor = $vendors->firstWhere('id', $user->vendor_id);
-
-            if ($defaultVendor && $defaultVendor->is_verified) {
-                $user->vendors()->updateExistingPivot($defaultVendor->id, [
-                    'last_login_at' => now(),
-                ]);
-
-                Session::put('language', $defaultVendor->language ?? $user->language ?? 'en');
-
-                return redirect()
-                    ->route('vendor.home')
-                    ->with('success', 'Welcome back to ' . $defaultVendor->name . '!');
-            }
-        }
-
-        return redirect()->route('vendor.select');
+        return $this->completeWebLogin($user);
     }
     
     /**
@@ -213,46 +157,9 @@ class AuthVendorCtrl extends Controller
             ]
         );
         
-        // Log in the user
         Auth::login($user, true);
-        
-        // Get vendors where user is the owner (user_id column)
-        $ownedVendors = Vendor::where('user_id', $user->id)->get();
-        
-        // Ensure vendor_users pivot entries exist for owned vendors
-        $provisioner = app(VendorRoleProvisioner::class);
 
-        foreach ($ownedVendors as $vendor) {
-            if (! $user->vendors()->where('vendors.id', $vendor->id)->exists()) {
-                $user->vendors()->attach($vendor->id, [
-                    'is_owner' => true,
-                    'role' => 'owner',
-                    'is_active' => true,
-                    'last_login_at' => now(),
-                ]);
-            }
-
-            $provisioner->ensureDefaultRoles($vendor, $user->id);
-        }
-        
-        // Check if user has any vendors (through vendor_users pivot)
-        $vendors = $user->vendors()->get();
-        
-        if ($vendors->isEmpty()) {
-            // No vendors found - redirect to create vendor
-            return response()->json([
-                'success' => true,
-                'message' => 'OTP verified. Please create your vendor profile.',
-                'redirect' => route('vendor.create')
-            ]);
-        } else {
-            // Vendors exist - redirect to select vendor
-            return response()->json([
-                'success' => true,
-                'message' => 'OTP verified. Please select your vendor.',
-                'redirect' => route('vendor.select')
-            ]);
-        }
+        return $this->completeJsonLogin($user);
     }
     
     /**
@@ -370,16 +277,13 @@ class AuthVendorCtrl extends Controller
             return redirect()->route('vendor.login')->withErrors(['error' => 'Please login first']);
         }
         
-        // Validate request
         $request->validate([
             'name' => 'required|string|max:255',
             'business_category_id' => 'required|exists:business_categories,id',
             'owner_name' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:255',
-            'state' => 'nullable|string|max:255',
-            'gst_number' => 'nullable|string|max:15',
-            'language' => 'required|string|in:en,hi,bn,mr,te,ta,gu,ur,kn,or,ml,pa',
         ]);
+
+        $language = $user->language ?: config('app.locale', 'en');
         
         // Create slug from name
         $slug = \Illuminate\Support\Str::slug($request->name);
@@ -392,27 +296,21 @@ class AuthVendorCtrl extends Controller
             $counter++;
         }
         
-        // Create vendor
         $vendor = Vendor::create([
             'user_id' => $user->id,
             'name' => $request->name,
             'business_category_id' => $request->business_category_id,
             'owner_name' => $request->owner_name,
             'slug' => $slug,
-            'city' => $request->city,
-            'state' => $request->state,
-            'gst_number' => $request->gst_number,
-            'language' => $request->language,
+            'language' => $language,
             'is_verified' => false,
             'is_active' => true,
             'rating' => 0,
             'total_reviews' => 0,
         ]);
-        
-        // Update user's name and language
+
         $user->update([
             'name' => $request->owner_name ?: $request->name,
-            'language' => $request->language,
         ]);
         
         // Add user to vendor_users pivot table as owner (full access; never role-gated)
@@ -434,6 +332,140 @@ class AuthVendorCtrl extends Controller
         
         // Redirect to vendor home
         return redirect()->route('vendor.home')->with('success', 'Vendor profile created successfully! Welcome to ' . $vendor->name . '!');
+    }
+
+    /**
+     * Ensure pivot rows exist for vendors this user owns directly.
+     */
+    private function syncOwnedVendorMemberships(User $user): void
+    {
+        $provisioner = app(VendorRoleProvisioner::class);
+
+        foreach (Vendor::query()->where('user_id', $user->id)->get() as $vendor) {
+            if (! $user->vendors()->where('vendors.id', $vendor->id)->exists()) {
+                $user->vendors()->attach($vendor->id, [
+                    'is_owner' => true,
+                    'role' => 'owner',
+                    'is_active' => true,
+                    'last_login_at' => now(),
+                ]);
+            }
+
+            $provisioner->ensureDefaultRoles($vendor, $user->id);
+        }
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Vendor>
+     */
+    private function activeVendorsForUser(User $user)
+    {
+        $this->syncOwnedVendorMemberships($user);
+
+        return $user->vendors()
+            ->where('vendors.is_active', true)
+            ->wherePivot('is_active', true)
+            ->get();
+    }
+
+    private function completeWebLogin(User $user)
+    {
+        $vendors = $this->activeVendorsForUser($user);
+
+        if ($vendors->isEmpty()) {
+            return redirect()->route('vendor.create');
+        }
+
+        if ($vendors->count() === 1) {
+            return $this->activateVendorSession($user, $vendors->first());
+        }
+
+        if ($user->vendor_id) {
+            $defaultVendor = $vendors->firstWhere('id', $user->vendor_id);
+
+            if ($defaultVendor && $defaultVendor->is_verified) {
+                return $this->activateVendorSession($user, $defaultVendor);
+            }
+        }
+
+        return redirect()->route('vendor.select');
+    }
+
+    private function completeJsonLogin(User $user)
+    {
+        $vendors = $this->activeVendorsForUser($user);
+
+        if ($vendors->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'OTP verified. Please create your vendor profile.',
+                'redirect' => route('vendor.create'),
+            ]);
+        }
+
+        if ($vendors->count() === 1) {
+            $vendor = $vendors->first();
+
+            if (! $vendor->is_verified) {
+                Auth::logout();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your vendor account is pending verification. Please contact support.',
+                ], 403);
+            }
+
+            $user->setCurrentVendorId($vendor->id);
+            $user->vendors()->updateExistingPivot($vendor->id, ['last_login_at' => now()]);
+            Session::put('language', $vendor->language ?? $user->language ?? 'en');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login successful.',
+                'redirect' => route('vendor.home'),
+            ]);
+        }
+
+        if ($user->vendor_id) {
+            $defaultVendor = $vendors->firstWhere('id', $user->vendor_id);
+
+            if ($defaultVendor && $defaultVendor->is_verified) {
+                $user->setCurrentVendorId($defaultVendor->id);
+                $user->vendors()->updateExistingPivot($defaultVendor->id, ['last_login_at' => now()]);
+                Session::put('language', $defaultVendor->language ?? $user->language ?? 'en');
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Login successful.',
+                    'redirect' => route('vendor.home'),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OTP verified. Please select your vendor.',
+            'redirect' => route('vendor.select'),
+        ]);
+    }
+
+    private function activateVendorSession(User $user, Vendor $vendor)
+    {
+        if (! $vendor->is_verified) {
+            Auth::logout();
+
+            return back()->withErrors([
+                'mobile' => 'Your vendor account is pending verification. Please contact support.',
+            ]);
+        }
+
+        $user->vendors()->updateExistingPivot($vendor->id, ['last_login_at' => now()]);
+        $user->setCurrentVendorId($vendor->id);
+        Session::put('language', $vendor->language ?? $user->language ?? 'en');
+
+        return redirect()
+            ->route('vendor.home')
+            ->with('success', 'Welcome back to '.$vendor->name.'!');
     }
 }
 

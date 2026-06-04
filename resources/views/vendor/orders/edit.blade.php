@@ -106,10 +106,10 @@ function orderPageData() {
             return this.addedItems[itemId] || 1;
         },
         lineUsesBillingUnits(item) {
-            return item.price_type !== 'fixed';
+            return item.rental_period !== 'fixed';
         },
         billingUnitsLabelForLine(item) {
-            const t = item.price_type;
+            const t = item.rental_period;
             return this.billingUnitsLabels[t] || '';
         },
         getLineBillingUnits(itemId) {
@@ -224,7 +224,6 @@ function orderPageData() {
             $orderStatusBadgeClasses = [
                 'pending' => 'border-amber-200 bg-amber-50 text-amber-900 ring-amber-100',
                 'confirmed' => 'border-blue-200 bg-blue-50 text-blue-900 ring-blue-100',
-                'ongoing' => 'border-purple-200 bg-purple-50 text-purple-900 ring-purple-100',
                 'completed' => 'border-emerald-200 bg-emerald-50 text-emerald-900 ring-emerald-100',
                 'cancelled' => 'border-red-200 bg-red-50 text-red-900 ring-red-100',
             ];
@@ -311,8 +310,8 @@ function orderPageData() {
                             </div>
                             <div class="min-w-0 flex-1">
                                 <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.customer') }}</p>
-                                <p class="truncate text-sm font-semibold leading-tight text-gray-900">{{ $order->customer->name }}</p>
-                                <p class="truncate text-xs text-gray-600">{{ $order->customer->mobile }}</p>
+                                <p class="truncate text-sm font-semibold leading-tight text-gray-900">{{ $order->customer?->name ?? __('vendor.order_customer_unavailable') }}</p>
+                                <p class="truncate text-xs text-gray-600">{{ $order->customer?->mobile ?? '—' }}</p>
                             </div>
                         </div>
                         <div class="flex min-w-0 gap-2 rounded-lg border border-gray-100 bg-gray-50/90 p-2.5 sm:p-3">
@@ -535,11 +534,11 @@ function orderPageData() {
                                 <tbody>
                             @foreach($order->items as $cartItem)
                                 @php
-                                    $linePt = $cartItem->price_type ?? ($cartItem->item?->price_type ?? 'per_day');
+                                    $linePt = $cartItem->rental_period ?? ($cartItem->item?->rental_period ?? 'per_day');
                                 @endphp
                                 <tr data-cart-line="1"
                                     class="border-b border-gray-100 bg-white transition hover:bg-slate-50/80 max-md:border-0 max-md:hover:bg-white md:border-b"
-                                    data-line-price-type="{{ $linePt }}"
+                                    data-line-rental-period="{{ $linePt }}"
                                     data-line-qty="{{ $cartItem->quantity }}"
                                     data-line-billing="{{ (float) ($cartItem->billing_units ?? 1) }}">
                                     <td class="align-middle py-3 pl-3 pr-2 sm:pl-4" data-col="{{ __('vendor.item') }}">
@@ -556,14 +555,14 @@ function orderPageData() {
                                     <td class="align-middle px-2 py-3 text-center max-md:text-left" data-col="{{ __('vendor.quantity') }}">
                                         <div class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50/80 px-1 py-0.5" data-line-qty-stepper="{{ $cartItem->item_id }}">
                                             <button type="button"
-                                                onclick="nudgeLineQty({{ $order->id }}, {{ $cartItem->item_id }}, -1, this)"
+                                                onclick="nudgeLineQty(@js($order->uuid), {{ $cartItem->item_id }}, -1, this)"
                                                 class="flex h-9 w-9 items-center justify-center rounded-md bg-white text-gray-700 shadow-sm transition hover:bg-gray-100 active:scale-95"
                                                 title="{{ __('vendor.quantity') }} −1">
                                                 <i class="fas fa-minus text-xs"></i>
                                             </button>
                                             <span class="min-w-[2rem] text-center text-sm font-bold tabular-nums text-gray-900" data-qty-display="{{ $cartItem->item_id }}">{{ $cartItem->quantity }}</span>
                                             <button type="button"
-                                                onclick="nudgeLineQty({{ $order->id }}, {{ $cartItem->item_id }}, 1, this)"
+                                                onclick="nudgeLineQty(@js($order->uuid), {{ $cartItem->item_id }}, 1, this)"
                                                 class="flex h-9 w-9 items-center justify-center rounded-md bg-white text-gray-700 shadow-sm transition hover:bg-gray-100 active:scale-95"
                                                 title="{{ __('vendor.quantity') }} +1">
                                                 <i class="fas fa-plus text-xs"></i>
@@ -571,21 +570,21 @@ function orderPageData() {
                                         </div>
                                     </td>
                                     <td class="align-middle px-2 py-3 text-center max-md:text-left" data-col="{{ __('vendor.cart_duration') }}">
-                                        @if(\App\Models\Items::priceTypeUsesBillingUnits($linePt))
+                                        @if(\App\Models\Items::rentalPeriodUsesBillingUnits($linePt))
                                             <div class="inline-flex flex-col items-center gap-1">
                                                 <span class="text-[0.65rem] font-semibold uppercase tracking-wide text-gray-500">{{ \App\Models\Items::billingUnitsFieldLabel($linePt) }}</span>
                                                 <div class="inline-flex items-center gap-1">
                                                     <button type="button"
-                                                        onclick="nudgeLineBilling({{ $order->id }}, {{ $cartItem->item_id }}, -1)"
+                                                        onclick="nudgeLineBilling(@js($order->uuid), {{ $cartItem->item_id }}, -1)"
                                                         class="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95">
                                                         <i class="fas fa-minus text-xs"></i>
                                                     </button>
                                                     <input id="line-billing-{{ $cartItem->item_id }}" type="number" step="0.01" min="0.01" lang="en"
                                                         class="h-9 w-14 rounded-lg border border-gray-200 bg-white text-center text-sm font-bold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25"
                                                         value="{{ (float) ($cartItem->billing_units ?? 1) }}"
-                                                        onblur="updateCartBillingUnits({{ $order->id }}, {{ $cartItem->item_id }}, this)">
+                                                        onblur="updateCartBillingUnits(@js($order->uuid), {{ $cartItem->item_id }}, this)">
                                                     <button type="button"
-                                                        onclick="nudgeLineBilling({{ $order->id }}, {{ $cartItem->item_id }}, 1)"
+                                                        onclick="nudgeLineBilling(@js($order->uuid), {{ $cartItem->item_id }}, 1)"
                                                         class="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-95">
                                                         <i class="fas fa-plus text-xs"></i>
                                                     </button>
@@ -601,7 +600,7 @@ function orderPageData() {
                                     <td class="align-middle px-2 py-3 pr-3 text-center sm:pr-4 max-md:text-left" data-col="{{ __('vendor.remove_from_cart') }}">
                                         <button type="button"
                                                 data-cart-remove="1"
-                                                onclick="removeCartItem({{ $order->id }}, {{ $cartItem->item_id }}, this)"
+                                                onclick="removeCartItem(@js($order->uuid), {{ $cartItem->item_id }}, this)"
                                                 class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-red-100 bg-red-50 text-red-600 transition hover:bg-red-100 hover:text-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                                                 title="{{ __('vendor.remove_from_cart') }}">
                                             <i class="fas fa-trash text-sm"></i>
@@ -1226,7 +1225,7 @@ function orderPageData() {
                         document.getElementById('newPaymentDueModal').classList.add('hidden');
                         document.body.style.overflow = '';
                     }
-                    const npPaymentCartId = @json($order->id);
+                    const npPaymentCartId = @json($order->uuid);
                     function applyNewPaymentDueLayout(kind) {
                         const modal = document.getElementById('newPaymentDueModal');
                         const title = document.getElementById('npDueTitle');
@@ -1954,7 +1953,7 @@ function orderPageData() {
                             <i class="fas fa-user text-gray-400"></i>
                         </div>
                         <input type="text" 
-                               value="{{ $order->customer->name }} - {{ $order->customer->mobile }}"
+                               value="{{ $order->customer ? $order->customer->name . ' - ' . $order->customer->mobile : __('vendor.order_customer_unavailable') }}"
                                class="w-full pl-11 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
                                disabled readonly>
                     </div>
@@ -2078,10 +2077,10 @@ let pendingDelete = null;
 function addItemToCartAjax(itemId, qty, component) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const item = component.items.find(i => i.id === itemId);
-    const priceType = item?.price_type ?? 'per_day';
+    const priceType = item?.rental_period ?? 'per_day';
     const billingUnits = priceType === 'fixed' ? 1 : Math.max(parseFloat(component.addedItemBillingUnits[itemId]) || 1, 0.01);
 
-    fetch('{{ route("vendor.orders.items.add", $order->id) }}', {
+    fetch('{{ route("vendor.orders.items.add", $order->uuid) }}', {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2118,13 +2117,13 @@ function addItemToCartAjax(itemId, qty, component) {
 function updateModalItemQty(itemId, newQty, component) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const item = component.items.find(i => i.id === itemId);
-    const priceType = item?.price_type ?? 'per_day';
+    const priceType = item?.rental_period ?? 'per_day';
     let billingUnits = 1;
     if (priceType !== 'fixed') {
         billingUnits = Math.max(parseFloat(component.addedItemBillingUnits[itemId]) || 1, 0.01);
     }
 
-    fetch(`{{ url('vendor/orders') }}/{{ $order->id }}/items/${itemId}`, {
+    fetch(`{{ url('vendor/orders') }}/{{ $order->uuid }}/items/${itemId}`, {
         method: 'PUT',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2159,7 +2158,7 @@ function updateModalItemQty(itemId, newQty, component) {
 function removeModalItem(itemId, component) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    fetch(`{{ url('vendor/orders') }}/{{ $order->id }}/items/${itemId}`, {
+    fetch(`{{ url('vendor/orders') }}/{{ $order->uuid }}/items/${itemId}`, {
         method: 'DELETE',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2337,7 +2336,7 @@ function submitDiscount(e) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Applying...';
 
-    fetch(`{{ route('vendor.orders.discount', $order->id) }}`, {
+    fetch(`{{ route('vendor.orders.discount', $order->uuid) }}`, {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2397,7 +2396,7 @@ function submitDiscount(e) {
 function removeDiscount() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    fetch(`{{ route('vendor.orders.discount.remove', $order->id) }}`, {
+    fetch(`{{ route('vendor.orders.discount.remove', $order->uuid) }}`, {
         method: 'DELETE',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2592,7 +2591,7 @@ function submitSecurityDeposit(e) {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Apply';
     }
 
-    fetch(`{{ route('vendor.orders.security-deposit', $order->id) }}`, {
+    fetch(`{{ route('vendor.orders.security-deposit', $order->uuid) }}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -2664,7 +2663,7 @@ function loadCouponList() {
     const listEl = document.getElementById('couponList');
     listEl.innerHTML = '<div class="flex items-center justify-center py-8"><i class="fas fa-spinner fa-spin text-gray-400 text-xl"></i></div>';
 
-    fetch(`{{ route('vendor.orders.coupons.list', $order->id) }}`, {
+    fetch(`{{ route('vendor.orders.coupons.list', $order->uuid) }}`, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json',
@@ -2736,7 +2735,7 @@ function applyCouponFromModal() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-    fetch(`{{ route('vendor.orders.coupon.apply', $order->id) }}`, {
+    fetch(`{{ route('vendor.orders.coupon.apply', $order->uuid) }}`, {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2777,7 +2776,7 @@ function applyCouponFromModal() {
 function removeCoupon() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    fetch(`{{ route('vendor.orders.coupon.remove', $order->id) }}`, {
+    fetch(`{{ route('vendor.orders.coupon.remove', $order->uuid) }}`, {
         method: 'DELETE',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -2881,7 +2880,7 @@ function submitEditCart(e) {
 }
 
 function nudgeLineQty(cartId, itemId, delta, buttonEl) {
-    const row = buttonEl.closest('[data-line-price-type]');
+    const row = buttonEl.closest('[data-line-rental-period]');
     let current = row ? parseInt(row.getAttribute('data-line-qty'), 10) : NaN;
     if (!Number.isFinite(current)) {
         const qtyEl = document.querySelector(`[data-qty-display="${itemId}"]`);
@@ -2906,8 +2905,8 @@ function updateCartItemQty(cartId, itemId, quantity, el) {
     }
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    const row = el && el.closest ? el.closest('[data-line-price-type]') : null;
-    const priceType = row ? row.getAttribute('data-line-price-type') : null;
+    const row = el && el.closest ? el.closest('[data-line-rental-period]') : null;
+    const priceType = row ? row.getAttribute('data-line-rental-period') : null;
     let billingUnits = 1;
     if (priceType && priceType !== 'fixed' && row) {
         const b = parseFloat(row.getAttribute('data-line-billing'));
@@ -2945,8 +2944,8 @@ function updateCartItemQty(cartId, itemId, quantity, el) {
             if (lineTotalEl) lineTotalEl.textContent = '₹' + parseFloat(data.item.line_total).toFixed(2);
 
             if (row) {
-                if (data.item.price_type) {
-                    row.setAttribute('data-line-price-type', data.item.price_type);
+                if (data.item.rental_period) {
+                    row.setAttribute('data-line-rental-period', data.item.rental_period);
                 }
                 row.setAttribute('data-line-qty', data.item.quantity);
                 if (data.item.billing_units != null) {
@@ -2983,7 +2982,7 @@ function nudgeLineBilling(cartId, itemId, delta) {
 }
 
 function updateCartBillingUnits(cartId, itemId, inputEl) {
-    const row = inputEl.closest('[data-line-price-type]');
+    const row = inputEl.closest('[data-line-rental-period]');
     if (!row) return;
     let billing = parseFloat(inputEl.value);
     if (!Number.isFinite(billing) || billing < 0.01) {
@@ -2991,7 +2990,7 @@ function updateCartBillingUnits(cartId, itemId, inputEl) {
         inputEl.value = '1';
     }
     const qty = parseInt(row.getAttribute('data-line-qty'), 10) || 1;
-    const priceType = row.getAttribute('data-line-price-type');
+    const priceType = row.getAttribute('data-line-rental-period');
     const billingToSend = priceType === 'fixed' ? 1 : billing;
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');

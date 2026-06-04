@@ -17,7 +17,6 @@ class Subscription extends Model
         'payment_gateway',
         'payment_id',
         'auto_renew',
-        
     ];
 
     protected $casts = [

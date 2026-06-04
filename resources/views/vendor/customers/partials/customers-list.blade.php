@@ -16,6 +16,9 @@
                     <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         {{ __('vendor.registered') }}
                     </th>
+                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        {{ __('vendor.status') }}
+                    </th>
                     <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         {{ __('vendor.actions') }}
                     </th>
@@ -69,6 +72,25 @@
                         @endif
                     </td>
 
+                    <!-- Active status -->
+                    <td class="px-6 py-4">
+                        <div class="inline-block" x-data="{ isActive: {{ $customer->is_active ? 'true' : 'false' }} }">
+                            <form action="{{ route('vendor.customers.toggle', $customer) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
+                                @csrf
+                                <button type="submit"
+                                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                                        :class="isActive ? 'bg-emerald-500' : 'bg-gray-300'"
+                                        :title="isActive ? @json(__('vendor.click_to_deactivate')) : @json(__('vendor.click_to_activate'))">
+                                    <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                                          :class="isActive ? 'translate-x-6' : 'translate-x-1'"></span>
+                                </button>
+                            </form>
+                            <div class="mt-1">
+                                <span class="text-xs font-medium" :class="isActive ? 'text-emerald-700' : 'text-gray-500'" x-text="isActive ? @json(__('vendor.active')) : @json(__('vendor.inactive'))"></span>
+                            </div>
+                        </div>
+                    </td>
+
                     <!-- Actions -->
                     <td class="px-6 py-4 text-right">
                         <div class="relative inline-block" x-data="{ dropdownOpen: false }">
@@ -96,22 +118,11 @@
                                          $el.style.left = (rect.right - 192) + 'px';
                                      }
                                  })">
-                                <a href="{{ route('vendor.customers.edit', $customer->id) }}" 
+                                <a href="{{ route('vendor.customers.edit', $customer) }}" 
                                    class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                     <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
-                                    Edit
+                                    {{ __('vendor.edit') }}
                                 </a>
-                                <form action="{{ route('vendor.customers.destroy', $customer->id) }}" 
-                                      method="POST" 
-                                      onsubmit="return confirm('Are you sure you want to delete this customer?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" 
-                                            class="w-full text-left block px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                                        <i class="fas fa-trash w-5 mr-3"></i>
-                                        Delete
-                                    </button>
-                                </form>
                             </div>
                         </div>
                     </td>
@@ -164,20 +175,17 @@
                              x-transition:leave-end="opacity-0 scale-95"
                              class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
                              style="display: none;">
-                            <a href="{{ route('vendor.customers.edit', $customer->id) }}" 
-                               class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
+                            <a href="{{ route('vendor.customers.edit', $customer) }}" 
+                               class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors">
                                 <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
-                                Edit Customer
+                                {{ __('vendor.edit') }}
                             </a>
-                            <form action="{{ route('vendor.customers.destroy', $customer->id) }}" 
-                                  method="POST" 
-                                  onsubmit="return confirm('Are you sure you want to delete this customer?');">
+                            <form action="{{ route('vendor.customers.toggle', $customer) }}" method="POST" class="border-t border-gray-100">
                                 @csrf
-                                @method('DELETE')
-                                <button type="submit" 
-                                        class="w-full text-left block px-4 py-3 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 transition-colors">
-                                    <i class="fas fa-trash w-5 mr-3"></i>
-                                    Delete Customer
+                                <button type="submit"
+                                        class="w-full text-left block px-4 py-3 text-sm transition-colors {{ $customer->is_active ? 'text-orange-700 hover:bg-orange-50 active:bg-orange-100' : 'text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100' }}">
+                                    <i class="fas {{ $customer->is_active ? 'fa-ban' : 'fa-check-circle' }} w-5 mr-3"></i>
+                                    {{ $customer->is_active ? __('vendor.deactivate') : __('vendor.activate') }}
                                 </button>
                             </form>
                         </div>
@@ -193,17 +201,28 @@
                 @endif
 
                 <!-- Footer Info -->
-                <div class="flex items-center justify-between text-xs text-gray-500">
+                <div class="flex items-center justify-between gap-2 text-xs text-gray-500">
                     <span>
                         <i class="fas fa-clock mr-1"></i>
                         Added {{ $customer->created_at->diffForHumans() }}
                     </span>
-                    @if($customer->user_id)
-                        <span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full">
-                            <i class="fas fa-check-circle text-xs mr-1"></i>
-                            Registered
-                        </span>
-                    @endif
+                    <div class="flex items-center gap-2">
+                        @if($customer->is_active)
+                            <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                {{ __('vendor.active') }}
+                            </span>
+                        @else
+                            <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">
+                                {{ __('vendor.inactive') }}
+                            </span>
+                        @endif
+                        @if($customer->user_id)
+                            <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                <i class="fas fa-check-circle mr-1 text-xs"></i>
+                                {{ __('vendor.registered') }}
+                            </span>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>

@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Builder;
 
 class Language extends Model
 {
-     protected $fillable = [
+    protected $fillable = [
         'name',
         'code',
         'native_name',
+        'flag_icon',
         'is_active',
         'is_default',
         'sort_order',
@@ -19,6 +20,7 @@ class Language extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'is_default' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     /*

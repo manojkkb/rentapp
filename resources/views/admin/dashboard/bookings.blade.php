@@ -6,13 +6,12 @@
     $s = $data['summary'];
     $ost = $data['order_status_counts'];
     $statusLabels = [
-        'pending' => 'Pending', 'confirmed' => 'Confirmed', 'ongoing' => 'Ongoing',
+        'pending' => 'Pending', 'confirmed' => 'Confirmed',
         'completed' => 'Completed', 'cancelled' => 'Cancelled',
     ];
     $statusChip = fn (string $st) => match ($st) {
         'pending' => 'border-amber-200 bg-amber-50 text-amber-900',
         'confirmed' => 'border-sky-200 bg-sky-50 text-sky-900',
-        'ongoing' => 'border-violet-200 bg-violet-50 text-violet-900',
         'completed' => 'border-green-200 bg-green-50 text-green-900',
         'cancelled' => 'border-red-200 bg-red-50 text-red-900',
         default => 'border-gray-200 bg-gray-50 text-gray-800',

@@ -13,7 +13,6 @@
     $statusMeta = [
         'pending' => ['label' => __('vendor.pending'), 'icon' => 'fa-clock', 'tab' => 'border-amber-400/80 bg-amber-50 text-amber-900 shadow-sm', 'pill' => 'bg-amber-100 text-amber-800 ring-1 ring-amber-200/70'],
         'confirmed' => ['label' => __('vendor.confirmed'), 'icon' => 'fa-check', 'tab' => 'border-sky-400/80 bg-sky-50 text-sky-900 shadow-sm', 'pill' => 'bg-sky-100 text-sky-800 ring-1 ring-sky-200/70'],
-        'ongoing' => ['label' => __('vendor.ongoing'), 'icon' => 'fa-spinner', 'tab' => 'border-violet-400/80 bg-violet-50 text-violet-900 shadow-sm', 'pill' => 'bg-violet-100 text-violet-800 ring-1 ring-violet-200/70'],
         'completed' => ['label' => __('vendor.completed'), 'icon' => 'fa-circle-check', 'tab' => 'border-emerald-400/80 bg-emerald-50 text-emerald-900 shadow-sm', 'pill' => 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/70'],
         'cancelled' => ['label' => __('vendor.cancelled'), 'icon' => 'fa-ban', 'tab' => 'border-rose-400/80 bg-rose-50 text-rose-900 shadow-sm', 'pill' => 'bg-rose-100 text-rose-800 ring-1 ring-rose-200/70'],
     ];
@@ -117,6 +116,9 @@
                             @foreach($orders as $order)
                                 @php
                                     $pill = $statusMeta[$order->status]['pill'] ?? 'bg-gray-100 text-gray-800 ring-1 ring-gray-200/70';
+                                    $customerName = $order->customer?->name ?? __('vendor.order_customer_unavailable');
+                                    $customerMobile = $order->customer?->mobile ?? '—';
+                                    $customerInitials = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($customerName, 0, 2));
                                 @endphp
                                 <tr class="group transition-colors hover:bg-emerald-50/35">
                                     <td class="px-5 py-4 align-top sm:px-6">
@@ -134,11 +136,11 @@
                                     <td class="px-5 py-4 align-top sm:px-6">
                                         <div class="flex items-center gap-3">
                                             <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200/50">
-                                                {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($order->customer->name, 0, 2)) }}
+                                                {{ $customerInitials }}
                                             </div>
                                             <div class="min-w-0">
-                                                <p class="truncate font-medium text-gray-900">{{ $order->customer->name }}</p>
-                                                <p class="truncate text-xs text-gray-500">{{ $order->customer->mobile }}</p>
+                                                <p class="truncate font-medium text-gray-900">{{ $customerName }}</p>
+                                                <p class="truncate text-xs text-gray-500">{{ $customerMobile }}</p>
                                             </div>
                                         </div>
                                     </td>
@@ -182,6 +184,9 @@
                 @foreach($orders as $order)
                     @php
                         $pill = $statusMeta[$order->status]['pill'] ?? 'bg-gray-100 text-gray-800 ring-1 ring-gray-200/70';
+                        $customerName = $order->customer?->name ?? __('vendor.order_customer_unavailable');
+                        $customerMobile = $order->customer?->mobile ?? '—';
+                        $customerInitials = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($customerName, 0, 2));
                     @endphp
                     <article class="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-sm ring-1 ring-black/[0.03]">
                         <div class="flex items-start justify-between gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white px-4 py-3.5">
@@ -196,15 +201,15 @@
                         <div class="space-y-4 p-4 sm:p-5">
                             <div class="flex items-center gap-3">
                                 <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 text-sm font-bold text-emerald-800 ring-1 ring-emerald-200/50">
-                                    {{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($order->customer->name, 0, 2)) }}
+                                    {{ $customerInitials }}
                                 </div>
                                 <div class="min-w-0 flex-1">
-                                    <p class="truncate text-base font-semibold text-gray-900">{{ $order->customer->name }}</p>
-                                    @php $telRaw = preg_replace('/[^0-9+]/', '', (string) $order->customer->mobile); @endphp
+                                    <p class="truncate text-base font-semibold text-gray-900">{{ $customerName }}</p>
+                                    @php $telRaw = preg_replace('/[^0-9+]/', '', (string) $customerMobile); @endphp
                                     @if(strlen($telRaw) >= 7)
-                                        <a href="tel:{{ $telRaw }}" class="mt-0.5 block truncate text-sm text-emerald-700 underline-offset-2 hover:underline [touch-action:manipulation]">{{ $order->customer->mobile }}</a>
+                                        <a href="tel:{{ $telRaw }}" class="mt-0.5 block truncate text-sm text-emerald-700 underline-offset-2 hover:underline [touch-action:manipulation]">{{ $customerMobile }}</a>
                                     @else
-                                        <p class="mt-0.5 truncate text-sm text-gray-500">{{ $order->customer->mobile }}</p>
+                                        <p class="mt-0.5 truncate text-sm text-gray-500">{{ $customerMobile }}</p>
                                     @endif
                                 </div>
                             </div>

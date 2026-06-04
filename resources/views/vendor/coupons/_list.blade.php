@@ -1,12 +1,12 @@
 @forelse($coupons as $coupon)
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow coupon-card" 
-         data-coupon-id="{{ $coupon->id }}">
+         data-coupon-id="{{ $coupon->uuid }}">
         <div class="p-4">
             <div class="flex items-start justify-between gap-3">
                 <!-- Left: Coupon Info -->
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center flex-wrap gap-2 mb-2">
-                        <span data-coupon-badge="{{ $coupon->id }}" class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold tracking-wider border
+                        <span data-coupon-badge="{{ $coupon->uuid }}" class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold tracking-wider border
                             {{ $coupon->is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200' }}">
                             {{ $coupon->code }}
                         </span>
@@ -20,20 +20,20 @@
                         </span>
                         @if($coupon->is_active)
                             @if($coupon->end_date && now()->gt($coupon->end_date))
-                                <span data-coupon-status="{{ $coupon->id }}" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-600">
+                                <span data-coupon-status="{{ $coupon->uuid }}" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-600">
                                     <i class="fas fa-clock mr-1"></i>{{ __('vendor.expired') }}
                                 </span>
                             @elseif($coupon->start_date && now()->lt($coupon->start_date))
-                                <span data-coupon-status="{{ $coupon->id }}" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-50 text-yellow-700">
+                                <span data-coupon-status="{{ $coupon->uuid }}" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-50 text-yellow-700">
                                     <i class="fas fa-clock mr-1"></i>{{ __('vendor.scheduled') }}
                                 </span>
                             @else
-                                <span data-coupon-status="{{ $coupon->id }}" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-600">
+                                <span data-coupon-status="{{ $coupon->uuid }}" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-600">
                                     <i class="fas fa-check-circle mr-1"></i>{{ __('vendor.active') }}
                                 </span>
                             @endif
                         @else
-                            <span data-coupon-status="{{ $coupon->id }}" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
+                            <span data-coupon-status="{{ $coupon->uuid }}" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
                                 <i class="fas fa-ban mr-1"></i>{{ __('vendor.inactive') }}
                             </span>
                         @endif
@@ -71,18 +71,18 @@
                 <!-- Right: Actions -->
                 <div class="flex items-center space-x-1 flex-shrink-0">
                     <!-- Toggle -->
-                    <button data-coupon-toggle="{{ $coupon->id }}" onclick="toggleCoupon({{ $coupon->id }})" 
+                    <button data-coupon-toggle="{{ $coupon->uuid }}" onclick="toggleCoupon(@js($coupon->uuid))" 
                             class="p-2 rounded-lg transition-colors {{ $coupon->is_active ? 'text-emerald-600 hover:bg-emerald-50' : 'text-gray-400 hover:bg-gray-100' }}"
                             title="{{ $coupon->is_active ? __('vendor.deactivate') : __('vendor.activate') }}">
                         <i class="fas {{ $coupon->is_active ? 'fa-toggle-on text-lg' : 'fa-toggle-off text-lg' }}"></i>
                     </button>
                     <!-- Edit -->
-                    <button onclick="editCoupon({{ $coupon->id }})" 
+                    <button onclick="editCoupon(@js($coupon->uuid))" 
                             class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="{{ __('vendor.edit') }}">
                         <i class="fas fa-edit"></i>
                     </button>
                     <!-- Delete -->
-                    <button onclick="confirmDeleteCoupon({{ $coupon->id }}, '{{ $coupon->code }}')" 
+                    <button onclick="confirmDeleteCoupon(@js($coupon->uuid), @js($coupon->code))" 
                             class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="{{ __('vendor.delete') }}">
                         <i class="fas fa-trash-alt"></i>
                     </button>

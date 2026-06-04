@@ -107,23 +107,6 @@ function vendorSupportChatFactory(config = {}) {
             setTimeout(() => this.scrollToBottom(), 300);
         },
 
-        focusComposer() {
-            this.$nextTick(() => {
-                const input = this.$refs.messageInput;
-                if (input && typeof input.focus === 'function') {
-                    input.focus();
-                }
-            });
-        },
-
-        onEnterKey(event) {
-            if (event.shiftKey) {
-                return;
-            }
-            event.preventDefault();
-            this.send();
-        },
-
         updateTicketStatusFromMessage(msg) {
             if (!msg?.sender_type) {
                 return;
@@ -141,6 +124,35 @@ function vendorSupportChatFactory(config = {}) {
             this.messages.push(msg);
             this.updateTicketStatusFromMessage(msg);
             this.$nextTick(() => this.scrollToBottom());
+        },
+
+        focusComposer() {
+            const focus = () => {
+                const input = this.$refs.messageInput;
+                if (!input) {
+                    return;
+                }
+                input.focus({ preventScroll: true });
+                const len = input.value.length;
+                if (typeof input.setSelectionRange === 'function') {
+                    input.setSelectionRange(len, len);
+                }
+            };
+
+            this.$nextTick(focus);
+
+            // Mobile keyboards sometimes drop focus after send + scroll
+            if (window.matchMedia('(max-width: 767px)').matches) {
+                setTimeout(focus, 50);
+            }
+        },
+
+        onComposerKeydown(event) {
+            if (event.key !== 'Enter' || event.shiftKey || event.isComposing) {
+                return;
+            }
+            event.preventDefault();
+            this.send();
         },
 
         async send() {

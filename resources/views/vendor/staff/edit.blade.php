@@ -23,7 +23,7 @@
         </div>
 
         <!-- Form -->
-        <form action="{{ route('vendor.staff.update', $vendorUser->id) }}" method="POST" class="p-6">
+        <form action="{{ route('vendor.staff.update', $vendorUser) }}" method="POST" class="p-6">
             @csrf
             @method('PUT')
 

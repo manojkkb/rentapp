@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,7 +11,7 @@ use Illuminate\Support\Facades\Storage;
 
 class Vendor extends Model
 {
-    use SoftDeletes;
+    use HasUuid, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -18,6 +19,7 @@ class Vendor extends Model
      * @var array
      */
     protected $fillable = [
+        'uuid',
         'user_id',
         'name',
         'owner_name',
@@ -49,8 +51,10 @@ class Vendor extends Model
         'is_verified' => 'boolean',
         'is_active' => 'boolean',
         'rating' => 'decimal:2',
+        'total_reviews' => 'integer',
         'latitude' => 'decimal:7',
         'longitude' => 'decimal:7',
+        'deleted_at' => 'datetime',
     ];
 
     /**
@@ -184,15 +188,11 @@ class Vendor extends Model
             return null;
         }
 
-        if (Storage::disk('s3')->exists($this->logo)) {
-            return Storage::disk('s3')->url($this->logo);
-        }
-
         if (Storage::disk('public')->exists($this->logo)) {
             return Storage::disk('public')->url($this->logo);
         }
 
-        return null;
+        return Storage::disk('s3')->url($this->logo);
     }
 
     /**

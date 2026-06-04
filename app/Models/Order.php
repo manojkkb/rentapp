@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuid;
+use App\Models\Concerns\RoutesByUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,12 +11,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    use SoftDeletes;
+    use HasUuid, RoutesByUuid, SoftDeletes;
 
     /** @var list<string> */
-    public const STATUSES = ['pending', 'confirmed', 'ongoing', 'completed', 'cancelled'];
+    public const STATUSES = ['pending', 'confirmed', 'completed', 'cancelled'];
 
     protected $fillable = [
+        'uuid',
         'order_number',
         'event_name',
         'customer_id',
@@ -137,8 +140,7 @@ class Order extends Model
     {
         return match ($this->status) {
             'pending' => ['confirmed', 'cancelled'],
-            'confirmed' => ['ongoing', 'cancelled'],
-            'ongoing' => ['completed', 'cancelled'],
+            'confirmed' => ['completed', 'cancelled'],
             'completed', 'cancelled' => [],
             default => [],
         };

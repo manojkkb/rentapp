@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuid;
+use App\Models\Concerns\RoutesByUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Coupon extends Model
 {
+    use HasUuid, RoutesByUuid;
+
     protected $fillable = [
+        'uuid',
         'vendor_id',
         'code',
         'name',
@@ -29,6 +34,8 @@ class Coupon extends Model
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'is_active' => 'boolean',
+        'used_count' => 'integer',
+        'usage_limit' => 'integer',
     ];
 
     public function vendor(): BelongsTo

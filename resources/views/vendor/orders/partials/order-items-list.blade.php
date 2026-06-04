@@ -5,8 +5,8 @@
     <ul class="divide-y divide-gray-100 text-[13px] text-gray-800 sm:text-sm">
         @foreach($order->items as $cartItem)
             @php
-                $linePt = $cartItem->price_type ?? ($cartItem->item?->price_type ?? 'per_day');
-                $usesBilling = \App\Models\Items::priceTypeUsesBillingUnits($linePt);
+                $linePt = $cartItem->rental_period ?? ($cartItem->item?->rental_period ?? 'per_day');
+                $usesBilling = \App\Models\Items::rentalPeriodUsesBillingUnits($linePt);
                 $bu = $cartItem->billing_units;
                 $buFmt = ($usesBilling && $bu !== null && $bu !== '')
                     ? (rtrim(rtrim(number_format((float) $bu, 2, '.', ''), '0'), '.') ?: '0')
@@ -34,7 +34,7 @@
                 $lineQty = max(1, (int) $cartItem->quantity);
                 $lineDeliveredQty = $cartItem->delivered_at ? $lineQty : 0;
                 $lineReturnedQty = min($lineQty, max(0, (int) ($cartItem->returned_qty ?? 0)));
-                $showLineRentalStatus = in_array($order->status, ['pending', 'confirmed', 'ongoing', 'completed'], true);
+                $showLineRentalStatus = in_array($order->status, ['pending', 'confirmed', 'completed'], true);
             @endphp
             <li data-cart-line="1"
                 class="flex items-center gap-2 py-2.5 first:pt-0 sm:gap-3"
@@ -42,7 +42,7 @@
                 data-line-delivered="{{ $cartItem->delivered_at ? '1' : '0' }}"
                 data-line-returned="{{ ($cartItem->returned_at || (int) ($cartItem->returned_qty ?? 0) >= (int) $cartItem->quantity) ? '1' : '0' }}"
                 data-line-returned-qty="{{ (int) ($cartItem->returned_qty ?? 0) }}"
-                data-line-price-type="{{ $linePt }}"
+                data-line-rental-period="{{ $linePt }}"
                 data-line-qty="{{ $cartItem->quantity }}"
                 data-line-billing="{{ (float) ($cartItem->billing_units ?? 1) }}">
                 <div class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-slate-100 to-blue-50 ring-1 ring-gray-200/80 sm:h-12 sm:w-12">
@@ -136,7 +136,7 @@
                                 </button>
                                 <button type="button"
                                         class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-50"
-                                        @click="menu = false; removeCartItem({{ $order->id }}, {{ $cartItem->item_id }}, $event.currentTarget)">
+                                        @click="menu = false; removeCartItem(@js($order->uuid), {{ $cartItem->item_id }}, $event.currentTarget)">
                                     <i class="fas fa-trash-alt w-4 text-center text-xs" aria-hidden="true"></i>
                                     {{ __('vendor.remove') }}
                                 </button>

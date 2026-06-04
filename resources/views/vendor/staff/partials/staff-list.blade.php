@@ -74,7 +74,7 @@
                     <td class="px-6 py-4">
                         @if(!$vendorUser->is_owner)
                             <div class="inline-block" x-data="{ isActive: {{ $vendorUser->is_active ? 'true' : 'false' }} }">
-                                <form action="{{ route('vendor.staff.toggle', $vendorUser->id) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
+                                <form action="{{ route('vendor.staff.toggle', $vendorUser) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
                                     @csrf
                                     <button type="submit"
                                             class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
@@ -124,12 +124,12 @@
                                              $el.style.left = (rect.right - 192) + 'px';
                                          }
                                      })">
-                                    <a href="{{ route('vendor.staff.edit', $vendorUser->id) }}"
+                                    <a href="{{ route('vendor.staff.edit', $vendorUser) }}"
                                        class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                         <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
                                         {{ __('vendor.edit') }}
                                     </a>
-                                    <form action="{{ route('vendor.staff.destroy', $vendorUser->id) }}"
+                                    <form action="{{ route('vendor.staff.destroy', $vendorUser) }}"
                                           method="POST"
                                           onsubmit="return confirm(@js(__('vendor.confirm_delete')));">
                                         @csrf
@@ -181,12 +181,12 @@
                              x-transition
                              class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
                              style="display: none;">
-                            <a href="{{ route('vendor.staff.edit', $vendorUser->id) }}"
+                            <a href="{{ route('vendor.staff.edit', $vendorUser) }}"
                                class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
                                 <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
                                 {{ __('vendor.edit') }}
                             </a>
-                            <form action="{{ route('vendor.staff.destroy', $vendorUser->id) }}"
+                            <form action="{{ route('vendor.staff.destroy', $vendorUser) }}"
                                   method="POST"
                                   onsubmit="return confirm(@js(__('vendor.confirm_delete')));">
                                 @csrf
@@ -225,7 +225,7 @@
                 <div class="flex items-center justify-between">
                     <span class="text-sm font-medium text-gray-700">{{ __('vendor.status') }}</span>
                     <div class="inline-block" x-data="{ isActive: {{ $vendorUser->is_active ? 'true' : 'false' }} }">
-                        <form action="{{ route('vendor.staff.toggle', $vendorUser->id) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
+                        <form action="{{ route('vendor.staff.toggle', $vendorUser) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
                             @csrf
                             <button type="submit"
                                     class="relative inline-flex items-center h-7 rounded-full w-12 transition-colors focus:outline-none active:ring-2 active:ring-offset-2 active:ring-emerald-500"

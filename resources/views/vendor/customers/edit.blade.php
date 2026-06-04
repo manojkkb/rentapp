@@ -37,7 +37,7 @@
             </div>
         </div>
 
-        <form action="{{ route('vendor.customers.update', $customer->id) }}" method="POST" class="p-4 md:p-6">
+        <form action="{{ route('vendor.customers.update', $customer) }}" method="POST" class="p-4 md:p-6">
             @csrf
             @method('PUT')
 
@@ -113,7 +113,7 @@
                     <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
                     <div class="flex-1">
                         <p class="text-sm text-blue-900">
-                            <span class="font-semibold">Customer ID:</span> #{{ $customer->id }}
+                            <span class="font-semibold">Customer ID:</span> {{ $customer->uuid }}
                         </p>
                         <p class="text-sm text-blue-900 mt-1">
                             <span class="font-semibold">Added:</span> {{ $customer->created_at->format('M d, Y') }}

@@ -21,11 +21,13 @@
             {{ __('vendor.back_to_items') }}
         </a>
         <span class="hidden text-gray-300 sm:inline">·</span>
+        <a href="{{ route('vendor.items.show', $item) }}" class="hidden font-medium text-gray-600 hover:text-emerald-600 sm:inline">{{ $item->name }}</a>
+        <span class="hidden text-gray-300 sm:inline">·</span>
         <span class="font-semibold text-gray-900">{{ __('vendor.edit_item') }}</span>
     </div>
 
     <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
-        <form action="{{ route('vendor.items.update', $item->id) }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('vendor.items.update', $item) }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('PUT')
 
@@ -47,20 +49,22 @@
                                 <span>{{ __('vendor.slug_auto_update') }}</span>
                             </p>
                         </div>
-                        <div class="sm:col-span-2">
-                            <label for="category_id" class="{{ $fl }}">{{ __('vendor.category') }} <span class="text-red-500">*</span></label>
-                            <p class="{{ $fh }}">{{ __('vendor.field_hint_category') }}</p>
-                            <select id="category_id" name="category_id" required class="{{ $fc }} @error('category_id') border-red-500 @enderror">
-                                <option value="">{{ __('vendor.select_category') }}</option>
-                                @foreach($categories as $category)
-                                    <option value="{{ $category->id }}" {{ old('category_id', $item->category_id) == $category->id ? 'selected' : '' }}>{{ $category->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('category_id')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-                            @if($categories->isEmpty())
-                                <p class="mt-0.5 text-[10px] text-orange-600">{{ __('vendor.no_categories_found') }} <a href="{{ route('vendor.categories.create') }}" class="underline">{{ __('vendor.create_category_first') }}</a></p>
-                            @endif
+                        <div>
+                            <label for="item_code" class="{{ $fl }}">{{ __('vendor.item_code') }} <span class="text-red-500">*</span></label>
+                            <p class="{{ $fh }}">{{ __('vendor.field_hint_item_code') }}</p>
+                            <input type="text" id="item_code" name="item_code" value="{{ old('item_code', $item->item_code) }}" required maxlength="32"
+                                   class="{{ $fc }} font-mono uppercase @error('item_code') border-red-500 @enderror"
+                                   placeholder="{{ __('vendor.item_code_placeholder') }}"
+                                   autocapitalize="characters" spellcheck="false">
+                            @error('item_code')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
                         </div>
+                        @include('vendor.items.partials.category-picker-searchable', [
+                            'categories' => $categories,
+                            'selectedCategoryId' => $item->category_id,
+                            'inputClass' => $fc,
+                            'labelClass' => $fl,
+                            'hintClass' => $fh,
+                        ])
                     </div>
 
                     <div>
@@ -100,14 +104,14 @@
                                 @error('price')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
-                                <label for="price_type" class="{{ $fl }}">{{ __('vendor.price_type') }} <span class="text-red-500">*</span></label>
-                                <p class="{{ $fh }}">{{ __('vendor.field_hint_price_type') }}</p>
-                                <select id="price_type" name="price_type" required class="{{ $fc }} @error('price_type') border-red-500 @enderror">
-                                    @foreach($priceTypes as $key => $label)
-                                        <option value="{{ $key }}" {{ old('price_type', $item->price_type) == $key ? 'selected' : '' }}>{{ $label }}</option>
+                                <label for="rental_period" class="{{ $fl }}">{{ __('vendor.rental_period') }} <span class="text-red-500">*</span></label>
+                                <p class="{{ $fh }}">{{ __('vendor.field_hint_rental_period') }}</p>
+                                <select id="rental_period" name="rental_period" required class="{{ $fc }} @error('rental_period') border-red-500 @enderror">
+                                    @foreach($rentalPeriods as $key => $label)
+                                        <option value="{{ $key }}" {{ old('rental_period', $item->rental_period) == $key ? 'selected' : '' }}>{{ $label }}</option>
                                     @endforeach
                                 </select>
-                                @error('price_type')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
+                                @error('rental_period')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
                             </div>
                         </div>
                     </section>
@@ -157,7 +161,7 @@
             </div>
         </form>
 
-        <form id="delete-item-form" action="{{ route('vendor.items.destroy', $item->id) }}" method="POST" class="hidden">
+        <form id="delete-item-form" action="{{ route('vendor.items.destroy', $item) }}" method="POST" class="hidden">
             @csrf
             @method('DELETE')
         </form>

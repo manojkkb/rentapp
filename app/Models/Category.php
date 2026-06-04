@@ -2,24 +2,28 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuid;
+use App\Models\Concerns\RoutesByUuid;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 class Category extends Model
 {
+    use HasUuid, RoutesByUuid;
+
     protected $appends = ['image_url'];
 
     protected $fillable = [
+        'uuid',
         'vendor_id',
         'parent_id',
         'name',
         'slug',
-        'description',
         'icon',
         'image',
         'is_active',
-        'sort_order',
     ];
 
     protected $casts = [
@@ -37,7 +41,7 @@ class Category extends Model
     /**
      * Get the parent category
      */
-    public function parent()
+    public function parent(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'parent_id');
     }
@@ -53,9 +57,9 @@ class Category extends Model
     /**
      * Get the vendor that owns this category
      */
-    public function vendor()
+    public function vendor(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Vendor::class);
+        return $this->belongsTo(Vendor::class);
     }
 
     /**

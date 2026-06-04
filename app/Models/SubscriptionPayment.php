@@ -25,10 +25,21 @@ class SubscriptionPayment extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'paid_at' => 'datetime',
+        'metadata' => 'array',
     ];
 
     public function subscription()
     {
         return $this->belongsTo(Subscription::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
     }
 }

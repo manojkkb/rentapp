@@ -8,7 +8,10 @@ use App\Services\SmsService;
 class OtpService
 {
     const MAX_ATTEMPTS = 5;
+
     const EXPIRY_MINUTES = 5;
+
+    const RESEND_COOLDOWN_SECONDS = 60;
 
     /*
     |--------------------------------------------------------------------------
@@ -36,14 +39,56 @@ class OtpService
             // Mail::to($identifier)->send(new OtpMail($otp));
             Log::info('OTP queued for email delivery', ['identifier' => $identifier, 'otp' => $otp]);
         } else {
-                 $name="SMTJobs";
-            // $text = "$otp is verification otp for SMT. OTPs are SECRET. DO NOT disclose it to anyone. SMT Labs Private Limited";
-              $text = "$otp is verification otp for " . $name . ". OTPs are SECRET. DO NOT disclose it to anyone. SMT Labs Private Limited";
-             SmsService::send($identifier, $text);
-            Log::info('OTP queued for SMS delivery', ['identifier' => $identifier, 'otp' => $otp]);
+            $apiKey = config('services.sms.api_key');
+            if (filled($apiKey)) {
+                $name = config('app.name', 'Rentkia');
+                $text = "$otp is verification otp for {$name}. OTPs are SECRET. DO NOT disclose it to anyone.";
+                SmsService::send($identifier, $text);
+                Log::info('OTP queued for SMS delivery', ['identifier' => $identifier]);
+            } else {
+                Log::info('OTP SMS skipped (no SMS API key configured)', [
+                    'identifier' => $identifier,
+                    'otp' => config('app.debug') ? $otp : '[hidden]',
+                ]);
+            }
         }
 
         return $otp;
+    }
+
+    public function secondsUntilResend(string $identifier): int
+    {
+        $record = OtpVerification::query()
+            ->where('identifier', $identifier)
+            ->latest()
+            ->first();
+
+        if (! $record) {
+            return 0;
+        }
+
+        $elapsed = $record->created_at->diffInSeconds(now());
+
+        return max(0, self::RESEND_COOLDOWN_SECONDS - $elapsed);
+    }
+
+    public function hasPendingOtp(string $identifier): bool
+    {
+        return OtpVerification::query()
+            ->where('identifier', $identifier)
+            ->whereNull('verified_at')
+            ->where('expires_at', '>', now())
+            ->exists();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Resend OTP (cooldown applies)
+    |--------------------------------------------------------------------------
+    */
+    public function resendOtp(string $identifier, string $type = 'phone'): string
+    {
+        return $this->sendOtp($identifier, $type);
     }
 
     /*

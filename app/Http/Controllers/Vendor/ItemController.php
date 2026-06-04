@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Vendor\Concerns\RedirectsIfNumericRouteKey;
 use App\Models\Category;
 use App\Models\Items;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -15,14 +17,36 @@ use Illuminate\Validation\ValidationException;
 
 class ItemController extends Controller
 {
+    use RedirectsIfNumericRouteKey;
+
     /**
      * Price billing periods + fixed (labels are translated for the current locale).
      *
      * @return array<string, string>
      */
-    private function priceTypeOptions(): array
+    private function rentalPeriodOptions(): array
     {
-        return Items::priceTypeSelectOptions();
+        return Items::rentalPeriodSelectOptions();
+    }
+
+    /**
+     * Active categories for item forms; includes the item's current category if inactive.
+     */
+    private function categoriesForItemForm(int $vendorId, ?int $includeCategoryId = null): \Illuminate\Support\Collection
+    {
+        $categories = Category::where('vendor_id', $vendorId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        if ($includeCategoryId && ! $categories->contains('id', $includeCategoryId)) {
+            $current = Category::where('vendor_id', $vendorId)->find($includeCategoryId);
+            if ($current) {
+                $categories = $categories->push($current)->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
+            }
+        }
+
+        return $categories;
     }
 
     /**
@@ -43,14 +67,14 @@ class ItemController extends Controller
             ->orderBy('name')
             ->get();
 
-        $priceTypes = $this->priceTypeOptions();
+        $rentalPeriods = $this->rentalPeriodOptions();
 
         $items = Items::where('vendor_id', $vendor->id)
             ->with('category')
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
-        return view('vendor.items.index', compact('items', 'vendor', 'categories', 'priceTypes'));
+        return view('vendor.items.index', compact('items', 'vendor', 'categories', 'rentalPeriods'));
     }
 
     /**
@@ -82,6 +106,7 @@ class ItemController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('item_code', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%");
             });
@@ -119,15 +144,11 @@ class ItemController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
-        // Get active categories for dropdown
-        $categories = Category::where('vendor_id', $vendor->id)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $categories = $this->categoriesForItemForm($vendor->id);
 
-        $priceTypes = $this->priceTypeOptions();
+        $rentalPeriods = $this->rentalPeriodOptions();
 
-        return view('vendor.items.create', compact('vendor', 'categories', 'priceTypes'));
+        return view('vendor.items.create', compact('vendor', 'categories', 'rentalPeriods'));
     }
 
     /**
@@ -160,7 +181,11 @@ class ItemController extends Controller
             $item = Items::create(array_merge([
                 'vendor_id' => $vendor->id,
                 'slug' => $slug,
-            ], $this->itemAttributesFromRequest($request)));
+            ], $this->itemAttributesFromRequest($request), $this->itemCodeFromRequest($request)));
+
+            if (! $item->item_code) {
+                $item->update(['item_code' => Items::codeFromId($item->id)]);
+            }
 
             if ($request->hasFile('photo')) {
                 $path = $this->storeItemPhotoOnS3($request->file('photo'), $vendor->id, $item->id);
@@ -194,9 +219,139 @@ class ItemController extends Controller
     }
 
     /**
+     * Minimal item create from order wizard (JSON).
+     */
+    public function storeQuickForOrderWizard(Request $request): JsonResponse
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please select a vendor',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'category_id' => [
+                'required',
+                'integer',
+                Rule::exists('categories', 'id')->where(fn ($q) => $q->where('vendor_id', $vendor->id)),
+            ],
+            'price' => 'required|numeric|min:0',
+            'rental_period' => ['nullable', Rule::in(Items::rentalPeriodKeys())],
+        ]);
+
+        $rentalPeriod = $validated['rental_period'] ?? 'per_day';
+        if (! in_array($rentalPeriod, Items::rentalPeriodKeys(), true)) {
+            $rentalPeriod = 'per_day';
+        }
+
+        $slug = Str::slug($validated['name']);
+        $originalSlug = $slug;
+        $counter = 1;
+        while (Items::where('vendor_id', $vendor->id)->where('slug', $slug)->exists()) {
+            $slug = $originalSlug.'-'.$counter;
+            $counter++;
+        }
+
+        try {
+            $item = Items::create([
+                'vendor_id' => $vendor->id,
+                'slug' => $slug,
+                'category_id' => (int) $validated['category_id'],
+                'name' => $validated['name'],
+                'price' => round((float) $validated['price'], 2),
+                'rental_period' => $rentalPeriod,
+                'security_deposit' => 0,
+                'replacement_cost' => 0,
+                'late_fee' => 0,
+                'min_rental_duration' => 1,
+                'max_rental_duration' => 90,
+                'condition_status' => 'good',
+                'stock' => 1,
+                'damaged_stock' => 0,
+                'maintenance_stock' => 0,
+                'manage_stock' => true,
+                'is_available' => true,
+                'is_active' => true,
+            ]);
+
+            if (! $item->item_code) {
+                $item->update(['item_code' => Items::codeFromId($item->id)]);
+            }
+
+            $item->load('category');
+
+            return response()->json([
+                'success' => true,
+                'message' => __('vendor.order_wizard_item_created'),
+                'item' => $this->catalogRowForOrderWizard($item),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => __('vendor.order_wizard_item_create_failed'),
+                'errors' => ['error' => [$e->getMessage()]],
+            ], 422);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function catalogRowForOrderWizard(Items $i): array
+    {
+        $pt = in_array($i->rental_period ?? '', Items::rentalPeriodKeys(), true) ? $i->rental_period : 'per_day';
+
+        return [
+            'id' => $i->id,
+            'uuid' => $i->uuid,
+            'item_code' => $i->item_code,
+            'slug' => $i->slug,
+            'name' => $i->name,
+            'price' => (float) $i->price,
+            'photo_url' => $i->photo_url,
+            'category_id' => $i->category_id,
+            'category' => $i->category ? ['id' => $i->category->id, 'name' => $i->category->name] : null,
+            'stock' => (int) ($i->stock ?? 0),
+            'manage_stock' => (bool) ($i->manage_stock ?? false),
+            'rental_period' => $pt,
+            'uses_billing_units' => Items::rentalPeriodUsesBillingUnits($pt),
+        ];
+    }
+
+    /**
+     * Display the specified item.
+     */
+    public function show(Request $request, Items $item)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+        }
+
+        if ($item->vendor_id != $vendor->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if ($redirect = $this->redirectIfNumericRouteKey($request, $item, 'vendor.items.show')) {
+            return $redirect;
+        }
+
+        $item->load('category');
+        $rentalPeriods = $this->rentalPeriodOptions();
+        $conditionLabels = Items::conditionStatusOptions();
+
+        return view('vendor.items.show', compact('vendor', 'item', 'rentalPeriods', 'conditionLabels'));
+    }
+
+    /**
      * Show the form for editing an item
      */
-    public function edit(Items $item)
+    public function edit(Request $request, Items $item)
     {
         $vendor = Auth::user()->currentVendor();
 
@@ -209,6 +364,10 @@ class ItemController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        if ($redirect = $this->redirectIfNumericRouteKey($request, $item, 'vendor.items.edit')) {
+            return $redirect;
+        }
+
         // If AJAX request, return JSON
         if (request()->wantsJson() || request()->ajax()) {
             return response()->json([
@@ -217,15 +376,11 @@ class ItemController extends Controller
             ]);
         }
 
-        // Get active categories for dropdown
-        $categories = Category::where('vendor_id', $vendor->id)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $categories = $this->categoriesForItemForm($vendor->id, $item->category_id);
 
-        $priceTypes = $this->priceTypeOptions();
+        $rentalPeriods = $this->rentalPeriodOptions();
 
-        return view('vendor.items.edit', compact('vendor', 'item', 'categories', 'priceTypes'));
+        return view('vendor.items.edit', compact('vendor', 'item', 'categories', 'rentalPeriods'));
     }
 
     /**
@@ -244,7 +399,7 @@ class ItemController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $request->validate($this->itemPayloadValidationRules());
+        $request->validate($this->itemPayloadValidationRules($item));
         $this->validateItemInventoryConsistency($request);
 
         // Generate unique slug if name changed
@@ -267,6 +422,7 @@ class ItemController extends Controller
         try {
             $data = array_merge([
                 'slug' => $slug,
+                'item_code' => $this->resolveItemCodeForUpdate($request, $item),
             ], $this->itemAttributesFromRequest($request));
 
             if ($request->hasFile('photo')) {
@@ -379,28 +535,32 @@ class ItemController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function itemPayloadValidationRules(): array
+    private function itemPayloadValidationRules(?Items $item = null): array
     {
+        $vendor = Auth::user()->currentVendor();
+
         return [
+            'item_code' => [
+                'nullable',
+                'string',
+                'max:32',
+                'regex:/^[A-Za-z0-9\-_]+$/',
+                Rule::unique('items', 'item_code')
+                    ->where(fn ($q) => $q->where('vendor_id', $vendor?->id))
+                    ->ignore($item?->id),
+            ],
             'name' => 'required|string|max:255',
             'category_id' => 'required|numeric|exists:categories,id',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'price_type' => ['required', Rule::in(Items::priceTypeKeys())],
+            'rental_period' => ['required', Rule::in(Items::rentalPeriodKeys())],
             'security_deposit' => 'required|numeric|min:0',
             'replacement_cost' => 'required|numeric|min:0',
-            'late_fee_per_day' => 'required|numeric|min:0',
-            'is_damage_protection' => 'nullable',
-            'minimum_rental_duration' => 'required|integer|min:1|max:3650',
-            'maximum_rental_duration' => 'required|integer|min:1|max:3650',
-            'weight' => 'required|numeric|min:0',
-            'dimension_length' => 'required|numeric|min:0',
-            'dimension_width' => 'required|numeric|min:0',
-            'dimension_height' => 'required|numeric|min:0',
+            'late_fee' => 'required|numeric|min:0',
+            'min_rental_duration' => 'required|integer|min:1|max:3650',
+            'max_rental_duration' => 'required|integer|min:1|max:3650',
             'condition_status' => ['required', Rule::in(Items::CONDITION_STATUSES)],
-            'total_stock' => 'required|integer|min:0',
-            'available_stock' => 'required|integer|min:0',
-            'rented_stock' => 'required|integer|min:0',
+            'stock' => 'required|integer|min:0',
             'damaged_stock' => 'required|integer|min:0',
             'maintenance_stock' => 'required|integer|min:0',
             'manage_stock' => 'nullable',
@@ -412,21 +572,11 @@ class ItemController extends Controller
 
     private function validateItemInventoryConsistency(Request $request): void
     {
-        $total = (int) $request->input('total_stock');
-        $sum = (int) $request->input('available_stock')
-            + (int) $request->input('rented_stock')
-            + (int) $request->input('damaged_stock')
-            + (int) $request->input('maintenance_stock');
-        if ($sum !== $total) {
-            throw ValidationException::withMessages([
-                'total_stock' => [__('vendor.item_stock_buckets_must_equal_total')],
-            ]);
-        }
-        $min = (int) $request->input('minimum_rental_duration');
-        $max = (int) $request->input('maximum_rental_duration');
+        $min = (int) $request->input('min_rental_duration');
+        $max = (int) $request->input('max_rental_duration');
         if ($max < $min) {
             throw ValidationException::withMessages([
-                'maximum_rental_duration' => [__('vendor.maximum_rental_below_minimum')],
+                'max_rental_duration' => [__('vendor.maximum_rental_below_minimum')],
             ]);
         }
     }
@@ -436,33 +586,25 @@ class ItemController extends Controller
      */
     private function itemAttributesFromRequest(Request $request): array
     {
-        $available = (int) $request->input('available_stock');
+        $stock = (int) $request->input('stock');
 
         return [
             'category_id' => $request->category_id,
             'name' => $request->name,
             'description' => $request->description,
             'price' => $request->price,
-            'price_type' => $request->price_type,
+            'rental_period' => $request->rental_period,
             'security_deposit' => round((float) $request->security_deposit, 2),
             'replacement_cost' => round((float) $request->replacement_cost, 2),
-            'late_fee_per_day' => round((float) $request->late_fee_per_day, 2),
-            'is_damage_protection' => $request->boolean('is_damage_protection'),
-            'minimum_rental_duration' => (int) $request->minimum_rental_duration,
-            'maximum_rental_duration' => (int) $request->maximum_rental_duration,
-            'weight' => round((float) $request->weight, 3),
-            'dimension_length' => round((float) $request->dimension_length, 2),
-            'dimension_width' => round((float) $request->dimension_width, 2),
-            'dimension_height' => round((float) $request->dimension_height, 2),
+            'late_fee' => round((float) $request->late_fee, 2),
+            'min_rental_duration' => (int) $request->min_rental_duration,
+            'max_rental_duration' => (int) $request->max_rental_duration,
             'condition_status' => $request->condition_status,
-            'total_stock' => (int) $request->input('total_stock'),
-            'available_stock' => $available,
-            'rented_stock' => (int) $request->input('rented_stock'),
+            'stock' => $stock,
             'damaged_stock' => (int) $request->input('damaged_stock'),
             'maintenance_stock' => (int) $request->input('maintenance_stock'),
-            'stock' => $available,
             'manage_stock' => $request->boolean('manage_stock', true),
-            'is_available' => $request->boolean('is_available', true),
+            'is_available' => $request->boolean('is_available', $stock > 0),
             'is_active' => $request->boolean('is_active', true),
         ];
     }
@@ -474,26 +616,21 @@ class ItemController extends Controller
     {
         return [
             'id' => $item->id,
+            'uuid' => $item->uuid,
+            'item_code' => $item->item_code,
+            'slug' => $item->slug,
             'name' => $item->name,
             'category_id' => $item->category_id,
             'description' => $item->description,
             'price' => (float) $item->price,
-            'price_type' => $item->price_type,
+            'rental_period' => $item->rental_period,
             'stock' => (int) $item->stock,
             'security_deposit' => (float) $item->security_deposit,
             'replacement_cost' => (float) $item->replacement_cost,
-            'late_fee_per_day' => (float) $item->late_fee_per_day,
-            'is_damage_protection' => (bool) $item->is_damage_protection,
-            'minimum_rental_duration' => (int) $item->minimum_rental_duration,
-            'maximum_rental_duration' => (int) $item->maximum_rental_duration,
-            'weight' => (float) $item->weight,
-            'dimension_length' => (float) $item->dimension_length,
-            'dimension_width' => (float) $item->dimension_width,
-            'dimension_height' => (float) $item->dimension_height,
+            'late_fee' => (float) $item->late_fee,
+            'min_rental_duration' => (int) $item->min_rental_duration,
+            'max_rental_duration' => (int) $item->max_rental_duration,
             'condition_status' => $item->condition_status,
-            'total_stock' => (int) $item->total_stock,
-            'available_stock' => (int) $item->available_stock,
-            'rented_stock' => (int) $item->rented_stock,
             'damaged_stock' => (int) $item->damaged_stock,
             'maintenance_stock' => (int) $item->maintenance_stock,
             'manage_stock' => (bool) $item->manage_stock,
@@ -523,6 +660,29 @@ class ItemController extends Controller
         }
 
         return $path;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function itemCodeFromRequest(Request $request): array
+    {
+        $raw = trim((string) $request->input('item_code', ''));
+        if ($raw === '') {
+            return [];
+        }
+
+        return ['item_code' => Items::normalizeItemCode($raw)];
+    }
+
+    private function resolveItemCodeForUpdate(Request $request, Items $item): string
+    {
+        $raw = trim((string) $request->input('item_code', ''));
+        if ($raw === '') {
+            return $item->item_code;
+        }
+
+        return Items::normalizeItemCode($raw);
     }
 
     private function deleteItemPhotoFromS3(?string $path): void

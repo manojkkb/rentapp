@@ -162,10 +162,10 @@ function orderPageData() {
             return this.addedItems[itemId] || 1;
         },
         lineUsesBillingUnits(item) {
-            return item.price_type !== 'fixed';
+            return item.rental_period !== 'fixed';
         },
         billingUnitsLabelForLine(item) {
-            const t = item.price_type;
+            const t = item.rental_period;
             return this.billingUnitsLabels[t] || '';
         },
         getLineBillingUnits(itemId) {
@@ -261,7 +261,8 @@ function orderPageData() {
                 return matchesSearch && matchesCategory;
             });
         },
-        orderId: @json($order->id),
+        orderId: @json($order->uuid),
+        orderUuid: @json($order->uuid),
         lineEditOpen: false,
         lineEditItemId: null,
         lineEditName: '',
@@ -359,13 +360,16 @@ function orderPageData() {
                 <p class="truncate text-base font-bold leading-tight text-gray-900 sm:text-lg">
                     {{ $order->event_name ?: '—' }}
                 </p>
-                <p class="mt-1 font-mono text-sm font-semibold text-gray-600">
-                    {{ $order->order_number }}
+                <p class="mt-1 break-all font-mono text-xs font-medium text-gray-600 sm:text-sm" title="{{ $order->uuid }}">
+                    {{ $order->uuid }}
                 </p>
+                @if($order->order_number)
+                    <p class="mt-0.5 text-xs text-gray-500">{{ $order->order_number }}</p>
+                @endif
             </div>
         </div>
         <div class="flex shrink-0 flex-wrap items-center justify-stretch gap-2 sm:justify-end">
-            @if(! $orderReadOnly && in_array($order->status, ['pending', 'confirmed', 'ongoing'], true))
+            @if(! $orderReadOnly && in_array($order->status, ['pending', 'confirmed'], true))
                 <span id="rs-header-delivered-wrap" class="inline-flex w-full sm:w-auto">
                     @if($order->delivered_at)
                         <button type="button"
@@ -455,8 +459,8 @@ function orderPageData() {
                             </div>
                             <div class="min-w-0 flex-1">
                                 <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.customer') }}</p>
-                                <p class="truncate text-sm font-semibold leading-tight text-gray-900">{{ $order->customer->name }}</p>
-                                <p class="truncate text-xs text-gray-600">{{ $order->customer->mobile }}</p>
+                                <p class="truncate text-sm font-semibold leading-tight text-gray-900">{{ $order->customer?->name ?? __('vendor.order_customer_unavailable') }}</p>
+                                <p class="truncate text-xs text-gray-600">{{ $order->customer?->mobile ?? '—' }}</p>
                             </div>
                         </div>
                         <div class="flex min-w-0 gap-2 rounded-lg border border-gray-100 bg-gray-50/90 p-2.5 sm:p-3">
@@ -660,19 +664,11 @@ function orderPageData() {
 
         <div class="order-1 flex flex-col gap-4 lg:order-2 lg:col-span-1">
             @php
-                $orderStatusBadgeClasses = [
-                    'pending' => 'border-amber-200 bg-amber-50 text-amber-900 ring-amber-100',
-                    'confirmed' => 'border-blue-200 bg-blue-50 text-blue-900 ring-blue-100',
-                    'ongoing' => 'border-purple-200 bg-purple-50 text-purple-900 ring-purple-100',
-                    'completed' => 'border-emerald-200 bg-emerald-50 text-emerald-900 ring-emerald-100',
-                    'cancelled' => 'border-red-200 bg-red-50 text-red-900 ring-red-100',
-                ];
                 $stPanel = $order->status;
-                $orderStatusBadgeClassPanel = $orderStatusBadgeClasses[$stPanel] ?? 'border-gray-200 bg-gray-50 text-gray-900 ring-gray-100';
                 $orderNextStatusesPanel = $order->allowedNextStatuses();
                 $tzRental = config('app.timezone');
                 $fmtRental = fn ($dt) => $dt ? $dt->copy()->timezone($tzRental)->format('M j, Y g:i A') : null;
-                $showRentalHandoff = in_array($stPanel, ['pending', 'confirmed', 'ongoing', 'completed'], true);
+                $showRentalHandoff = in_array($stPanel, ['pending', 'confirmed', 'completed'], true);
                 $deliveredUnitsTotal = 0;
                 $returnedUnitsTotal = 0;
                 $orderUnitsTotal = 0;
@@ -690,6 +686,34 @@ function orderPageData() {
                 $returnedUnitsCountLabel = $returnedUnitsTotal > 0
                     ? __('vendor.returned_units_count', ['returned' => $returnedUnitsTotal, 'total' => $orderUnitsTotal])
                     : null;
+                $statusStepIcons = [
+                    'pending' => 'fa-clock',
+                    'confirmed' => 'fa-check-circle',
+                    'completed' => 'fa-circle-check',
+                    'cancelled' => 'fa-ban',
+                ];
+                $statusAccentBorder = [
+                    'pending' => 'border-l-amber-400',
+                    'confirmed' => 'border-l-sky-500',
+                    'completed' => 'border-l-emerald-500',
+                    'cancelled' => 'border-l-red-500',
+                ];
+                $statusIconBg = [
+                    'pending' => 'bg-amber-100 text-amber-700',
+                    'confirmed' => 'bg-sky-100 text-sky-700',
+                    'completed' => 'bg-emerald-100 text-emerald-700',
+                    'cancelled' => 'bg-red-100 text-red-700',
+                ];
+                $statusHints = [
+                    'pending' => __('vendor.order_status_pending_hint'),
+                    'confirmed' => __('vendor.order_status_confirmed_hint'),
+                    'completed' => __('vendor.order_status_completed_hint'),
+                    'cancelled' => __('vendor.order_status_cancelled_hint'),
+                ];
+                $statusFlow = ['pending', 'confirmed', 'completed'];
+                $currentFlowIndex = in_array($stPanel, $statusFlow, true)
+                    ? array_search($stPanel, $statusFlow, true)
+                    : false;
             @endphp
             <section class="rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100" aria-labelledby="order-status-section-title">
                 <div class="border-b border-gray-100 bg-slate-50/90 px-3 py-2 sm:px-3.5">
@@ -703,39 +727,110 @@ function orderPageData() {
                     </div>
                 </div>
                 <div class="space-y-3 p-3 sm:space-y-4 sm:p-3.5" id="order-rental-status-panel">
-                    <div class="rounded-lg border border-gray-100 bg-gray-50/80 p-3 ring-1 ring-gray-100/80">
-                        <p class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500">{{ __('vendor.order_status') }}</p>
-                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            @if(count($orderNextStatusesPanel) > 0 && ! $orderReadOnly)
-                                <form method="POST" action="{{ route('vendor.orders.update-status', $order) }}" class="flex w-full flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-end sm:gap-2">
-                                    @csrf
-                                    @method('PUT')
-                                    <label for="order-status-next-panel" class="sr-only">{{ __('vendor.order_status') }}</label>
-                                    <select id="order-status-next-panel" name="status" required
-                                            class="min-h-[40px] w-full min-w-0 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-900 shadow-sm ring-1 ring-gray-100 focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500/25 sm:flex-1 sm:min-w-[12rem]">
-                                        <option value="{{ $stPanel }}" selected>{{ __('vendor.'.$stPanel) }}</option>
-                                        @foreach($orderNextStatusesPanel as $next)
-                                            <option value="{{ $next }}">{{ __('vendor.'.$next) }}</option>
-                                        @endforeach
-                                    </select>
-                                    <button type="submit"
-                                            class="inline-flex min-h-[40px] w-full shrink-0 items-center justify-center gap-1.5 rounded-xl bg-slate-700 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 sm:w-auto">
-                                        {{ __('vendor.update_status') }}
-                                    </button>
-                                </form>
-                            @else
-                                <span class="inline-flex min-h-[38px] w-fit items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold ring-1 {{ $orderStatusBadgeClassPanel }}">
-                                    {{ __('vendor.'.$stPanel) }}
-                                </span>
-                                @if($orderReadOnly)
-                                    <p class="text-[11px] leading-snug text-gray-500 sm:max-w-[14rem] sm:text-right">{{ __('vendor.order_edit_not_allowed_locked') }}</p>
-                                @endif
-                            @endif
+                    {{-- Progress: Pending → Confirmed → Completed --}}
+                    @if($stPanel !== 'cancelled')
+                        <div class="rounded-lg border border-gray-100 bg-gray-50/60 px-2 py-3 sm:px-3">
+                            <div class="flex items-start">
+                                @foreach($statusFlow as $stepIndex => $stepKey)
+                                    @php
+                                        $isDone = $currentFlowIndex !== false && $stepIndex < $currentFlowIndex;
+                                        $isCurrent = $stepKey === $stPanel;
+                                        $stepDotClass = $isCurrent
+                                            ? 'bg-slate-800 text-white ring-4 ring-slate-200'
+                                            : ($isDone ? 'bg-emerald-500 text-white' : 'bg-white text-gray-400 ring-2 ring-gray-200');
+                                    @endphp
+                                    <div class="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+                                        <div class="flex w-full items-center">
+                                            @if($stepIndex > 0)
+                                                <div class="h-0.5 flex-1 rounded-full {{ $isDone || $isCurrent ? 'bg-emerald-400' : 'bg-gray-200' }}"></div>
+                                            @endif
+                                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs {{ $stepDotClass }}">
+                                                @if($isDone)
+                                                    <i class="fas fa-check" aria-hidden="true"></i>
+                                                @else
+                                                    <i class="fas {{ $statusStepIcons[$stepKey] ?? 'fa-circle' }} text-[11px]" aria-hidden="true"></i>
+                                                @endif
+                                            </div>
+                                            @if($stepIndex < count($statusFlow) - 1)
+                                                <div class="h-0.5 flex-1 rounded-full {{ $isDone ? 'bg-emerald-400' : 'bg-gray-200' }}"></div>
+                                            @endif
+                                        </div>
+                                        <span class="max-w-[4.5rem] text-center text-[10px] font-semibold leading-tight sm:max-w-none sm:text-[11px] {{ $isCurrent ? 'text-slate-900' : ($isDone ? 'text-emerald-700' : 'text-gray-400') }}">
+                                            {{ __('vendor.'.$stepKey) }}
+                                        </span>
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
-                        @error('status')
-                            <p class="mt-2 text-xs font-medium text-red-600">{{ $message }}</p>
-                        @enderror
+                    @endif
+
+                    {{-- Current status (read-only — not a button) --}}
+                    <div class="rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm border-l-4 {{ $statusAccentBorder[$stPanel] ?? 'border-l-gray-300' }} sm:p-4">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">{{ __('vendor.order_status_current') }}</p>
+                        <div class="mt-2 flex items-start gap-3">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl {{ $statusIconBg[$stPanel] ?? 'bg-gray-100 text-gray-600' }}">
+                                <i class="fas {{ $statusStepIcons[$stPanel] ?? 'fa-circle-info' }} text-lg" aria-hidden="true"></i>
+                            </div>
+                            <div class="min-w-0 flex-1 pt-0.5">
+                                <p class="text-lg font-bold leading-tight text-gray-900">{{ __('vendor.'.$stPanel) }}</p>
+                                <p class="mt-1 text-xs leading-relaxed text-gray-500">{{ $statusHints[$stPanel] ?? '' }}</p>
+                            </div>
+                        </div>
                     </div>
+
+                    {{-- Action buttons (only when changes allowed) --}}
+                    @if(count($orderNextStatusesPanel) > 0 && ! $orderReadOnly)
+                        @php
+                            $primaryStatusAction = match ($stPanel) {
+                                'pending' => 'confirmed',
+                                'confirmed' => 'completed',
+                                default => null,
+                            };
+                        @endphp
+                        <div class="rounded-xl border border-dashed border-gray-200 bg-gray-50/50 p-3.5 sm:p-4">
+                            <p class="mb-3 text-xs font-semibold text-gray-700">
+                                <i class="fas fa-hand-pointer mr-1.5 text-emerald-600" aria-hidden="true"></i>
+                                {{ __('vendor.order_status_next_steps') }}
+                            </p>
+                            <div class="flex flex-col gap-2">
+                                @if($primaryStatusAction && in_array($primaryStatusAction, $orderNextStatusesPanel, true))
+                                    <form method="POST" action="{{ route('vendor.orders.update-status', $order) }}" class="w-full">
+                                        @csrf
+                                        @method('PUT')
+                                        <input type="hidden" name="status" value="{{ $primaryStatusAction }}">
+                                        <button type="submit"
+                                                class="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.99]">
+                                            <i class="fas fa-check-circle" aria-hidden="true"></i>
+                                            {{ $stPanel === 'pending' ? __('vendor.order_status_confirm_order') : __('vendor.order_status_complete_order') }}
+                                        </button>
+                                    </form>
+                                @endif
+                                @if(in_array('cancelled', $orderNextStatusesPanel, true))
+                                    <form method="POST"
+                                          action="{{ route('vendor.orders.update-status', $order) }}"
+                                          class="w-full"
+                                          onsubmit="return confirm(@json(__('vendor.order_status_cancel_confirm')));">
+                                        @csrf
+                                        @method('PUT')
+                                        <input type="hidden" name="status" value="cancelled">
+                                        <button type="submit"
+                                                class="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-3 text-sm font-medium text-red-600 transition hover:bg-red-50 active:scale-[0.99]">
+                                            <i class="fas fa-times-circle" aria-hidden="true"></i>
+                                            {{ __('vendor.order_status_cancel_order') }}
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                        </div>
+                    @elseif($orderReadOnly)
+                        <p class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 text-xs leading-relaxed text-gray-500">
+                            <i class="fas fa-lock mr-1.5 text-gray-400" aria-hidden="true"></i>
+                            {{ __('vendor.order_edit_not_allowed_locked') }}
+                        </p>
+                    @endif
+                    @error('status')
+                        <p class="text-xs font-medium text-red-600">{{ $message }}</p>
+                    @enderror
                     @if($showRentalHandoff)
                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div class="rounded-lg border border-teal-100/90 bg-teal-50/40 p-3 ring-1 ring-teal-100/60">
@@ -2018,7 +2113,7 @@ function orderPageData() {
                         document.getElementById('newPaymentDueModal').classList.add('hidden');
                         document.body.style.overflow = '';
                     }
-                    const npPaymentCartId = @json($order->id);
+                    const npPaymentCartId = @json($order->uuid);
                     function applyNewPaymentDueLayout(kind) {
                         const modal = document.getElementById('newPaymentDueModal');
                         const title = document.getElementById('npDueTitle');
@@ -2835,7 +2930,7 @@ function orderPageData() {
                             <i class="fas fa-user text-gray-400"></i>
                         </div>
                         <input type="text" 
-                               value="{{ $order->customer->name }} - {{ $order->customer->mobile }}"
+                               value="{{ $order->customer ? $order->customer->name . ' - ' . $order->customer->mobile : __('vendor.order_customer_unavailable') }}"
                                class="w-full pl-11 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
                                disabled readonly>
                     </div>
@@ -3041,10 +3136,10 @@ let pendingDelete = null;
 function addItemToCartAjax(itemId, qty, component) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const item = component.items.find(i => i.id === itemId);
-    const priceType = item?.price_type ?? 'per_day';
+    const priceType = item?.rental_period ?? 'per_day';
     const billingUnits = priceType === 'fixed' ? 1 : Math.max(parseFloat(component.addedItemBillingUnits[itemId]) || 1, 0.01);
 
-    fetch('{{ route("vendor.orders.items.add", $order->id) }}', {
+    fetch('{{ route("vendor.orders.items.add", $order) }}', {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -3081,13 +3176,13 @@ function addItemToCartAjax(itemId, qty, component) {
 function updateModalItemQty(itemId, newQty, component) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const item = component.items.find(i => i.id === itemId);
-    const priceType = item?.price_type ?? 'per_day';
+    const priceType = item?.rental_period ?? 'per_day';
     let billingUnits = 1;
     if (priceType !== 'fixed') {
         billingUnits = Math.max(parseFloat(component.addedItemBillingUnits[itemId]) || 1, 0.01);
     }
 
-    fetch(`{{ url('vendor/orders') }}/{{ $order->id }}/items/${itemId}`, {
+    fetch(`{{ url('vendor/orders') }}/{{ $order->uuid }}/items/${itemId}`, {
         method: 'PUT',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -3122,7 +3217,7 @@ function updateModalItemQty(itemId, newQty, component) {
 function removeModalItem(itemId, component) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    fetch(`{{ url('vendor/orders') }}/{{ $order->id }}/items/${itemId}`, {
+    fetch(`{{ url('vendor/orders') }}/{{ $order->uuid }}/items/${itemId}`, {
         method: 'DELETE',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -3300,7 +3395,7 @@ function submitDiscount(e) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Applying...';
 
-    fetch(`{{ route('vendor.orders.discount', $order->id) }}`, {
+    fetch(`{{ route('vendor.orders.discount', $order) }}`, {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -3360,7 +3455,7 @@ function submitDiscount(e) {
 function removeDiscount() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    fetch(`{{ route('vendor.orders.discount.remove', $order->id) }}`, {
+    fetch(`{{ route('vendor.orders.discount.remove', $order) }}`, {
         method: 'DELETE',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -3555,7 +3650,7 @@ function submitSecurityDeposit(e) {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Apply';
     }
 
-    fetch(`{{ route('vendor.orders.security-deposit', $order->id) }}`, {
+    fetch(`{{ route('vendor.orders.security-deposit', $order) }}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -3627,7 +3722,7 @@ function loadCouponList() {
     const listEl = document.getElementById('couponList');
     listEl.innerHTML = '<div class="flex items-center justify-center py-8"><i class="fas fa-spinner fa-spin text-gray-400 text-xl"></i></div>';
 
-    fetch(`{{ route('vendor.orders.coupons.list', $order->id) }}`, {
+    fetch(`{{ route('vendor.orders.coupons.list', $order) }}`, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json',
@@ -3699,7 +3794,7 @@ function applyCouponFromModal() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-    fetch(`{{ route('vendor.orders.coupon.apply', $order->id) }}`, {
+    fetch(`{{ route('vendor.orders.coupon.apply', $order) }}`, {
         method: 'POST',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -3740,7 +3835,7 @@ function applyCouponFromModal() {
 function removeCoupon() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    fetch(`{{ route('vendor.orders.coupon.remove', $order->id) }}`, {
+    fetch(`{{ route('vendor.orders.coupon.remove', $order) }}`, {
         method: 'DELETE',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -3851,7 +3946,7 @@ function formatBillingUnitsDisplay(n) {
 }
 
 function nudgeLineQty(cartId, itemId, delta, buttonEl) {
-    const row = buttonEl.closest('[data-line-price-type]');
+    const row = buttonEl.closest('[data-line-rental-period]');
     let current = row ? parseInt(row.getAttribute('data-line-qty'), 10) : NaN;
     if (!Number.isFinite(current)) {
         const qtyEl = document.querySelector(`[data-qty-display="${itemId}"]`);
@@ -3876,8 +3971,8 @@ function updateCartItemQty(cartId, itemId, quantity, el) {
     }
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-    const row = el && el.closest ? el.closest('[data-line-price-type]') : null;
-    const priceType = row ? row.getAttribute('data-line-price-type') : null;
+    const row = el && el.closest ? el.closest('[data-line-rental-period]') : null;
+    const priceType = row ? row.getAttribute('data-line-rental-period') : null;
     let billingUnits = 1;
     if (priceType && priceType !== 'fixed' && row) {
         const b = parseFloat(row.getAttribute('data-line-billing'));
@@ -3919,8 +4014,8 @@ function updateCartItemQty(cartId, itemId, quantity, el) {
             if (lineTotalEl) lineTotalEl.textContent = ' = ₹' + Math.round(parseFloat(data.item.line_total) || 0).toLocaleString('en-IN');
 
             if (row) {
-                if (data.item.price_type) {
-                    row.setAttribute('data-line-price-type', data.item.price_type);
+                if (data.item.rental_period) {
+                    row.setAttribute('data-line-rental-period', data.item.rental_period);
                 }
                 row.setAttribute('data-line-qty', data.item.quantity);
                 if (data.item.billing_units != null) {
@@ -3955,7 +4050,7 @@ function nudgeLineBilling(cartId, itemId, delta) {
 }
 
 function updateCartBillingUnits(cartId, itemId, inputEl) {
-    const row = inputEl.closest('[data-line-price-type]');
+    const row = inputEl.closest('[data-line-rental-period]');
     if (!row) return;
     let billing = parseFloat(inputEl.value);
     if (!Number.isFinite(billing) || billing < 0.01) {
@@ -3963,7 +4058,7 @@ function updateCartBillingUnits(cartId, itemId, inputEl) {
         inputEl.value = '1';
     }
     const qty = parseInt(row.getAttribute('data-line-qty'), 10) || 1;
-    const priceType = row.getAttribute('data-line-price-type');
+    const priceType = row.getAttribute('data-line-rental-period');
     const billingToSend = priceType === 'fixed' ? 1 : billing;
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
