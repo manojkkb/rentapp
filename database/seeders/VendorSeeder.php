@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\Vendor;
+use App\Models\VendorUser;
 use App\Services\VendorRoleProvisioner;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -50,7 +51,9 @@ class VendorSeeder extends Seeder
             'total_reviews' => 10,
         ]);
 
-        $user->vendors()->attach($vendor->id, [
+        VendorUser::create([
+            'vendor_id' => $vendor->id,
+            'user_id' => $user->id,
             'is_owner' => true,
             'role' => 'owner',
             'is_active' => true,
