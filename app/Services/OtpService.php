@@ -42,7 +42,7 @@ class OtpService
             $apiKey = config('services.sms.api_key');
             if (filled($apiKey)) {
                 $name = config('app.name', 'Rentkia');
-                $text = "$otp is verification otp for {$name}. OTPs are SECRET. DO NOT disclose it to anyone.";
+                $text = "$otp is verification otp for {$name}. OTPs are SECRET. DO NOT disclose it to anyone. SMT Labs Private Limited";
                 SmsService::send($identifier, $text);
                 Log::info('OTP queued for SMS delivery', ['identifier' => $identifier]);
             } else {
