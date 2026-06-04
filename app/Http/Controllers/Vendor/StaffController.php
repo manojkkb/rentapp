@@ -122,7 +122,13 @@ class StaffController extends Controller
                     return back()->withInput()->withErrors(['mobile' => $message]);
                 }
 
-                $vendor->users()->attach($user->id, $this->pivotPayload($vendorRole, $request->boolean('is_active')));
+                VendorUser::link($vendor->id, $user->id, [
+                    'is_owner' => false,
+                    'vendor_role_id' => $vendorRole->id,
+                    'role' => $vendorRole->slug,
+                    'is_active' => $request->boolean('is_active'),
+                    'permissions' => [],
+                ]);
 
                 DB::commit();
 
@@ -142,7 +148,13 @@ class StaffController extends Controller
                 'password' => Hash::make('password123'),
             ]);
 
-            $vendor->users()->attach($user->id, $this->pivotPayload($vendorRole, $request->boolean('is_active')));
+            VendorUser::link($vendor->id, $user->id, [
+                'is_owner' => false,
+                'vendor_role_id' => $vendorRole->id,
+                'role' => $vendorRole->slug,
+                'is_active' => $request->boolean('is_active'),
+                'permissions' => [],
+            ]);
 
             DB::commit();
 

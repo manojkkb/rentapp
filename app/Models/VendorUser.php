@@ -51,6 +51,18 @@ class VendorUser extends Model
         return $this->belongsTo(VendorRole::class);
     }
 
+    /**
+     * Create a vendor_users row (always assigns UUID via HasUuid).
+     */
+    public static function link(int $vendorId, int $userId, array $attributes = []): self
+    {
+        return static::create(array_merge([
+            'vendor_id' => $vendorId,
+            'user_id' => $userId,
+            'is_active' => true,
+        ], $attributes));
+    }
+
     public function roleLabel(): string
     {
         if ($this->is_owner) {

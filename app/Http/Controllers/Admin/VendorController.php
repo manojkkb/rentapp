@@ -7,6 +7,7 @@ use App\Models\BusinessCategory;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Models\Vendor;
+use App\Models\VendorUser;
 use App\Models\VendorCustomer;
 use App\Services\VendorRoleProvisioner;
 use App\Support\VendorSubscription;
@@ -284,10 +285,9 @@ class VendorController extends Controller
                     'is_active' => true,
                 ]);
         } else {
-            $user->vendors()->attach($vendor->id, [
+            VendorUser::link($vendor->id, $userId, [
                 'is_owner' => true,
                 'role' => 'owner',
-                'is_active' => true,
                 'last_login_at' => now(),
             ]);
 

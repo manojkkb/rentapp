@@ -239,8 +239,10 @@
             </form>
 
             @php
-                $userId = Session::get('vendor_auth_user_id');
-                $hasVendors = $userId && \App\Models\Vendor::where('user_id', $userId)->exists();
+                $hasVendors = auth()->check() && \App\Models\VendorUser::query()
+                    ->where('user_id', auth()->id())
+                    ->where('is_active', true)
+                    ->exists();
             @endphp
 
             @if($hasVendors)

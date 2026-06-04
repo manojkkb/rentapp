@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BusinessCategory;
 use App\Models\User;
 use App\Models\Vendor;
+use App\Models\VendorUser;
 use App\Services\OtpService;
 use App\Services\VendorRoleProvisioner;
 use App\Support\ApiUserPresenter;
@@ -82,10 +83,9 @@ class AuthController extends ApiController
 
         foreach ($ownedVendors as $vendor) {
             if (! $user->vendors()->where('vendors.id', $vendor->id)->exists()) {
-                $user->vendors()->attach($vendor->id, [
+                VendorUser::link($vendor->id, $user->id, [
                     'is_owner' => true,
                     'role' => 'owner',
-                    'is_active' => true,
                     'last_login_at' => now(),
                 ]);
             }
@@ -187,10 +187,9 @@ class AuthController extends ApiController
             'language' => $validated['language'],
         ]);
 
-        $user->vendors()->attach($vendor->id, [
+        VendorUser::link($vendor->id, $user->id, [
             'is_owner' => true,
             'role' => 'owner',
-            'is_active' => true,
             'last_login_at' => now(),
         ]);
 

@@ -314,10 +314,9 @@ class AuthVendorCtrl extends Controller
         ]);
         
         // Add user to vendor_users pivot table as owner (full access; never role-gated)
-        $user->vendors()->attach($vendor->id, [
+        VendorUser::link($vendor->id, $user->id, [
             'is_owner' => true,
             'role' => 'owner',
-            'is_active' => true,
             'last_login_at' => now(),
         ]);
 
@@ -343,10 +342,9 @@ class AuthVendorCtrl extends Controller
 
         foreach (Vendor::query()->where('user_id', $user->id)->get() as $vendor) {
             if (! $user->vendors()->where('vendors.id', $vendor->id)->exists()) {
-                $user->vendors()->attach($vendor->id, [
+                VendorUser::link($vendor->id, $user->id, [
                     'is_owner' => true,
                     'role' => 'owner',
-                    'is_active' => true,
                     'last_login_at' => now(),
                 ]);
             }
