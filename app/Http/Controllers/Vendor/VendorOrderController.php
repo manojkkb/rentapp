@@ -569,6 +569,7 @@ class VendorOrderController extends Controller
 
         $request->merge([
             'pickup_at' => $request->filled('pickup_at') ? $request->input('pickup_at') : null,
+            'delivery_at' => $request->filled('delivery_at') ? $request->input('delivery_at') : null,
         ]);
 
         $validated = $request->validate([
@@ -579,7 +580,13 @@ class VendorOrderController extends Controller
                 'string',
                 'max:5000',
             ],
-            'pickup_at' => ['nullable', 'date'],
+            'pickup_at' => [
+                Rule::requiredIf($request->input('fulfillment_type') === 'pickup'),
+                'nullable',
+                'date',
+                'after_or_equal:now',
+            ],
+            'delivery_at' => ['nullable', 'date', 'after_or_equal:now'],
             'delivery_charge' => ['nullable', 'numeric', 'min:0', 'max:999999'],
         ]);
 
@@ -590,6 +597,9 @@ class VendorOrderController extends Controller
             'pickup_at' => $type === 'pickup' && ! empty($validated['pickup_at'])
                 ? Carbon::parse($validated['pickup_at'])->format('Y-m-d H:i')
                 : null,
+            'delivery_at' => $type === 'delivery' && ! empty($validated['delivery_at'])
+                ? Carbon::parse($validated['delivery_at'])->format('Y-m-d H:i')
+                : null,
             'delivery_charge' => $type === 'delivery'
                 ? round((float) ($validated['delivery_charge'] ?? 0), 2)
                 : 0.0,
@@ -597,6 +607,8 @@ class VendorOrderController extends Controller
 
         if ($type === 'delivery') {
             $payload['pickup_at'] = null;
+        } else {
+            $payload['delivery_at'] = null;
         }
 
         $this->orderCreateWizardPut($payload);
@@ -749,6 +761,9 @@ class VendorOrderController extends Controller
                     $attrs['fulfillment_type'] = 'delivery';
                     $attrs['delivery_address'] = trim((string) ($wizard['delivery_address'] ?? ''));
                     $attrs['pickup_at'] = null;
+                    $attrs['delivery_at'] = ! empty($wizard['delivery_at'])
+                        ? Carbon::parse($wizard['delivery_at'])
+                        : null;
                     $attrs['delivery_charge'] = round((float) ($wizard['delivery_charge'] ?? 0), 2);
                 } else {
                     $attrs['fulfillment_type'] = 'pickup';
@@ -757,6 +772,7 @@ class VendorOrderController extends Controller
                     $attrs['pickup_at'] = ! empty($wizard['pickup_at'])
                         ? Carbon::parse($wizard['pickup_at'])
                         : null;
+                    $attrs['delivery_at'] = null;
                     $attrs['delivery_charge'] = 0;
                 }
 
@@ -879,7 +895,7 @@ class VendorOrderController extends Controller
             return trim((string) ($wizard['delivery_address'] ?? '')) !== '';
         }
 
-        return true;
+        return ! empty($wizard['pickup_at']);
     }
 
     /**
@@ -1314,6 +1330,7 @@ class VendorOrderController extends Controller
                 'max:5000',
             ],
             'pickup_at' => 'nullable|date',
+            'delivery_at' => 'nullable|date',
             'delivery_charge' => 'nullable|numeric|min:0|max:999999',
             'discount_amount' => 'nullable|numeric|min:0',
             'coupon_discount' => 'nullable|numeric|min:0',
@@ -1395,13 +1412,21 @@ class VendorOrderController extends Controller
                 $deliveryAddress = $addr !== '' ? $addr : null;
 
                 $prevCouponCode = $order->coupon_code;
+                $isDelivery = $validated['fulfillment_type'] === 'delivery';
+                $pickupAt = ! $isDelivery && ! empty($validated['pickup_at'])
+                    ? Carbon::parse($validated['pickup_at'])
+                    : null;
+                $deliveryAt = $isDelivery && ! empty($validated['delivery_at'])
+                    ? Carbon::parse($validated['delivery_at'])
+                    : null;
 
                 $order->fill([
                     'start_at' => $startAt,
                     'end_at' => $endAt,
                     'fulfillment_type' => $validated['fulfillment_type'],
                     'delivery_address' => $deliveryAddress,
-                    'pickup_at' => ! empty($validated['pickup_at']) ? Carbon::parse($validated['pickup_at']) : null,
+                    'pickup_at' => $pickupAt,
+                    'delivery_at' => $deliveryAt,
                     'delivery_charge' => $validated['fulfillment_type'] === 'delivery'
                         ? round((float) ($validated['delivery_charge'] ?? 0), 2)
                         : 0,

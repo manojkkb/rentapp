@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('fulfillment_type', 20)->default('pickup');
             $table->text('delivery_address')->nullable();
             $table->timestamp('pickup_at')->nullable();
+            $table->timestamp('delivery_at')->nullable();
             $table->decimal('delivery_charge', 12, 2)->default(0);
             $table->string('discount_type', 32)->nullable();
             $table->decimal('discount_value', 12, 2)->nullable();

@@ -56,7 +56,9 @@ trait ListsVendorLogistics
      */
     protected function mapDeliveryRow(Order $order): array
     {
-        $handoffAt = $order->start_at ?? $order->pickup_at;
+        $handoffAt = ($order->fulfillment_type ?? 'pickup') === 'delivery'
+            ? ($order->delivery_at ?? $order->start_at)
+            : ($order->start_at ?? $order->pickup_at);
         $sched = $this->logisticsDayTime($handoffAt);
 
         $totalUnits = 0;

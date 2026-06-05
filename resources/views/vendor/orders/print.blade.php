@@ -502,6 +502,16 @@
                     </td>
                 </tr>
                 @endif
+                @if(($order->fulfillment_type ?? 'pickup') === 'delivery' && $order->delivery_at)
+                <tr>
+                    <td>
+                        <div class="inv-field">
+                            <div class="inv-field-label">{{ __('vendor.delivery_datetime') }}</div>
+                            <div class="inv-field-value">{{ InvoiceDocument::formatDate($order->delivery_at) }}</div>
+                        </div>
+                    </td>
+                </tr>
+                @endif
             </table>
         </div>
 

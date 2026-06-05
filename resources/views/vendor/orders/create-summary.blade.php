@@ -4,6 +4,23 @@
 @section('page-title', __('vendor.create_order'))
 
 @section('content')
+@php
+    use App\Support\InvoiceDocument;
+    use Carbon\Carbon;
+
+    $formatWizardDateTime = static function (?string $value): string {
+        if (! $value) {
+            return '—';
+        }
+        try {
+            return InvoiceDocument::formatDate(Carbon::parse($value));
+        } catch (\Throwable) {
+            return $value;
+        }
+    };
+    $startTimeDisplay = $formatWizardDateTime($wizard['start_time'] ?? null);
+    $endTimeDisplay = $formatWizardDateTime($wizard['end_time'] ?? null);
+@endphp
 <script>
     function orderWizardSummaryPage() {
         return {
@@ -92,11 +109,11 @@
             <div class="grid grid-cols-2 gap-2 sm:gap-4">
                 <div class="min-w-0">
                     <dt class="text-[10px] font-semibold uppercase tracking-wide text-gray-500 sm:text-xs sm:normal-case sm:font-medium sm:text-gray-700">{{ __('vendor.start_date_time') }}</dt>
-                    <dd class="mt-0.5 break-words text-xs font-medium leading-snug text-gray-900 sm:text-sm">{{ $wizard['start_time'] }}</dd>
+                    <dd class="mt-0.5 break-words text-xs font-medium leading-snug text-gray-900 sm:text-sm">{{ $startTimeDisplay }}</dd>
                 </div>
                 <div class="min-w-0">
                     <dt class="text-[10px] font-semibold uppercase tracking-wide text-gray-500 sm:text-xs sm:normal-case sm:font-medium sm:text-gray-700">{{ __('vendor.end_date_time') }}</dt>
-                    <dd class="mt-0.5 break-words text-xs font-medium leading-snug text-gray-900 sm:text-sm">{{ $wizard['end_time'] }}</dd>
+                    <dd class="mt-0.5 break-words text-xs font-medium leading-snug text-gray-900 sm:text-sm">{{ $endTimeDisplay }}</dd>
                 </div>
             </div>
         </dl>

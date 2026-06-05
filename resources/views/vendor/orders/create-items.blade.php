@@ -39,6 +39,21 @@
                 quickItemSaving: false,
                 quickItemError: '',
                 quickItem: { name: '', category_id: '', price: '', rental_period: 'per_day' },
+                itemsStepError: '',
+                get hasSelectedItems() {
+                    return Object.keys(this.lineQty).some((id) => (parseInt(String(this.lineQty[id]), 10) || 0) >= 1);
+                },
+                submitItemsStep(ev) {
+                    if (!this.hasSelectedItems) {
+                        this.itemsStepError = @json(__('vendor.order_wizard_select_at_least_one_item'));
+                        if (typeof showToast === 'function') {
+                            showToast(this.itemsStepError, 'error');
+                        }
+                        return;
+                    }
+                    this.itemsStepError = '';
+                    ev.target.submit();
+                },
                 init() {
                         const qty = {};
                         const units = {};
@@ -139,6 +154,7 @@
                         return this.defaultBillingUnitsFor(item);
                     },
                     addLine(item) {
+                        this.itemsStepError = '';
                         this.lineQty = { ...this.lineQty, [item.id]: 1 };
                         if (item.uses_billing_units) {
                             const cur = this.lineUnits[item.id];
@@ -150,6 +166,7 @@
                     incrementQty(item) {
                         const id = item.id;
                         const next = this.getQty(id) + 1;
+                        if (next >= 1) this.itemsStepError = '';
                         this.lineQty = { ...this.lineQty, [id]: next };
                         if (item.uses_billing_units) {
                             const cur = this.lineUnits[id];
@@ -266,7 +283,8 @@
     <div x-data="orderWizardItemsPage()" x-init="init()">
             <form action="{{ route('vendor.orders.create.step2') }}" method="POST"
                   class="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-sm ring-1 ring-gray-100"
-                  id="order-items-step-form">
+                  id="order-items-step-form"
+                  @submit.prevent="submitItemsStep($event)">
                 @csrf
 
                 <div class="flex-shrink-0 space-y-2 border-b border-gray-100 bg-gray-50/80 px-3 py-2.5 sm:space-y-2 sm:px-4 sm:py-3">
@@ -537,11 +555,21 @@
                         <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>
                         {{ __('vendor.back') }}
                     </a>
-                    <button type="submit"
-                            class="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm shadow-emerald-600/15 transition [touch-action:manipulation] hover:bg-emerald-700 active:bg-emerald-800 sm:w-auto sm:min-w-[8rem]">
-                        <i class="fas fa-arrow-right text-xs" aria-hidden="true"></i>
-                        {{ __('vendor.order_wizard_continue_summary') }}
-                    </button>
+                    <div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+                        <p x-show="itemsStepError"
+                           x-text="itemsStepError"
+                           x-cloak
+                           class="text-center text-xs font-medium text-red-600 sm:text-right sm:text-sm"
+                           role="alert"></p>
+                        <button type="submit"
+                                :aria-disabled="!hasSelectedItems"
+                                :class="hasSelectedItems
+                                    ? 'inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm shadow-emerald-600/15 transition [touch-action:manipulation] hover:bg-emerald-700 active:bg-emerald-800 sm:w-auto sm:min-w-[8rem]'
+                                    : 'inline-flex h-10 w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-lg bg-gray-300 px-4 text-sm font-semibold text-gray-500 shadow-none transition [touch-action:manipulation] sm:w-auto sm:min-w-[8rem]'">
+                            <i class="fas fa-arrow-right text-xs" aria-hidden="true"></i>
+                            {{ __('vendor.order_wizard_continue_summary') }}
+                        </button>
+                    </div>
                 </x-order-wizard-actions>
             </form>
 

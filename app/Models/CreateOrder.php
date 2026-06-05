@@ -59,7 +59,7 @@ final class CreateOrder
             ],
             'event_name' => ['nullable', 'string', 'max:255'],
             'cart_name' => ['nullable', 'string', 'max:255'],
-            'start_time' => ['required', 'date'],
+            'start_time' => ['required', 'date', 'after_or_equal:now'],
             'end_time' => ['required', 'date', 'after:start_time'],
         ];
     }
@@ -83,6 +83,7 @@ final class CreateOrder
             'fulfillment_type' => 'pickup',
             'delivery_address' => null,
             'pickup_at' => null,
+            'delivery_at' => null,
             'delivery_charge' => 0,
             'discount_type' => null,
             'discount_value' => null,

@@ -52,6 +52,7 @@ trait ManagesOrderLive
             'fulfillment_type' => $order->fulfillment_type ?? 'pickup',
             'delivery_address' => $order->delivery_address,
             'pickup_at' => $order->pickup_at?->toIso8601String(),
+            'delivery_at' => $order->delivery_at?->toIso8601String(),
             'delivery_charge' => (float) ($order->delivery_charge ?? 0),
             'items_count' => $order->items()->count(),
             'status' => $rental['status'],
@@ -175,6 +176,7 @@ trait ManagesOrderLive
                 'max:5000',
             ],
             'pickup_at' => 'nullable|date',
+            'delivery_at' => 'nullable|date',
             'delivery_charge' => 'nullable|numeric|min:0|max:999999',
         ]);
 
@@ -188,12 +190,14 @@ trait ManagesOrderLive
                 'delivery_address' => $addr !== '' ? $addr : null,
                 'delivery_charge' => 0,
                 'pickup_at' => ! empty($validated['pickup_at']) ? $validated['pickup_at'] : null,
+                'delivery_at' => null,
             ]);
         } else {
             $order->update([
                 'fulfillment_type' => 'delivery',
                 'delivery_address' => trim((string) ($validated['delivery_address'] ?? '')),
                 'pickup_at' => null,
+                'delivery_at' => ! empty($validated['delivery_at']) ? $validated['delivery_at'] : null,
                 'delivery_charge' => round((float) ($validated['delivery_charge'] ?? 0), 2),
             ]);
         }
@@ -207,6 +211,7 @@ trait ManagesOrderLive
             'fulfillment_type' => $order->fulfillment_type,
             'delivery_address' => $order->delivery_address,
             'pickup_at' => $order->pickup_at?->toIso8601String(),
+            'delivery_at' => $order->delivery_at?->toIso8601String(),
             'delivery_charge' => $order->delivery_charge,
             'order' => $this->orderJsonPayload($order),
         ]);
