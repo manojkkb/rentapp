@@ -2,141 +2,221 @@
 
 @section('title', __('vendor.add_item'))
 @section('page-title', __('vendor.add_item'))
+@section('main_bottom_class', 'pb-36 md:pb-8')
 
 @section('content')
 @php
-    $fc = 'w-full min-w-0 rounded-md border border-gray-300 px-2 py-1.5 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500';
-    $fl = 'block text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-0.5';
-    $fh = 'mt-0.5 text-[10px] leading-snug text-gray-500';
-    $fs = 'rounded-lg border border-gray-200 bg-gray-50/60 p-3 sm:p-3.5 space-y-2';
-    $fst = 'text-[11px] font-bold uppercase tracking-wide text-emerald-900 border-b border-emerald-200/70 pb-2 mb-1';
-    $fstPlain = 'text-[11px] font-bold uppercase tracking-wide text-emerald-900 mb-2';
+    $ifc = 'block w-full min-h-[40px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 transition placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:bg-gray-50 disabled:text-gray-500';
+    $ilabel = 'mb-0.5 block text-sm font-medium text-gray-800';
+    $ihint = 'mt-0.5 text-[11px] leading-snug text-gray-500 max-sm:hidden';
+    $ierror = 'mt-0.5 text-xs text-red-600';
+    $icard = 'scroll-mt-20 overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-sm';
+    $ihead = 'flex items-center gap-2.5 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-emerald-50/20 px-3 py-2.5 sm:px-4 sm:py-3';
+    $inum = 'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-xs font-bold text-white';
+    $ibody = 'space-y-3 p-3 sm:space-y-4 sm:p-4';
+    $igrid2 = 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4';
+
+    $sections = [
+        ['id' => 'item-section-general', 'num' => 1, 'label' => __('vendor.item_form_section_general')],
+        ['id' => 'item-section-images', 'num' => 2, 'label' => __('vendor.item_form_section_images')],
+        ['id' => 'item-section-variants', 'num' => 3, 'label' => __('vendor.item_form_section_variants')],
+        ['id' => 'item-section-pricing', 'num' => 4, 'label' => __('vendor.item_form_section_combined_pricing')],
+    ];
+    $o = fn (string $key, $default) => old($key, $default);
 @endphp
 
-<div class="mx-auto max-w-6xl space-y-2">
-    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+<div class="mx-auto w-full max-w-4xl">
+    {{-- Header --}}
+    <header class="mb-3 sm:mb-4">
         <a href="{{ route('vendor.items.index') }}"
-           class="inline-flex items-center text-gray-600 hover:text-emerald-600">
-            <i class="fas fa-arrow-left mr-1.5 text-xs"></i>
+           class="mb-1.5 inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-emerald-600">
+            <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>
             {{ __('vendor.back_to_items') }}
         </a>
-        <span class="hidden text-gray-300 sm:inline">·</span>
-        <span class="font-semibold text-gray-900">{{ __('vendor.add_new_item_title') }}</span>
-    </div>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="min-w-0">
+                <h1 class="text-lg font-bold text-gray-900 sm:text-xl">{{ __('vendor.add_new_item_title') }}</h1>
+            </div>
+            <div class="hidden items-center gap-2 sm:flex">
+                <a href="{{ route('vendor.items.index') }}"
+                   class="inline-flex min-h-[40px] items-center rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    {{ __('vendor.cancel') }}
+                </a>
+                <button type="submit" form="item-create-form"
+                        class="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                    <i class="fas fa-plus text-xs" aria-hidden="true"></i>
+                    {{ __('vendor.add_item') }}
+                </button>
+            </div>
+        </div>
+    </header>
 
-    <div class="rounded-lg border border-gray-200 bg-white shadow-sm">
-        <form action="{{ route('vendor.items.store') }}" method="POST" enctype="multipart/form-data">
+    {{-- Mobile jump nav --}}
+    <nav class="sticky top-0 z-20 mb-3 overflow-x-auto rounded-lg border border-gray-200 bg-white/95 py-1.5 shadow-sm backdrop-blur-md sm:hidden"
+         aria-label="{{ __('vendor.item_form_section_nav') }}">
+        <div class="flex min-w-max gap-1 px-1.5">
+            @foreach ($sections as $section)
+                <a href="#{{ $section['id'] }}"
+                   class="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium text-gray-600 hover:bg-emerald-50 hover:text-emerald-800">
+                    <span class="flex h-4 w-4 items-center justify-center rounded bg-emerald-100 text-[9px] font-bold text-emerald-800">{{ $section['num'] }}</span>
+                    {{ $section['label'] }}
+                </a>
+            @endforeach
+        </div>
+    </nav>
+
+    <div x-data="itemVariantForm(@js($variantFormState))">
+        <form id="item-create-form" action="{{ route('vendor.items.store') }}" method="POST" enctype="multipart/form-data" class="space-y-3 sm:space-y-4">
             @csrf
 
-            <div class="grid grid-cols-1 gap-3 p-3 sm:p-4 lg:grid-cols-12 lg:gap-x-4 lg:gap-y-4">
-                {{-- Section: listing --}}
-                <section class="{{ $fs }} lg:col-span-5" aria-labelledby="item-section-listing">
-                    <h2 id="item-section-listing" class="{{ $fst }}">{{ __('vendor.item_form_section_listing') }}</h2>
-                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {{-- 1. General + visibility --}}
+            <section id="item-section-general" class="{{ $icard }}">
+                <div class="{{ $ihead }}">
+                    <span class="{{ $inum }}">1</span>
+                    <h2 class="text-sm font-bold text-gray-900 sm:text-base">{{ __('vendor.item_form_section_general') }}</h2>
+                </div>
+                <div class="{{ $ibody }}">
+                    <div class="{{ $igrid2 }}">
                         <div class="sm:col-span-2">
-                            <label for="name" class="{{ $fl }}">{{ __('vendor.item_name') }} <span class="text-red-500">*</span></label>
-                            <p class="{{ $fh }}">{{ __('vendor.field_hint_item_name') }}</p>
+                            <label for="name" class="{{ $ilabel }}">{{ __('vendor.item_name') }} <span class="text-red-500">*</span></label>
+                            <p class="{{ $ihint }}">{{ __('vendor.field_hint_item_name') }}</p>
                             <input type="text" id="name" name="name" value="{{ old('name') }}" required
-                                   class="{{ $fc }} @error('name') border-red-500 @enderror"
+                                   class="{{ $ifc }} @error('name') border-red-500 @enderror"
                                    placeholder="{{ __('vendor.item_name_placeholder') }}">
-                            @error('name')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
+                            @error('name')<p class="{{ $ierror }}">{{ $message }}</p>@enderror
                         </div>
-                        <div>
-                            <label for="item_code" class="{{ $fl }}">{{ __('vendor.item_code') }} <span class="font-normal normal-case text-gray-400">({{ __('vendor.optional') }})</span></label>
-                            <p class="{{ $fh }}">{{ __('vendor.field_hint_item_code') }}</p>
-                            <input type="text" id="item_code" name="item_code" value="{{ old('item_code') }}" maxlength="32"
-                                   class="{{ $fc }} font-mono uppercase @error('item_code') border-red-500 @enderror"
-                                   placeholder="{{ __('vendor.item_code_placeholder') }}"
-                                   autocapitalize="characters" spellcheck="false">
-                            @error('item_code')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-                        </div>
+
                         @include('vendor.items.partials.category-picker-searchable', [
                             'categories' => $categories,
                             'selectedCategoryId' => old('category_id'),
-                            'inputClass' => $fc,
-                            'labelClass' => $fl,
-                            'hintClass' => $fh,
+                            'inputClass' => $ifc,
+                            'labelClass' => $ilabel,
+                            'hintClass' => $ihint,
                         ])
-                    </div>
 
-                    <div>
-                        <label for="photo" class="{{ $fl }}">{{ __('vendor.item_photo') }} <span class="font-normal normal-case text-gray-400">({{ __('vendor.optional') }})</span></label>
-                        <p class="{{ $fh }}">{{ __('vendor.field_hint_photo') }}</p>
-                        <input type="file" id="photo" name="photo" accept="image/*"
-                               class="js-item-image-input block w-full text-xs text-gray-600 file:mr-2 file:rounded file:border-0 file:bg-emerald-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-emerald-700 {{ $fc }} @error('photo') border-red-500 @enderror">
-                        @error('photo')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-                    </div>
-
-                    <div>
-                        <label for="description" class="{{ $fl }}">{{ __('vendor.description') }} <span class="font-normal normal-case text-gray-400">({{ __('vendor.optional') }})</span></label>
-                        <p class="{{ $fh }}">{{ __('vendor.field_hint_description') }}</p>
-                        <textarea id="description" name="description" rows="3"
-                                  class="{{ $fc }} resize-y @error('description') border-red-500 @enderror"
-                                  placeholder="{{ __('vendor.description_placeholder') }}">{{ old('description') }}</textarea>
-                        @error('description')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-                    </div>
-                </section>
-
-                <div class="flex flex-col gap-3 lg:col-span-7">
-                    <section class="{{ $fs }}" aria-labelledby="item-section-pricing">
-                        <h2 id="item-section-pricing" class="{{ $fst }}">{{ __('vendor.item_form_section_pricing') }}</h2>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label for="price" class="{{ $fl }}">{{ __('vendor.price') }} (₹) <span class="text-red-500">*</span></label>
-                                <p class="{{ $fh }}">{{ __('vendor.field_hint_price') }}</p>
-                                <input type="number" id="price" name="price" value="{{ old('price') }}" step="0.01" min="0" required
-                                       class="{{ $fc }} @error('price') border-red-500 @enderror" placeholder="0.00">
-                                @error('price')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-                            </div>
-                            <div>
-                                <label for="rental_period" class="{{ $fl }}">{{ __('vendor.rental_period') }} <span class="text-red-500">*</span></label>
-                                <p class="{{ $fh }}">{{ __('vendor.field_hint_rental_period') }}</p>
-                                <select id="rental_period" name="rental_period" required class="{{ $fc }} @error('rental_period') border-red-500 @enderror">
-                                    @foreach($rentalPeriods as $key => $label)
-                                        <option value="{{ $key }}" {{ old('rental_period', 'per_day') == $key ? 'selected' : '' }}>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                                @error('rental_period')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
-                            </div>
+                        <div>
+                            <label for="item_code" class="{{ $ilabel }}">{{ __('vendor.item_code') }} <span class="font-normal text-gray-400">({{ __('vendor.optional') }})</span></label>
+                            <p class="{{ $ihint }}">{{ __('vendor.field_hint_item_code') }}</p>
+                            <input type="text" id="item_code" name="item_code" value="{{ old('item_code') }}" maxlength="32"
+                                   class="{{ $ifc }} font-mono uppercase @error('item_code') border-red-500 @enderror"
+                                   placeholder="{{ __('vendor.item_code_placeholder') }}"
+                                   autocapitalize="characters" spellcheck="false">
+                            @error('item_code')<p class="{{ $ierror }}">{{ $message }}</p>@enderror
                         </div>
-                    </section>
 
-                    <div class="space-y-1.5">
-                        <h2 id="item-section-policies" class="{{ $fstPlain }}">{{ __('vendor.item_form_section_policies') }}</h2>
-                        @include('vendor.items.partials.item-policy-fields-compact', ['item' => null])
+                        <div>
+                            <label for="condition_status" class="{{ $ilabel }}">{{ __('vendor.condition_status') }} <span class="text-red-500">*</span></label>
+                            <p class="{{ $ihint }}">{{ __('vendor.field_hint_condition') }}</p>
+                            <select id="condition_status" name="condition_status" required
+                                    class="{{ $ifc }} @error('condition_status') border-red-500 @enderror">
+                                @foreach (\App\Models\Items::conditionStatusOptions() as $key => $label)
+                                    <option value="{{ $key }}" @selected($o('condition_status', 'good') === $key)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            @error('condition_status')<p class="{{ $ierror }}">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label for="description" class="{{ $ilabel }}">{{ __('vendor.description') }} <span class="font-normal text-gray-400">({{ __('vendor.optional') }})</span></label>
+                            <p class="{{ $ihint }}">{{ __('vendor.field_hint_description') }}</p>
+                            <textarea id="description" name="description" rows="2"
+                                      class="{{ $ifc }} min-h-[4.5rem] resize-y @error('description') border-red-500 @enderror"
+                                      placeholder="{{ __('vendor.description_placeholder') }}">{{ old('description') }}</textarea>
+                            @error('description')<p class="{{ $ierror }}">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-100 pt-3">
+                        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.item_form_section_visibility') }}</p>
+                        <div class="{{ $igrid2 }}">
+                            <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5 hover:border-emerald-200">
+                                <input type="checkbox" name="is_available" value="1"
+                                       class="h-4 w-4 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                       {{ old('is_available', true) ? 'checked' : '' }}>
+                                <span class="min-w-0">
+                                    <span class="block text-sm font-medium text-gray-800">{{ __('vendor.available_for_rent') }}</span>
+                                    <span class="{{ $ihint }}">{{ __('vendor.field_hint_is_available') }}</span>
+                                </span>
+                            </label>
+                            <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5 hover:border-emerald-200">
+                                <input type="checkbox" name="is_active" value="1"
+                                       class="h-4 w-4 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                       {{ old('is_active', true) ? 'checked' : '' }}>
+                                <span class="min-w-0">
+                                    <span class="block text-sm font-medium text-gray-800">{{ __('vendor.active') }}</span>
+                                    <span class="{{ $ihint }}">{{ __('vendor.field_hint_is_active') }}</span>
+                                </span>
+                            </label>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div class="border-t border-gray-200 bg-gray-50/90 px-3 py-2.5 sm:px-4">
-                <h2 id="item-section-visibility" class="{{ $fstPlain }}">{{ __('vendor.item_form_section_visibility') }}</h2>
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                    <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
-                        <div>
-                            <label class="flex cursor-pointer items-center gap-1.5">
-                                <input type="checkbox" name="is_available" value="1" class="h-3.5 w-3.5 rounded border-gray-300 text-emerald-600" {{ old('is_available', true) ? 'checked' : '' }}>
-                                <span class="text-xs font-medium text-gray-700">{{ __('vendor.available_for_rent') }}</span>
-                            </label>
-                            <p class="mt-0.5 pl-5 text-[10px] leading-snug text-gray-500">{{ __('vendor.field_hint_is_available') }}</p>
-                        </div>
-                        <div>
-                            <label class="flex cursor-pointer items-center gap-1.5">
-                                <input type="checkbox" name="is_active" value="1" class="h-3.5 w-3.5 rounded border-gray-300 text-emerald-600" {{ old('is_active', true) ? 'checked' : '' }}>
-                                <span class="text-xs font-medium text-gray-700">{{ __('vendor.active') }}</span>
-                            </label>
-                            <p class="mt-0.5 pl-5 text-[10px] leading-snug text-gray-500">{{ __('vendor.field_hint_is_active') }}</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <a href="{{ route('vendor.items.index') }}"
-                           class="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">{{ __('vendor.cancel') }}</a>
-                        <button type="submit" class="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700">
-                            <i class="fas fa-plus mr-1"></i>{{ __('vendor.add_item') }}
-                        </button>
-                    </div>
+            {{-- 2. Images --}}
+            <section id="item-section-images" class="{{ $icard }}">
+                <div class="{{ $ihead }}">
+                    <span class="{{ $inum }}">2</span>
+                    <h2 class="text-sm font-bold text-gray-900 sm:text-base">{{ __('vendor.item_form_section_images') }}</h2>
                 </div>
+                <div class="{{ $ibody }}">
+                    @include('vendor.items.partials.form.images-block')
+                </div>
+            </section>
+
+            {{-- 3. Variants --}}
+            <section id="item-section-variants" class="{{ $icard }}">
+                <div class="{{ $ihead }}">
+                    <span class="{{ $inum }}">3</span>
+                    <h2 class="text-sm font-bold text-gray-900 sm:text-base">{{ __('vendor.item_form_section_variants') }}</h2>
+                </div>
+                <div class="{{ $ibody }}">
+                    @include('vendor.items.partials.item-variant-manager', [
+                        'embedded' => true,
+                        'formInputClass' => $ifc,
+                    ])
+                </div>
+            </section>
+
+            {{-- 4. Pricing, fees & inventory (combined) --}}
+            <section class="{{ $icard }}">
+                <div class="{{ $ihead }}">
+                    <span class="{{ $inum }}">4</span>
+                    <h2 class="text-sm font-bold text-gray-900 sm:text-base">{{ __('vendor.item_form_section_combined_pricing') }}</h2>
+                </div>
+                <div class="{{ $ibody }}">
+                    @include('vendor.items.partials.form.pricing-fees-inventory', ['item' => null])
+                </div>
+            </section>
+
+            {{-- Desktop submit --}}
+            <div class="hidden items-center justify-end gap-2 sm:flex">
+                <a href="{{ route('vendor.items.index') }}"
+                   class="inline-flex min-h-[40px] items-center rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    {{ __('vendor.cancel') }}
+                </a>
+                <button type="submit"
+                        class="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                    <i class="fas fa-plus text-xs" aria-hidden="true"></i>
+                    {{ __('vendor.add_item') }}
+                </button>
             </div>
         </form>
+    </div>
+</div>
+
+{{-- Mobile sticky submit --}}
+<div class="fixed inset-x-0 bottom-16 z-[60] border-t border-gray-200 bg-white px-3 py-2.5 shadow-lg md:hidden"
+     style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
+    <div class="mx-auto flex max-w-4xl items-center gap-2">
+        <a href="{{ route('vendor.items.index') }}"
+           class="inline-flex min-h-[44px] flex-1 items-center justify-center rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-700">
+            {{ __('vendor.cancel') }}
+        </a>
+        <button type="submit" form="item-create-form"
+                class="inline-flex min-h-[44px] flex-[1.35] items-center justify-center gap-1.5 rounded-lg bg-emerald-600 text-sm font-semibold text-white">
+            <i class="fas fa-plus text-xs" aria-hidden="true"></i>
+            {{ __('vendor.add_item') }}
+        </button>
     </div>
 </div>
 

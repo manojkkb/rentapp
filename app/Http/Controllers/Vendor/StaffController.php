@@ -26,32 +26,7 @@ class StaffController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
-        $query = VendorUser::query()
-            ->where('vendor_id', $vendor->id)
-            ->with(['user', 'vendorRole']);
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('user', function ($userQuery) use ($search) {
-                    $userQuery->where('name', 'like', '%'.$search.'%')
-                        ->orWhere('mobile', 'like', '%'.$search.'%');
-                })
-                    ->orWhereHas('vendorRole', function ($roleQuery) use ($search) {
-                        $roleQuery->where('name', 'like', '%'.$search.'%');
-                    })
-                    ->orWhere('role', 'like', '%'.$search.'%');
-            });
-        }
-
-        $staff = $query->orderByDesc('created_at')->paginate(15);
-        $roles = $this->vendorRoles($vendor);
-
-        if ($request->ajax() || $request->wantsJson()) {
-            return view('vendor.staff.partials.staff-list', compact('staff'))->render();
-        }
-
-        return view('vendor.staff.index', compact('staff', 'vendor', 'roles'));
+        return view('vendor.staff.index');
     }
 
     public function create()

@@ -7,13 +7,13 @@
     <div class="js-user-avatar-crop-backdrop absolute inset-0 bg-black/55 backdrop-blur-[2px]" aria-hidden="true"></div>
 
     <div class="relative flex w-full max-h-[min(96dvh,100svh)] flex-col rounded-t-3xl border border-gray-200 bg-white shadow-2xl sm:max-h-[96vh] sm:max-w-2xl sm:rounded-2xl lg:max-w-3xl">
-        <div class="flex shrink-0 items-start justify-between gap-3 border-b border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5 sm:py-4">
+        <div class="flex shrink-0 items-start justify-between gap-3 border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5 sm:py-4">
             <div class="min-w-0 flex-1">
                 <h3 id="userAvatarCropTitle" class="text-lg font-bold leading-tight text-gray-900 sm:text-xl">
                     {{ __('vendor.crop_profile_photo') }}
                 </h3>
                 <p class="mt-1 text-xs leading-snug text-gray-600 sm:text-sm">
-                    <span class="font-medium text-blue-800">512×512 WebP</span> {{ __('vendor.crop_saved_hint') }}
+                    <span class="font-medium text-emerald-800">512×512 WebP</span> {{ __('vendor.crop_saved_hint') }}
                 </p>
             </div>
             <button type="button"
@@ -38,7 +38,7 @@
             </button>
             <button type="button"
                     id="userAvatarCropApply"
-                    class="min-h-[48px] w-full rounded-xl bg-blue-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 active:bg-blue-800 disabled:opacity-60 sm:min-h-0 sm:w-auto sm:py-2.5 sm:text-sm">
+                    class="min-h-[48px] w-full rounded-xl bg-emerald-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-60 sm:min-h-0 sm:w-auto sm:py-2.5 sm:text-sm">
                 <i class="fas fa-check mr-2" aria-hidden="true"></i><span id="userAvatarCropApplyLabel">{{ __('vendor.use_this_image') }}</span>
             </button>
         </div>
@@ -50,6 +50,6 @@
     .user-avatar-croppie-stage .cr-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 9999px; background: rgb(203 213 225); outline: none; }
     .user-avatar-croppie-stage .cr-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; margin-top: -9px; border-radius: 9999px; background: rgb(37 99 235); cursor: pointer; border: 3px solid white; box-shadow: 0 2px 8px rgb(0 0 0 / 0.2); }
     .user-avatar-croppie-stage .cr-slider::-moz-range-thumb { width: 26px; height: 26px; border-radius: 9999px; background: rgb(37 99 235); cursor: pointer; border: 3px solid white; box-shadow: 0 2px 8px rgb(0 0 0 / 0.2); }
-    .user-avatar-croppie-stage .cr-viewport { border-width: 3px !important; border-color: rgb(255 255 255) !important; box-shadow: 0 0 0 2px rgb(59 130 246 / 0.45), 0 0 2000px 2000px rgb(0 0 0 / 0.5) !important; }
+    .user-avatar-croppie-stage .cr-viewport { border-width: 3px !important; border-color: rgb(255 255 255) !important; box-shadow: 0 0 0 2px rgb(16 185 129 / 0.45), 0 0 2000px 2000px rgb(0 0 0 / 0.5) !important; }
     .user-avatar-croppie-stage .cr-boundary { touch-action: none; }
 </style>

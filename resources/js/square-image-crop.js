@@ -268,6 +268,7 @@ export function initSquareImageCrop(cfg) {
                 dataTransfer.items.add(outFile);
                 activeInput.files = dataTransfer.files;
                 rememberSquareCropOutput(activeInput, outFile);
+                activeInput.dispatchEvent(new Event('change', { bubbles: true }));
                 closeModal();
             })
             .catch((err) => {

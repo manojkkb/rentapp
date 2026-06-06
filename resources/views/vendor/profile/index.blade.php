@@ -59,7 +59,7 @@
             <!-- Personal Info Card -->
             <div class="lg:col-span-1">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+                    <div class="px-6 py-5 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-200">
                         <h3 class="text-lg font-bold text-gray-900">Personal Overview</h3>
                     </div>
                     <div class="p-6 text-center">
@@ -67,9 +67,9 @@
                             @if(Auth::user()->avatar_url)
                                 <img src="{{ Auth::user()->avatar_url }}"
                                      alt=""
-                                     class="w-32 h-32 rounded-full mx-auto object-cover border-4 border-blue-100 shadow-lg">
+                                     class="w-32 h-32 rounded-full mx-auto object-cover border-4 border-emerald-100 shadow-lg">
                             @else
-                                <div class="w-32 h-32 rounded-full mx-auto bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center border-4 border-blue-100 shadow-lg">
+                                <div class="w-32 h-32 rounded-full mx-auto bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center border-4 border-emerald-100 shadow-lg">
                                     <span class="text-white text-4xl font-bold">
                                         {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                                     </span>
@@ -92,7 +92,7 @@
             <!-- Edit Personal Info Form -->
             <div class="lg:col-span-2">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+                    <div class="px-6 py-5 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-200">
                         <h3 class="text-lg font-bold text-gray-900">Edit Personal Information</h3>
                     </div>
                     <form action="{{ route('vendor.profile.update.personal') }}" method="POST" enctype="multipart/form-data" class="p-6">
@@ -107,7 +107,7 @@
                                    id="avatar"
                                    name="avatar"
                                    accept="image/*"
-                                   class="js-user-avatar-input block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 border border-gray-300 rounded-lg cursor-pointer @error('avatar') border-red-500 @enderror">
+                                   class="js-user-avatar-input block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 border border-gray-300 rounded-lg cursor-pointer @error('avatar') border-red-500 @enderror">
                             <p class="mt-1 text-xs text-gray-500">{{ __('vendor.profile_photo_crop_hint') }}</p>
                             @error('avatar')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -123,7 +123,7 @@
                                    name="name" 
                                    value="{{ old('name', Auth::user()->name) }}"
                                    required
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
                         </div>
 
                         <div class="mb-6">
@@ -150,12 +150,12 @@
                                    id="user_email" 
                                    name="email" 
                                    value="{{ old('email', Auth::user()->email) }}"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
                         </div>
 
                         <div class="flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
                             <button type="submit" 
-                                    class="px-6 py-3 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 shadow-sm">
+                                    class="px-6 py-3 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all active:scale-95 shadow-sm">
                                 <i class="fas fa-save mr-2"></i>{{ __('vendor.save_changes') }}
                             </button>
                         </div>
@@ -205,7 +205,7 @@
                     <!-- Status Badges -->
                     <div class="flex items-center justify-center gap-2 mb-4">
                         @if($vendor->is_verified)
-                            <span class="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-full">
+                            <span class="px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full">
                                 <i class="fas fa-check-circle mr-1"></i>{{ __('vendor.verified') }}
                             </span>
                         @else

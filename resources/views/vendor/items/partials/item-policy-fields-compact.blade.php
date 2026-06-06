@@ -59,7 +59,6 @@
     </div>
 
     <div class="border-t border-gray-200/80 pt-2">
-        <p class="{{ $sh }} mb-1.5">{{ __('vendor.item_physical_section') }}</p>
         <div class="max-w-xs">
             <label class="{{ $lb }}">{{ __('vendor.condition_status') }} <span class="text-red-500">*</span></label>
             <p class="{{ $fh }}">{{ __('vendor.field_hint_condition') }}</p>
@@ -72,32 +71,32 @@
         </div>
     </div>
 
-    <div class="border-t border-gray-200/80 pt-2">
+    <div class="border-t border-gray-200/80 pt-2" @if(!empty($variantAware)) x-show="!hasVariants" x-cloak @endif>
         <p class="{{ $sh }} mb-0.5">{{ __('vendor.item_inventory_buckets_section') }}</p>
         <p class="mb-1.5 text-[10px] font-medium leading-snug text-gray-600">{{ __('vendor.item_stock_buckets_hint') }}</p>
         <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             <div>
                 <label class="{{ $lb }}">{{ __('vendor.stock_quantity') }} <span class="text-red-500">*</span></label>
                 <p class="{{ $fh }}">{{ __('vendor.field_hint_stock') }}</p>
-                <input type="number" name="stock" min="0" value="{{ $o('stock', 1) }}" required class="{{ $in }} @error('stock') border-red-500 @enderror">
+                <input type="number" name="stock" min="0" value="{{ $o('stock', 1) }}" required class="{{ $in }} @error('stock') border-red-500 @enderror" @if(!empty($variantAware)) :disabled="hasVariants" @endif>
                 @error('stock')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
             </div>
             <div>
                 <label class="{{ $lb }}">{{ __('vendor.damaged_stock') }} <span class="text-red-500">*</span></label>
                 <p class="{{ $fh }}">{{ __('vendor.field_hint_damaged_stock') }}</p>
-                <input type="number" name="damaged_stock" min="0" value="{{ $o('damaged_stock', 0) }}" required class="{{ $in }} @error('damaged_stock') border-red-500 @enderror">
+                <input type="number" name="damaged_stock" min="0" value="{{ $o('damaged_stock', 0) }}" required class="{{ $in }} @error('damaged_stock') border-red-500 @enderror" @if(!empty($variantAware)) :disabled="hasVariants" @endif>
                 @error('damaged_stock')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
             </div>
             <div>
                 <label class="{{ $lb }}">{{ __('vendor.maintenance_stock') }} <span class="text-red-500">*</span></label>
                 <p class="{{ $fh }}">{{ __('vendor.field_hint_maintenance_stock') }}</p>
-                <input type="number" name="maintenance_stock" min="0" value="{{ $o('maintenance_stock', 0) }}" required class="{{ $in }} @error('maintenance_stock') border-red-500 @enderror">
+                <input type="number" name="maintenance_stock" min="0" value="{{ $o('maintenance_stock', 0) }}" required class="{{ $in }} @error('maintenance_stock') border-red-500 @enderror" @if(!empty($variantAware)) :disabled="hasVariants" @endif>
                 @error('maintenance_stock')<p class="mt-0.5 text-[11px] text-red-600">{{ $message }}</p>@enderror
             </div>
         </div>
         <div class="mt-1.5">
             <label class="flex cursor-pointer items-center gap-1.5">
-                <input type="checkbox" name="manage_stock" value="1" class="h-3.5 w-3.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" @checked(filter_var(old('manage_stock', $item?->manage_stock ?? true), FILTER_VALIDATE_BOOLEAN))>
+                <input type="checkbox" name="manage_stock" value="1" class="h-3.5 w-3.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" @checked(filter_var(old('manage_stock', $item?->manage_stock ?? true), FILTER_VALIDATE_BOOLEAN)) @if(!empty($variantAware)) :disabled="hasVariants" @endif>
                 <span class="text-xs font-medium text-gray-700">{{ __('vendor.track_stock_quantity') }}</span>
             </label>
             <p class="{{ $fh }} mt-0.5 mb-0 pl-5">{{ __('vendor.field_hint_manage_stock') }}</p>

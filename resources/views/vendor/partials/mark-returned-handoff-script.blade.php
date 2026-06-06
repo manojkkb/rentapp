@@ -125,12 +125,12 @@
             var defaultQty = line.order_qty;
             html += '<div class="rounded-lg border border-gray-100 bg-white px-3 py-2.5 shadow-sm ring-1 ring-gray-100/80">';
             html += '<label class="flex cursor-pointer items-start gap-3">';
-            html += '<input type="checkbox" class="mark-returned-item-cb mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" value="' + line.id + '" data-max-qty="' + line.order_qty + '" data-min-qty="' + minQty + '" checked onchange="toggleMarkReturnedQtyInput(this); updateMarkReturnedConfirmLabel()">';
+            html += '<input type="checkbox" class="mark-returned-item-cb mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-teal-600 focus:ring-teal-500" value="' + line.id + '" data-max-qty="' + line.order_qty + '" data-min-qty="' + minQty + '" checked onchange="toggleMarkReturnedQtyInput(this); updateMarkReturnedConfirmLabel()">';
             html += '<span class="min-w-0 flex-1"><span class="text-sm font-semibold text-gray-900">' + escapeHtml(line.name) + '</span>';
             html += '<span class="mt-0.5 block text-xs text-gray-500">' + escapeHtml(labels.returnQtyLabel) + ': ';
             html += '<span class="font-medium text-gray-700">' + line.returned_qty + '</span> / ' + line.order_qty + ' ' + escapeHtml(labels.qtyLabel) + '</span></span></label>';
             html += '<div class="mt-2 flex items-center gap-2 pl-7">';
-            html += '<input type="number" min="' + minQty + '" max="' + line.order_qty + '" step="1" class="mark-returned-item-qty w-20 rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-semibold tabular-nums text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/25" value="' + defaultQty + '" data-order-item-id="' + line.id + '">';
+            html += '<input type="number" min="' + minQty + '" max="' + line.order_qty + '" step="1" class="mark-returned-item-qty w-20 rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-semibold tabular-nums text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/25" value="' + defaultQty + '" data-order-item-id="' + line.id + '">';
             html += '<span class="text-xs text-gray-500">/ ' + line.order_qty + '</span></div></div>';
         });
         list.innerHTML = html;

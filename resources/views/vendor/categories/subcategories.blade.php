@@ -137,7 +137,7 @@
                                             </a>
                                             <a href="{{ route('vendor.categories.edit', $subcategory) }}" 
                                                class="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                                <i class="fas fa-edit w-5 text-blue-500"></i>
+                                                <i class="fas fa-edit w-5 text-emerald-500"></i>
                                                 <span class="ml-3">Edit</span>
                                             </a>
                                             <form action="{{ route('vendor.categories.destroy', $subcategory) }}" 
@@ -206,7 +206,7 @@
                                         </a>
                                         <a href="{{ route('vendor.categories.edit', $subcategory) }}" 
                                            class="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
-                                            <i class="fas fa-edit w-5 text-blue-500"></i>
+                                            <i class="fas fa-edit w-5 text-emerald-500"></i>
                                             <span class="ml-3 font-medium">Edit Subcategory</span>
                                         </a>
                                         <form action="{{ route('vendor.categories.destroy', $subcategory) }}" 

@@ -34,7 +34,7 @@
                                 <span class="text-gray-600">{{ trans_choice('vendor.logistics_row_total_items', $row['total_units'], ['count' => $row['total_units']]) }}</span>
                                 <span class="text-gray-300" aria-hidden="true">|</span>
                                 @if($isReturns)
-                                    <span class="text-indigo-800">{{ trans_choice('vendor.logistics_row_returned_items', $row['returned_units'], ['count' => $row['returned_units']]) }}</span>
+                                    <span class="text-teal-800">{{ trans_choice('vendor.logistics_row_returned_items', $row['returned_units'], ['count' => $row['returned_units']]) }}</span>
                                 @else
                                     <span class="text-teal-800">{{ trans_choice('vendor.logistics_row_delivered_items', $row['delivered_units'], ['count' => $row['delivered_units']]) }}</span>
                                 @endif
@@ -49,18 +49,18 @@
                     </div>
                     <div class="flex shrink-0 justify-start">
                         @if($isReturns)
-                            <span class="inline-flex rounded-md bg-violet-100 px-2 py-1 text-[10px] font-semibold text-violet-800">
+                            <span class="inline-flex rounded-md bg-teal-100 px-2 py-1 text-[10px] font-semibold text-teal-800">
                                 <i class="fas fa-rotate-left mr-1 text-[9px]" aria-hidden="true"></i>{{ __('vendor.dashboard_return_badge') }}
                             </span>
                         @else
-                            <span class="inline-flex rounded-md px-2 py-1 text-[10px] font-semibold {{ $isDel ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800' }}">
+                            <span class="inline-flex rounded-md px-2 py-1 text-[10px] font-semibold {{ $isDel ? 'bg-teal-100 text-teal-800' : 'bg-amber-100 text-amber-800' }}">
                                 {{ $isDel ? __('vendor.dashboard_fulfillment_delivery') : __('vendor.dashboard_fulfillment_pickup') }}
                             </span>
                         @endif
                     </div>
                     @if($isReturns)
                         <button type="button"
-                                class="logistics-mark-returned w-full shrink-0 rounded-lg bg-indigo-600 px-3 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:py-2 sm:text-[11px]"
+                                class="logistics-mark-returned w-full shrink-0 rounded-lg bg-teal-600 px-3 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:py-2 sm:text-[11px]"
                                 data-order-id="{{ $row['id'] }}"
                                 data-order-number="{{ $row['order_number'] }}"
                                 data-rental-url="{{ route('vendor.orders.rental-status', $row['id']) }}"

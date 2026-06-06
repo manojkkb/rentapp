@@ -26,24 +26,7 @@ class CategoryController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
-        $query = Category::where('vendor_id', $vendor->id)
-            ->whereNull('parent_id')
-            ->with('subcategories');
-
-        // Search functionality
-        if ($request->has('search') && $request->search != '') {
-            $search = $request->search;
-            $query->where('name', 'ILIKE', '%'.$search.'%');
-        }
-
-        $categories = $query->orderBy('name')->paginate(15);
-
-        // Handle AJAX requests
-        if ($request->ajax()) {
-            return view('vendor.categories.partials.categories-list', compact('categories'))->render();
-        }
-
-        return view('vendor.categories.index', compact('categories'));
+        return view('vendor.categories.index');
     }
 
     /**

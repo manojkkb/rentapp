@@ -38,7 +38,7 @@
                                     <div class="text-xs text-gray-500 mt-0.5">
                                         @if($category->subcategories->count() > 0)
                                             <a href="{{ route('vendor.categories.subcategories', $category) }}" 
-                                            class="inline-flex items-center px-2.5 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-semibold rounded-full transition-colors">
+                                            class="inline-flex items-center px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-semibold rounded-full transition-colors">
                                                 <i class="fas fa-folder-tree text-xs mr-1.5"></i>
                                                 <span>{{ $category->subcategories->count() }} {{ __('vendor.subcategories') }}</span>
                                                 <i class="fas fa-arrow-right text-[10px] ml-1.5"></i>
@@ -57,13 +57,25 @@
                         </td>
                         <td class="px-6 py-4">
                             <div class="flex items-center">
-                                <div class="w-8 h-8 flex items-center justify-center bg-blue-50 rounded-lg mr-2">
-                                    <i class="fas fa-box text-blue-600 text-sm"></i>
+                                <div class="w-8 h-8 flex items-center justify-center bg-emerald-50 rounded-lg mr-2">
+                                    <i class="fas fa-box text-emerald-600 text-sm"></i>
                                 </div>
                                 <span class="text-sm font-semibold text-gray-900">{{ $category->items->count() }}</span>
                             </div>
                         </td>
                         <td class="px-6 py-4">
+                            @if($livewireList ?? false)
+                                <div class="inline-block" wire:key="cat-toggle-{{ $category->id }}">
+                                    <button type="button"
+                                            wire:click="toggleStatus({{ $category->id }})"
+                                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 {{ $category->is_active ? 'bg-emerald-500' : 'bg-gray-300' }}">
+                                        <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $category->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                    </button>
+                                    <span class="ml-2 text-xs font-medium {{ $category->is_active ? 'text-emerald-700' : 'text-gray-500' }}">
+                                        {{ $category->is_active ? __('vendor.active') : __('vendor.inactive') }}
+                                    </span>
+                                </div>
+                            @else
                             <div class="inline-block" x-data="{ isActive: {{ $category->is_active ? 'true' : 'false' }} }">
                                 <button @click="toggleStatus('{{ route('vendor.categories.toggle', $category) }}', $el, $data)" 
                                         type="button"
@@ -75,6 +87,7 @@
                                 </button>
                                 <span class="ml-2 text-xs font-medium" :class="isActive ? 'text-emerald-700' : 'text-gray-500'" x-text="isActive ? '{{ __('vendor.active') }}' : '{{ __('vendor.inactive') }}'"></span>
                             </div>
+                            @endif
                         </td>
                        
                         <td class="px-6 py-4 text-right">
@@ -103,6 +116,20 @@
                                              $el.style.left = (rect.right - 192) + 'px';
                                          }
                                      })">
+                                    @if($livewireList ?? false)
+                                        <a href="{{ route('vendor.categories.edit', $category) }}" wire:navigate class="block px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                            <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>{{ __('vendor.edit') }}
+                                        </a>
+                                        <a href="{{ route('vendor.categories.subcategories', $category) }}" wire:navigate class="block px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                            <i class="fas fa-folder-tree w-5 text-emerald-600 mr-3"></i>{{ __('vendor.subcategories') }}
+                                        </a>
+                                        <button type="button"
+                                                wire:click="deleteCategory({{ $category->id }})"
+                                                wire:confirm="{{ __('vendor.confirm_delete') }}"
+                                                class="block w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50">
+                                            <i class="fas fa-trash w-5 mr-3"></i>{{ __('vendor.delete') }}
+                                        </button>
+                                    @else
                                     <a href="{{ route('vendor.categories.edit', $category) }}" 
                                        class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                         <i class="fas fa-eye w-5 text-gray-400 mr-3"></i>
@@ -111,7 +138,7 @@
                                     <button type="button" 
                                             onclick="openEditModal({{ $category->id }}, @js($category->name), {{ $category->is_active ? 'true' : 'false' }}, @js(route('vendor.categories.update', $category)), @js($category->image_url))"
                                             class="w-full text-left block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                        <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
+                                        <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
                                         {{ __('vendor.edit') }}
                                     </button>
                                     <button type="button"
@@ -126,6 +153,7 @@
                                         <i class="fas fa-trash w-5 mr-3"></i>
                                         {{ __('vendor.delete') }}
                                     </button>
+                                    @endif
                                 </div>
                             </div>
                         </td>
@@ -163,7 +191,7 @@
                                     <!-- Manage Subcategories Button (Mobile) -->
                                     @if($category->subcategories->count() > 0)
                                         <a href="{{ route('vendor.categories.subcategories', $category) }}" 
-                                           class="inline-flex items-center px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-semibold rounded-full active:bg-purple-200 transition-all">
+                                           class="inline-flex items-center px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-semibold rounded-full active:bg-emerald-200 transition-all">
                                             <i class="fas fa-folder-tree text-[8px] mr-1"></i>
                                             <span>{{ $category->subcategories->count() }} {{ __('vendor.subcategories') }}</span>
                                             <i class="fas fa-arrow-right text-[8px] ml-1"></i>
@@ -206,7 +234,7 @@
                                 <button type="button" 
                                         onclick="openEditModal({{ $category->id }}, @js($category->name), {{ $category->is_active ? 'true' : 'false' }}, @js(route('vendor.categories.update', $category)), @js($category->image_url))"
                                         class="w-full text-left block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
-                                    <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
+                                    <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
                                     {{ __('vendor.edit') }}
                                 </button>
                                 <button type="button"

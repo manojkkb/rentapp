@@ -27,8 +27,8 @@
                    @keydown.enter.prevent="goActive()"
                    placeholder="{{ __('vendor.search_placeholder') }}"
                    autocomplete="off"
-                   class="w-64 pl-10 pr-9 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
+                   class="h-9 w-56 pl-9 pr-8 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+            <i class="fas fa-search absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-gray-400 pointer-events-none"></i>
             <span x-show="loading" x-cloak class="absolute right-3 top-1/2 -translate-y-1/2">
                 <i class="fas fa-spinner fa-spin text-emerald-500 text-sm"></i>
             </span>
@@ -45,10 +45,10 @@
 
     {{-- Mobile search toggle --}}
     <button type="button"
-            class="lg:hidden text-gray-600 hover:text-gray-900 p-2"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 lg:hidden"
             @click="mobileOpen = true; $nextTick(() => $refs.mobileInput?.focus())"
             aria-label="{{ __('vendor.search') }}">
-        <i class="fas fa-search text-lg"></i>
+        <i class="fas fa-search text-base"></i>
     </button>
 
     {{-- Mobile search overlay --}}

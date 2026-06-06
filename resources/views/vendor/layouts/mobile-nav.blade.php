@@ -3,7 +3,7 @@
     <div class="flex items-center justify-around h-16">
 
         @vendorCan('dashboard.view')
-        <a href="{{ route('vendor.home') }}"
+        <a wire:navigate href="{{ route('vendor.home') }}"
            class="flex flex-col items-center justify-center flex-1 h-full transition-colors
                   {{ request()->routeIs('vendor.home')
                       ? 'text-emerald-600'
@@ -14,7 +14,7 @@
         @endvendorCan
 
         @vendorCan('orders.view')
-        <a href="{{ route('vendor.orders.index') }}"
+        <a wire:navigate href="{{ route('vendor.orders.index') }}"
            class="flex flex-col items-center justify-center flex-1 h-full transition-colors
                   {{ request()->routeIs('vendor.orders.index', 'vendor.orders.show')
                       ? 'text-emerald-600'
@@ -25,11 +25,13 @@
         @endvendorCan
 
         @vendorCan('orders.create')
-        <a href="{{ route('vendor.orders.create') }}"
+        @php
+            $onOrderWizard = str_starts_with(request()->route()?->getName() ?? '', 'vendor.orders.create')
+                || (request()->route()?->getName() ?? '') === 'vendor.orders.new';
+        @endphp
+        <a wire:navigate href="{{ route('vendor.orders.new') }}"
            class="flex flex-col items-center justify-center flex-1 h-full transition-colors
-                  {{ \Illuminate\Support\Str::startsWith(request()->route()?->getName() ?? '', 'vendor.orders.create')
-                      ? 'text-emerald-600'
-                      : 'text-gray-600 hover:text-emerald-600' }}">
+                  {{ $onOrderWizard ? 'text-emerald-600' : 'text-gray-600 hover:text-emerald-600' }}">
             <i class="fas fa-file-circle-plus text-xl mb-1"></i>
             <span class="text-xs font-medium leading-tight text-center px-0.5">{{ __('vendor.create_order') }}</span>
         </a>

@@ -108,14 +108,14 @@
             </div>
 
             <!-- Info Banner -->
-            <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <div class="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
                 <div class="flex items-start space-x-3">
-                    <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
+                    <i class="fas fa-info-circle text-emerald-600 mt-0.5"></i>
                     <div class="flex-1">
-                        <p class="text-sm text-blue-900">
+                        <p class="text-sm text-emerald-900">
                             <span class="font-semibold">Customer ID:</span> {{ $customer->uuid }}
                         </p>
-                        <p class="text-sm text-blue-900 mt-1">
+                        <p class="text-sm text-emerald-900 mt-1">
                             <span class="font-semibold">Added:</span> {{ $customer->created_at->format('M d, Y') }}
                         </p>
                     </div>

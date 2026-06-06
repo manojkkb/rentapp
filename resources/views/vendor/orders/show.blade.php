@@ -352,7 +352,7 @@ function orderPageData() {
     <div class="mb-3 flex w-full min-w-0 flex-col gap-3 sm:mb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4 md:mb-6">
         <div class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <a href="{{ route('vendor.orders.index') }}"
-               class="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-gray-600 transition hover:text-blue-700 [touch-action:manipulation]">
+               class="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-gray-600 transition hover:text-emerald-700 [touch-action:manipulation]">
                 <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>
                 {{ __('vendor.back') }}
             </a>
@@ -388,13 +388,13 @@ function orderPageData() {
                 <span id="rs-header-returned-wrap" class="inline-flex w-full sm:w-auto">
                     @if($order->returned_at)
                         <button type="button"
-                                class="rs-btn-return-clear inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-900 shadow-sm transition hover:bg-indigo-50 sm:w-auto"
+                                class="rs-btn-return-clear inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50 sm:w-auto"
                                 onclick="openRentalClearConfirm('returned', this)">
                             <i class="fas fa-undo" aria-hidden="true"></i>{{ __('vendor.clear_returned') }}
                         </button>
                     @else
                         <button type="button"
-                                class="rs-btn-return-mark inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 sm:w-auto"
+                                class="rs-btn-return-mark inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 sm:w-auto"
                                 onclick="openMarkReturnedModal(this)">
                             <i class="fas fa-rotate-left" aria-hidden="true"></i>{{ __('vendor.mark_returned') }}
                         </button>
@@ -402,8 +402,8 @@ function orderPageData() {
                 </span>
             @endif
             <a href="{{ route('vendor.orders.invoice.download', $order) }}"
-               class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-800 shadow-sm transition hover:bg-blue-100 sm:w-auto">
-                <i class="fas fa-download text-blue-700"></i>{{ __('vendor.download_invoice') }}
+               class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100 sm:w-auto">
+                <i class="fas fa-download text-emerald-700"></i>{{ __('vendor.download_invoice') }}
             </a>
         </div>
     </div>
@@ -464,7 +464,7 @@ function orderPageData() {
                             </div>
                         </div>
                         <div class="flex min-w-0 gap-2 rounded-lg border border-gray-100 bg-gray-50/90 p-2.5 sm:p-3">
-                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-violet-100 text-violet-700 ring-1 ring-violet-200/50">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-teal-100 text-teal-700 ring-1 ring-teal-200/50">
                                 <i class="fas fa-calendar text-xs" aria-hidden="true"></i>
                             </div>
                             <div class="flex min-w-0 flex-1 items-start justify-between gap-2">
@@ -483,7 +483,7 @@ function orderPageData() {
                                 @if(!$orderReadOnly)
                                     <button type="button"
                                             onclick="openEditCartModal()"
-                                            class="inline-flex shrink-0 items-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-blue-700 shadow-sm transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 sm:gap-1.5 sm:px-2.5 sm:text-xs"
+                                            class="inline-flex shrink-0 items-center gap-1 rounded-md border border-emerald-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 sm:gap-1.5 sm:px-2.5 sm:text-xs"
                                             aria-label="{{ __('vendor.edit') }} {{ __('vendor.booking_period') }}">
                                         <i class="fas fa-edit text-xs" aria-hidden="true"></i>
                                         <span class="hidden sm:inline">{{ __('vendor.edit') }}</span>
@@ -637,7 +637,7 @@ function orderPageData() {
             </div>
 
             <section class="overflow-visible rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
-                <div class="overflow-hidden rounded-t-2xl border-b border-gray-100 bg-gradient-to-r from-slate-50 via-white to-blue-50/60 px-4 py-4 sm:px-6 sm:py-5">
+                <div class="overflow-hidden rounded-t-2xl border-b border-gray-100 bg-gradient-to-r from-slate-50 via-white to-emerald-50/60 px-4 py-4 sm:px-6 sm:py-5">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="min-w-0">
                             <h3 class="text-lg font-bold tracking-tight text-gray-900 tabular-nums"
@@ -645,7 +645,7 @@ function orderPageData() {
                         </div>
                         <div class="flex w-full flex-shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
                             <button type="button" @click="showAddItem = true"
-                                    class="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 active:scale-[0.99] sm:flex-none sm:min-h-[44px] sm:py-2.5">
+                                    class="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.99] sm:flex-none sm:min-h-[44px] sm:py-2.5">
                                 <i class="fas fa-plus"></i>
                                 {{ __('vendor.add_item') }}
                             </button>
@@ -694,13 +694,13 @@ function orderPageData() {
                 ];
                 $statusAccentBorder = [
                     'pending' => 'border-l-amber-400',
-                    'confirmed' => 'border-l-sky-500',
+                    'confirmed' => 'border-l-teal-500',
                     'completed' => 'border-l-emerald-500',
                     'cancelled' => 'border-l-red-500',
                 ];
                 $statusIconBg = [
                     'pending' => 'bg-amber-100 text-amber-700',
-                    'confirmed' => 'bg-sky-100 text-sky-700',
+                    'confirmed' => 'bg-teal-100 text-teal-700',
                     'completed' => 'bg-emerald-100 text-emerald-700',
                     'cancelled' => 'bg-red-100 text-red-700',
                 ];
@@ -859,8 +859,8 @@ function orderPageData() {
                                 </div>
                             @endif
                         </div>
-                        <div class="rounded-lg border border-indigo-100/90 bg-indigo-50/40 p-3 ring-1 ring-indigo-100/60">
-                            <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-900/85">{{ __('vendor.returned_status') }}</p>
+                        <div class="rounded-lg border border-teal-100/90 bg-teal-50/40 p-3 ring-1 ring-teal-100/60">
+                            <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-teal-900/85">{{ __('vendor.returned_status') }}</p>
                             <p id="rs-returned-summary" class="text-xs font-semibold leading-snug text-gray-900">
                                 @if($order->returned_at)
                                     {{ $fmtRental($order->returned_at) }}
@@ -870,16 +870,16 @@ function orderPageData() {
                                     {{ __('vendor.not_returned_yet') }}
                                 @endif
                             </p>
-                            <p id="rs-returned-units" class="mt-0.5 text-[11px] font-medium leading-snug text-indigo-900/80 {{ ($order->returned_at && $returnedUnitsCountLabel) ? '' : 'hidden' }}">{{ ($order->returned_at && $returnedUnitsCountLabel) ? $returnedUnitsCountLabel : '' }}</p>
+                            <p id="rs-returned-units" class="mt-0.5 text-[11px] font-medium leading-snug text-teal-900/80 {{ ($order->returned_at && $returnedUnitsCountLabel) ? '' : 'hidden' }}">{{ ($order->returned_at && $returnedUnitsCountLabel) ? $returnedUnitsCountLabel : '' }}</p>
                             @if(! $orderReadOnly)
                                 <div class="mt-2 flex flex-wrap gap-2" id="rs-returned-actions">
                                     @if($order->returned_at)
                                         <button type="button"
-                                                class="rs-btn-return-clear inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-indigo-900 shadow-sm transition hover:bg-indigo-50"
+                                                class="rs-btn-return-clear inline-flex items-center justify-center rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50"
                                                 onclick="openRentalClearConfirm('returned', this)">{{ __('vendor.clear_returned') }}</button>
                                     @else
                                         <button type="button"
-                                                class="rs-btn-return-mark inline-flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+                                                class="rs-btn-return-mark inline-flex items-center justify-center rounded-lg bg-teal-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-teal-700"
                                                 onclick="openMarkReturnedModal(this)">{{ __('vendor.mark_returned') }}</button>
                                     @endif
                                 </div>
@@ -924,15 +924,15 @@ function orderPageData() {
                         <div class="space-y-1.5 rounded-lg border border-dashed border-gray-200 bg-white p-2">
                             <div id="discount-add" class="{{ $order->discount_amount > 0 ? 'hidden' : '' }}">
                                 <button type="button" onclick="openDiscountModal()"
-                                        class="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-gray-50/80 py-2 text-xs font-semibold text-blue-700 transition hover:border-blue-200 hover:bg-blue-50/80">
+                                        class="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-gray-50/80 py-2 text-xs font-semibold text-emerald-700 transition hover:border-emerald-200 hover:bg-emerald-50/80">
                                     <i class="fas fa-plus-circle text-xs"></i>
                                     <span>{{ __('vendor.add_discount') }}</span>
                                 </button>
                             </div>
                             <div id="discount-applied" class="{{ $order->discount_amount > 0 ? '' : 'hidden' }}">
-                                <div class="flex items-center justify-between gap-2 rounded-md bg-blue-50/50 px-2.5 py-1.5 ring-1 ring-blue-100/80">
+                                <div class="flex items-center justify-between gap-2 rounded-md bg-emerald-50/50 px-2.5 py-1.5 ring-1 ring-emerald-100/80">
                                     <div class="flex min-w-0 items-center gap-1.5">
-                                        <i class="fas fa-tag shrink-0 text-blue-600 text-[10px]"></i>
+                                        <i class="fas fa-tag shrink-0 text-emerald-600 text-[10px]"></i>
                                         <span class="truncate text-xs font-medium text-gray-800" id="discount-label">
                                             @if($order->discount_type === 'percent')
                                                 {{ __('vendor.discount') }} {{ rtrim(rtrim(number_format($order->discount_value, 2), '0'), '.') }}%
@@ -1040,8 +1040,8 @@ function orderPageData() {
                     <div class="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-white px-2.5 py-2 shadow-sm">
                         <button type="button"
                                 onclick="openSecurityDepositModal()"
-                                class="inline-flex min-w-0 flex-1 items-center gap-2 text-left text-xs font-semibold text-blue-700 transition hover:text-blue-900">
-                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100">
+                                class="inline-flex min-w-0 flex-1 items-center gap-2 text-left text-xs font-semibold text-emerald-700 transition hover:text-emerald-900">
+                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
                                 <i class="fas fa-shield-alt text-[10px]"></i>
                             </span>
                             <span id="securityDepositLabel" class="truncate">{{ __('vendor.quote_security_deposit') }}</span>
@@ -1076,7 +1076,7 @@ function orderPageData() {
                         </div>
                         <div class="mt-0.5 flex flex-col gap-1.5 sm:flex-row">
                             <button type="button" onclick="openAddPaymentModal()"
-                                    class="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.99]">
+                                    class="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.99]">
                                 <i class="fas fa-wallet"></i>{{ __('vendor.new_payment') }}
                             </button>
                             <button type="button" onclick="openExtraChargeModal()"
@@ -1108,9 +1108,9 @@ function orderPageData() {
                                                     <span class="text-xs font-bold tabular-nums text-gray-900">₹{{ number_format((float) ($p['amount'] ?? 0), 2) }}</span>
                                                 @endif
                                                 @if(($p['payment_for'] ?? '') === 'security_deposit')
-                                                    <span class="inline-flex rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 ring-1 ring-violet-100">{{ __('vendor.payment_for_deposit_short') }}</span>
+                                                    <span class="inline-flex rounded-md bg-teal-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-teal-700 ring-1 ring-teal-100">{{ __('vendor.payment_for_deposit_short') }}</span>
                                                 @else
-                                                    <span class="inline-flex rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 ring-1 ring-blue-100">{{ __('vendor.payment_for_order_short') }}</span>
+                                                    <span class="inline-flex rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100">{{ __('vendor.payment_for_order_short') }}</span>
                                                 @endif
                                                 @if($pIsRefund)
                                                     <span class="inline-flex rounded-md bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700 ring-1 ring-rose-100">{{ __('vendor.label_refund') }}</span>
@@ -1145,10 +1145,10 @@ function orderPageData() {
                         <div class="fixed inset-0 flex items-center justify-center p-4">
                             <div class="relative bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all" onclick="event.stopPropagation()">
                                 <!-- Header -->
-                                <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 rounded-t-xl">
+                                <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-t-xl">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center space-x-3">
-                                            <div class="w-10 h-10 flex items-center justify-center bg-blue-600 rounded-lg">
+                                            <div class="w-10 h-10 flex items-center justify-center bg-emerald-600 rounded-lg">
                                                 <i class="fas fa-wallet text-white"></i>
                                             </div>
                                             <div>
@@ -1167,9 +1167,9 @@ function orderPageData() {
                                         <label class="block text-sm font-semibold text-gray-700 mb-3">Payment for</label>
                                         <div class="grid grid-cols-1 gap-3">
                                             <button type="button" onclick="openNewPaymentDueModal('order_amount')"
-                                                    class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-left transition-all hover:border-blue-400 hover:bg-blue-50/60">
+                                                    class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-left transition-all hover:border-emerald-400 hover:bg-emerald-50/60">
                                                 <div class="flex items-start gap-3">
-                                                    <i class="fas fa-file-invoice-dollar mt-0.5 text-blue-600"></i>
+                                                    <i class="fas fa-file-invoice-dollar mt-0.5 text-emerald-600"></i>
                                                     <div>
                                                         <p class="text-sm font-semibold text-gray-800">Order amount</p>
                                                         <p class="text-xs text-gray-500">Collect payment against order total.</p>
@@ -1178,9 +1178,9 @@ function orderPageData() {
                                             </button>
 
                                             <button type="button" onclick="openNewPaymentDueModal('security_deposit')"
-                                                    class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-left transition-all hover:border-blue-400 hover:bg-blue-50/60">
+                                                    class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-left transition-all hover:border-emerald-400 hover:bg-emerald-50/60">
                                                 <div class="flex items-start gap-3">
-                                                    <i class="fas fa-shield-alt mt-0.5 text-blue-600"></i>
+                                                    <i class="fas fa-shield-alt mt-0.5 text-emerald-600"></i>
                                                     <div>
                                                         <p class="text-sm font-semibold text-gray-800">Security deposit</p>
                                                         <p class="text-xs text-gray-500">Collect payment for refundable security deposit.</p>
@@ -1230,7 +1230,7 @@ function orderPageData() {
                         <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="backNewPaymentDueModal()"></div>
                         <div class="fixed inset-0 flex items-center justify-center p-4">
                             <div class="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-2xl" onclick="event.stopPropagation()">
-                                <div class="rounded-t-xl border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-blue-50 px-6 py-4">
+                                <div class="rounded-t-xl border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-emerald-50 px-6 py-4">
                                     <div class="flex items-center justify-between gap-3">
                                         <div>
                                             <h3 id="npDueTitle" class="text-lg font-bold text-gray-900"></h3>
@@ -1243,7 +1243,7 @@ function orderPageData() {
                                 </div>
                                 <div class="space-y-4 p-6">
                                     <div id="npSectionOrder" class="hidden rounded-xl border border-gray-100 bg-gray-50/90 p-4">
-                                        <p class="text-center text-xs font-semibold uppercase tracking-wide text-blue-700">Order amount</p>
+                                        <p class="text-center text-xs font-semibold uppercase tracking-wide text-emerald-700">Order amount</p>
                                         <p class="text-center text-sm font-semibold text-gray-800">Rental balance</p>
                                         <dl class="mt-4 space-y-3 text-sm">
                                             <div class="flex items-center justify-between gap-3 border-b border-gray-200/80 pb-2">
@@ -1265,7 +1265,7 @@ function orderPageData() {
                                                 <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">₹</span>
                                                 <input type="number" id="npOrderPaymentInput" step="0.01" min="0"
                                                        oninput="npSyncPayButtonState()"
-                                                       class="w-full rounded-lg border border-gray-300 py-2.5 pl-8 pr-3 text-sm font-semibold tabular-nums focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                                                       class="w-full rounded-lg border border-gray-300 py-2.5 pl-8 pr-3 text-sm font-semibold tabular-nums focus:border-transparent focus:ring-2 focus:ring-emerald-500"
                                                        placeholder="0.00">
                                             </div>
                                             <p class="mt-1 text-left text-xs text-gray-500">Change the amount to collect for this order (max due).</p>
@@ -1274,11 +1274,11 @@ function orderPageData() {
                                             <label for="npOrderPaymentDate" class="mb-1.5 block text-left text-sm font-semibold text-gray-700">Payment date</label>
                                             <input type="date" id="npOrderPaymentDate"
                                                    onchange="npSyncPayButtonState()"
-                                                   class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-blue-500">
+                                                   class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-emerald-500">
                                         </div>
                                     </div>
                                     <div id="npSectionSecurity" class="hidden rounded-xl border border-gray-100 bg-gray-50/90 p-4">
-                                        <p class="text-center text-xs font-semibold uppercase tracking-wide text-blue-700">Security deposit</p>
+                                        <p class="text-center text-xs font-semibold uppercase tracking-wide text-emerald-700">Security deposit</p>
                                         <p class="text-center text-sm font-semibold text-gray-800">Refundable hold</p>
                                         <dl class="mt-4 space-y-3 text-sm">
                                             <div class="flex items-center justify-between gap-3 border-b border-gray-200/80 pb-2">
@@ -1300,7 +1300,7 @@ function orderPageData() {
                                                 <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">₹</span>
                                                 <input type="number" id="npSdPaymentInput" step="0.01" min="0"
                                                        oninput="npSyncPayButtonState()"
-                                                       class="w-full rounded-lg border border-gray-300 py-2.5 pl-8 pr-3 text-sm font-semibold tabular-nums focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                                                       class="w-full rounded-lg border border-gray-300 py-2.5 pl-8 pr-3 text-sm font-semibold tabular-nums focus:border-transparent focus:ring-2 focus:ring-emerald-500"
                                                        placeholder="0.00">
                                             </div>
                                             <p class="mt-1 text-left text-xs text-gray-500">Change the amount to collect for security deposit (max due).</p>
@@ -1309,7 +1309,7 @@ function orderPageData() {
                                             <label for="npSdPaymentDate" class="mb-1.5 block text-left text-sm font-semibold text-gray-700">Payment date</label>
                                             <input type="date" id="npSdPaymentDate"
                                                    onchange="npSyncPayButtonState()"
-                                                   class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-blue-500">
+                                                   class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:border-transparent focus:ring-2 focus:ring-emerald-500">
                                         </div>
                                     </div>
 
@@ -1318,37 +1318,37 @@ function orderPageData() {
                                         <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                                             <label class="relative cursor-pointer">
                                                 <input type="radio" name="np_payment_method" value="card" class="peer sr-only" onchange="npOnPaymentMethodPick()">
-                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
                                                     Card
                                                 </div>
                                             </label>
                                             <label class="relative cursor-pointer">
                                                 <input type="radio" name="np_payment_method" value="cash" class="peer sr-only" onchange="npOnPaymentMethodPick()">
-                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
                                                     Cash
                                                 </div>
                                             </label>
                                             <label class="relative cursor-pointer">
                                                 <input type="radio" name="np_payment_method" value="upi" class="peer sr-only" onchange="npOnPaymentMethodPick()">
-                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
                                                     UPI
                                                 </div>
                                             </label>
                                             <label class="relative cursor-pointer">
                                                 <input type="radio" name="np_payment_method" value="bank_transfer" class="peer sr-only" onchange="npOnPaymentMethodPick()">
-                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
                                                     Bank Transfer
                                                 </div>
                                             </label>
                                             <label class="relative cursor-pointer">
                                                 <input type="radio" name="np_payment_method" value="wallet" class="peer sr-only" onchange="npOnPaymentMethodPick()">
-                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
                                                     Wallet
                                                 </div>
                                             </label>
                                             <label class="relative cursor-pointer">
                                                 <input type="radio" name="np_payment_method" value="other" class="peer sr-only" onchange="npOnPaymentMethodPick()">
-                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50">
+                                                <div class="flex min-h-[48px] items-center justify-center rounded-lg border-2 border-gray-200 px-3 py-2.5 text-center text-sm font-semibold text-gray-900 transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50">
                                                     Other
                                                 </div>
                                             </label>
@@ -1530,12 +1530,12 @@ function orderPageData() {
                         function returnedActionButtonHtml(returned, compact) {
                             if (returned) {
                                 return compact
-                                    ? '<button type="button" class="rs-btn-return-clear inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-indigo-900 shadow-sm transition hover:bg-indigo-50" onclick="openRentalClearConfirm(\'returned\', this)">' + @json(__('vendor.clear_returned')) + '</button>'
-                                    : '<button type="button" class="rs-btn-return-clear inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-sm font-semibold text-indigo-900 shadow-sm transition hover:bg-indigo-50 sm:w-auto" onclick="openRentalClearConfirm(\'returned\', this)"><i class="fas fa-undo" aria-hidden="true"></i>' + @json(__('vendor.clear_returned')) + '</button>';
+                                    ? '<button type="button" class="rs-btn-return-clear inline-flex items-center justify-center rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50" onclick="openRentalClearConfirm(\'returned\', this)">' + @json(__('vendor.clear_returned')) + '</button>'
+                                    : '<button type="button" class="rs-btn-return-clear inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50 sm:w-auto" onclick="openRentalClearConfirm(\'returned\', this)"><i class="fas fa-undo" aria-hidden="true"></i>' + @json(__('vendor.clear_returned')) + '</button>';
                             }
                             return compact
-                                ? '<button type="button" class="rs-btn-return-mark inline-flex items-center justify-center rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-indigo-700" onclick="openMarkReturnedModal(this)">' + @json(__('vendor.mark_returned')) + '</button>'
-                                : '<button type="button" class="rs-btn-return-mark inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 sm:w-auto" onclick="openMarkReturnedModal(this)"><i class="fas fa-rotate-left" aria-hidden="true"></i>' + @json(__('vendor.mark_returned')) + '</button>';
+                                ? '<button type="button" class="rs-btn-return-mark inline-flex items-center justify-center rounded-lg bg-teal-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-teal-700" onclick="openMarkReturnedModal(this)">' + @json(__('vendor.mark_returned')) + '</button>'
+                                : '<button type="button" class="rs-btn-return-mark inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 sm:w-auto" onclick="openMarkReturnedModal(this)"><i class="fas fa-rotate-left" aria-hidden="true"></i>' + @json(__('vendor.mark_returned')) + '</button>';
                         }
                         var returnPanelWrap = document.getElementById('rs-returned-actions');
                         var returnHeaderWrap = document.getElementById('rs-header-returned-wrap');
@@ -1719,12 +1719,12 @@ function orderPageData() {
                             var defaultQty = line.orderQty;
                             html += '<div class="rounded-lg border border-gray-100 bg-white px-3 py-2.5 shadow-sm ring-1 ring-gray-100/80">';
                             html += '<label class="flex cursor-pointer items-start gap-3">';
-                            html += '<input type="checkbox" class="mark-returned-item-cb mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" value="' + line.id + '" data-max-qty="' + line.orderQty + '" data-min-qty="' + minQty + '" checked onchange="toggleMarkReturnedQtyInput(this); updateMarkReturnedConfirmLabel()">';
+                            html += '<input type="checkbox" class="mark-returned-item-cb mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-teal-600 focus:ring-teal-500" value="' + line.id + '" data-max-qty="' + line.orderQty + '" data-min-qty="' + minQty + '" checked onchange="toggleMarkReturnedQtyInput(this); updateMarkReturnedConfirmLabel()">';
                             html += '<span class="min-w-0 flex-1"><span class="text-sm font-semibold text-gray-900">' + escapeDeliveredModalHtml(line.name) + '</span>';
                             html += '<span class="mt-0.5 block text-xs text-gray-500">' + escapeDeliveredModalHtml(returnQtyLabel) + ': ';
                             html += '<span class="font-medium text-gray-700">' + line.returnedQty + '</span> / ' + line.orderQty + ' ' + escapeDeliveredModalHtml(@json(__('vendor.order_wizard_qty'))) + '</span></span></label>';
                             html += '<div class="mt-2 flex items-center gap-2 pl-7">';
-                            html += '<input type="number" min="' + minQty + '" max="' + line.orderQty + '" step="1" class="mark-returned-item-qty w-20 rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-semibold tabular-nums text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/25" value="' + defaultQty + '" data-order-item-id="' + line.id + '">';
+                            html += '<input type="number" min="' + minQty + '" max="' + line.orderQty + '" step="1" class="mark-returned-item-qty w-20 rounded-lg border border-gray-200 px-2 py-1.5 text-sm font-semibold tabular-nums text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/25" value="' + defaultQty + '" data-order-item-id="' + line.id + '">';
                             html += '<span class="text-xs text-gray-500">/ ' + line.orderQty + '</span></div></div>';
                         });
                         list.innerHTML = html;
@@ -2138,18 +2138,18 @@ function orderPageData() {
                             if (sub) sub.textContent = 'You chose security deposit — details below are for the deposit only.';
                             if (secOrder) {
                                 secOrder.classList.add('hidden');
-                                secOrder.classList.remove('ring-2', 'ring-blue-100', 'ring-rose-100');
+                                secOrder.classList.remove('ring-2', 'ring-emerald-100', 'ring-rose-100');
                             }
                             if (secSd) {
                                 secSd.classList.remove('hidden');
                                 secSd.classList.remove('ring-rose-100');
-                                secSd.classList.add('ring-2', 'ring-blue-100');
+                                secSd.classList.add('ring-2', 'ring-emerald-100');
                             }
                         } else if (kind === 'refund_security_deposit') {
                             if (sub) sub.textContent = 'Refund against amounts collected for the security deposit.';
                             if (secOrder) {
                                 secOrder.classList.add('hidden');
-                                secOrder.classList.remove('ring-2', 'ring-blue-100');
+                                secOrder.classList.remove('ring-2', 'ring-emerald-100');
                             }
                             if (secSd) {
                                 secSd.classList.remove('hidden');
@@ -2159,7 +2159,7 @@ function orderPageData() {
                             if (sub) sub.textContent = 'Refund against amounts collected for the rental / order balance.';
                             if (secSd) {
                                 secSd.classList.add('hidden');
-                                secSd.classList.remove('ring-2', 'ring-blue-100', 'ring-rose-100');
+                                secSd.classList.remove('ring-2', 'ring-emerald-100', 'ring-rose-100');
                             }
                             if (secOrder) {
                                 secOrder.classList.remove('hidden');
@@ -2169,11 +2169,11 @@ function orderPageData() {
                             if (sub) sub.textContent = 'You chose order amount — details below are for the rental / order balance only.';
                             if (secSd) {
                                 secSd.classList.add('hidden');
-                                secSd.classList.remove('ring-2', 'ring-blue-100', 'ring-rose-100');
+                                secSd.classList.remove('ring-2', 'ring-emerald-100', 'ring-rose-100');
                             }
                             if (secOrder) {
                                 secOrder.classList.remove('hidden');
-                                secOrder.classList.add('ring-2', 'ring-blue-100');
+                                secOrder.classList.add('ring-2', 'ring-emerald-100');
                             }
                         }
                     }
@@ -2226,8 +2226,8 @@ function orderPageData() {
                             const amt = amtNum.toFixed(2);
                             const isSd = p.payment_for === 'security_deposit';
                             const badge = isSd
-                                ? '<span class="inline-flex rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 ring-1 ring-violet-100">' + npPayTagDeposit + '</span>'
-                                : '<span class="inline-flex rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 ring-1 ring-blue-100">' + npPayTagOrder + '</span>';
+                                ? '<span class="inline-flex rounded-md bg-teal-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-teal-700 ring-1 ring-teal-100">' + npPayTagDeposit + '</span>'
+                                : '<span class="inline-flex rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100">' + npPayTagOrder + '</span>';
                             const refundBadge = entryKind === 'refund'
                                 ? '<span class="inline-flex rounded-md bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700 ring-1 ring-rose-100">' + npPayTagRefund + '</span>'
                                 : '';
@@ -2289,8 +2289,8 @@ function orderPageData() {
                             <i class="fas fa-file-invoice text-gray-600"></i>{{ __('vendor.print_quote') }}
                         </a>
                         <a href="{{ route('vendor.orders.invoice.download', $order) }}"
-                           class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800 shadow-sm transition hover:bg-blue-100">
-                            <i class="fas fa-download text-blue-700"></i>{{ __('vendor.download_invoice') }}
+                           class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100">
+                            <i class="fas fa-download text-emerald-700"></i>{{ __('vendor.download_invoice') }}
                         </a>
                     </div>
                 </div>
@@ -2321,7 +2321,7 @@ function orderPageData() {
                     md:mt-0 md:h-auto md:max-h-[min(92vh,880px)] md:min-h-[360px] md:max-w-5xl md:rounded-2xl
                     rounded-t-3xl md:rounded-2xl mt-auto md:mx-auto">
 
-            <header class="flex-shrink-0 border-b border-gray-200 bg-gradient-to-r from-blue-50 via-white to-indigo-50/80 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4 md:rounded-t-2xl md:pt-5">
+            <header class="flex-shrink-0 border-b border-gray-200 bg-gradient-to-r from-emerald-50 via-white to-teal-50/80 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6 sm:py-4 md:rounded-t-2xl md:pt-5">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0 pr-2">
                         <h3 id="add-items-modal-title" class="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">{{ __('vendor.modal_add_items_title') }}</h3>
@@ -2329,7 +2329,7 @@ function orderPageData() {
                     </div>
                     <button type="button"
                             @click="showAddItem = false; searchQuery = ''; selectedCategory = ''"
-                            class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-white hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-white hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
                             aria-label="{{ __('vendor.modal_close_aria') }}">
                         <i class="fas fa-times text-lg"></i>
                     </button>
@@ -2351,7 +2351,7 @@ function orderPageData() {
                                        autocomplete="off"
                                        x-model="searchQuery"
                                        placeholder="{{ __('vendor.search_placeholder') }}"
-                                       class="w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-11 pr-11 text-base text-gray-900 shadow-sm transition-shadow placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 md:py-2.5 md:text-sm">
+                                       class="w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-11 pr-11 text-base text-gray-900 shadow-sm transition-shadow placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 md:py-2.5 md:text-sm">
                                 <button type="button"
                                         x-show="searchQuery"
                                         x-cloak
@@ -2369,7 +2369,7 @@ function orderPageData() {
                                 </span>
                                 <select id="add-items-category"
                                         x-model="selectedCategory"
-                                        class="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3.5 pl-11 pr-10 text-base text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 md:py-2.5 md:text-sm">
+                                        class="w-full appearance-none rounded-xl border border-gray-200 bg-white py-3.5 pl-11 pr-10 text-base text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 md:py-2.5 md:text-sm">
                                     <option value="">{{ __('vendor.all_categories') }}</option>
                                     @foreach($categories as $category)
                                         <option value="{{ $category->id }}">{{ $category->name }}</option>
@@ -2391,7 +2391,7 @@ function orderPageData() {
                         <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.modal_no_inventory_title') }}</h3>
                         <p class="mt-2 max-w-sm text-sm leading-relaxed text-gray-600">{{ __('vendor.modal_no_inventory_body') }}</p>
                         <a href="{{ route('vendor.items.create') }}"
-                           class="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                           class="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
                             <i class="fas fa-plus mr-2"></i>{{ __('vendor.modal_create_item_cta') }}
                         </a>
                     </div>
@@ -2404,7 +2404,7 @@ function orderPageData() {
                         <p class="mt-2 max-w-sm text-sm text-gray-600">{{ __('vendor.adjust_search') }}</p>
                         <button type="button"
                                 @click="searchQuery = ''; selectedCategory = ''"
-                                class="mt-5 inline-flex min-h-[48px] items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-gray-50">
+                                class="mt-5 inline-flex min-h-[48px] items-center justify-center rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-gray-50">
                             <i class="fas fa-redo mr-2"></i>{{ __('vendor.clear_filters') }}
                         </button>
                     </div>
@@ -2422,11 +2422,11 @@ function orderPageData() {
                                 </thead>
                                 <tbody class="divide-y divide-gray-100">
                                     <template x-for="item in filteredItems" :key="item.id">
-                                        <tr class="transition-colors hover:bg-blue-50/40">
+                                        <tr class="transition-colors hover:bg-emerald-50/40">
                                             <td class="px-5 py-4 align-middle">
                                                 <div class="flex items-center gap-3">
-                                                    <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 ring-1 ring-blue-100">
-                                                        <i class="fas fa-box text-blue-600"></i>
+                                                    <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 ring-1 ring-emerald-100">
+                                                        <i class="fas fa-box text-emerald-600"></i>
                                                     </div>
                                                     <div class="min-w-0 flex-1">
                                                         <p class="truncate font-semibold text-gray-900" x-text="item.name"></p>
@@ -2438,14 +2438,14 @@ function orderPageData() {
                                                 </div>
                                             </td>
                                             <td class="px-5 py-4 align-middle">
-                                                <span class="inline-flex rounded-lg bg-blue-50 px-2.5 py-1 text-sm font-bold text-blue-800 tabular-nums">₹<span x-text="parseFloat(item.price).toFixed(2)"></span></span>
+                                                <span class="inline-flex rounded-lg bg-emerald-50 px-2.5 py-1 text-sm font-bold text-emerald-800 tabular-nums">₹<span x-text="parseFloat(item.price).toFixed(2)"></span></span>
                                             </td>
                                             <td class="px-5 py-4 align-middle">
                                                 <div class="flex flex-col items-center justify-center gap-2">
                                                     <button type="button" @click="addItemToCart(item.id)"
                                                             x-show="!isAdded(item.id)"
                                                             :disabled="addingItem === item.id"
-                                                            class="inline-flex min-h-[40px] min-w-[5.5rem] items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50">
+                                                            class="inline-flex min-h-[40px] min-w-[5.5rem] items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50">
                                                         <span x-show="addingItem !== item.id" class="flex items-center gap-1.5"><i class="fas fa-plus"></i>{{ __('vendor.add') }}</span>
                                                         <span x-show="addingItem === item.id"><i class="fas fa-spinner fa-spin"></i></span>
                                                     </button>
@@ -2456,7 +2456,7 @@ function orderPageData() {
                                                             <i class="fas fa-minus text-sm"></i>
                                                         </button>
                                                         <input type="number" min="1"
-                                                               class="h-10 w-16 rounded-xl border border-gray-200 text-center text-sm font-bold text-gray-900 shadow-inner focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                                               class="h-10 w-16 rounded-xl border border-gray-200 text-center text-sm font-bold text-gray-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                                                                :value="getAddedQty(item.id)"
                                                                :disabled="updatingItem === item.id"
                                                                @input="let v = parseInt($event.target.value) || 1; if (v < 1) v = 1; addedItems[item.id] = v;"
@@ -2482,7 +2482,7 @@ function orderPageData() {
                                                             <i class="fas fa-minus text-sm"></i>
                                                         </button>
                                                         <input type="number" step="0.01" min="0.01" lang="en"
-                                                               class="h-10 w-16 rounded-xl border border-gray-200 text-center text-sm font-bold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                                                               class="h-10 w-16 rounded-xl border border-gray-200 text-center text-sm font-bold text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                                                                :value="getLineBillingUnits(item.id)"
                                                                :disabled="updatingItem === item.id"
                                                                @input="addedItemBillingUnits = { ...addedItemBillingUnits, [item.id]: parseFloat($event.target.value) || 1 }"
@@ -2508,13 +2508,13 @@ function orderPageData() {
                                 <article class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
                                     <div class="p-4">
                                         <div class="flex gap-3">
-                                            <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 ring-1 ring-blue-100">
-                                                <i class="fas fa-box text-lg text-blue-600"></i>
+                                            <div class="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 ring-1 ring-emerald-100">
+                                                <i class="fas fa-box text-lg text-emerald-600"></i>
                                             </div>
                                             <div class="min-w-0 flex-1">
                                                 <div class="flex items-start justify-between gap-2">
                                                     <h4 class="text-base font-bold leading-snug text-gray-900" x-text="item.name"></h4>
-                                                    <span class="flex-shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-sm font-bold tabular-nums text-blue-800">₹<span x-text="parseFloat(item.price).toFixed(2)"></span></span>
+                                                    <span class="flex-shrink-0 rounded-lg bg-emerald-50 px-2.5 py-1 text-sm font-bold tabular-nums text-emerald-800">₹<span x-text="parseFloat(item.price).toFixed(2)"></span></span>
                                                 </div>
                                                 <p class="mt-1 text-sm text-gray-500" x-text="item.category ? item.category.name : '{{ __('vendor.no_category') }}'"></p>
                                                 <p class="mt-1 text-xs text-gray-500" x-show="item.manage_stock">
@@ -2527,7 +2527,7 @@ function orderPageData() {
                                         <button type="button" @click="addItemToCart(item.id)"
                                                 x-show="!isAdded(item.id)"
                                                 :disabled="addingItem === item.id"
-                                                class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-base font-semibold text-white shadow-md transition hover:bg-blue-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
+                                                class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-base font-semibold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
                                             <span x-show="addingItem !== item.id"><i class="fas fa-plus"></i>{{ __('vendor.add_to_cart') }}</span>
                                             <span x-show="addingItem === item.id"><i class="fas fa-spinner fa-spin"></i></span>
                                         </button>
@@ -2541,7 +2541,7 @@ function orderPageData() {
                                                         <i class="fas fa-minus"></i>
                                                     </button>
                                                     <input type="number" min="1"
-                                                           class="h-12 w-20 rounded-xl border-2 border-gray-200 bg-white text-center text-lg font-bold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25"
+                                                           class="h-12 w-20 rounded-xl border-2 border-gray-200 bg-white text-center text-lg font-bold text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25"
                                                            :value="getAddedQty(item.id)"
                                                            :disabled="updatingItem === item.id"
                                                            @input="let v = parseInt($event.target.value) || 1; if (v < 1) v = 1; addedItems[item.id] = v;"
@@ -2563,7 +2563,7 @@ function orderPageData() {
                                                         <i class="fas fa-minus"></i>
                                                     </button>
                                                     <input type="number" step="0.01" min="0.01" lang="en"
-                                                           class="h-12 w-20 rounded-xl border-2 border-gray-200 bg-white text-center text-lg font-bold text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25"
+                                                           class="h-12 w-20 rounded-xl border-2 border-gray-200 bg-white text-center text-lg font-bold text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25"
                                                            :value="getLineBillingUnits(item.id)"
                                                            :disabled="updatingItem === item.id"
                                                            @input="addedItemBillingUnits = { ...addedItemBillingUnits, [item.id]: parseFloat($event.target.value) || 1 }"
@@ -2596,7 +2596,7 @@ function orderPageData() {
                     <button type="button"
                             @click="showAddItem = false; searchQuery = ''; selectedCategory = ''"
                             class="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-gray-50 py-3.5 text-base font-semibold text-gray-800 shadow-sm transition hover:bg-gray-100 sm:w-auto sm:px-8 sm:py-3 sm:text-sm">
-                        <i class="fas fa-check text-blue-600"></i>{{ __('vendor.modal_done') }}
+                        <i class="fas fa-check text-emerald-600"></i>{{ __('vendor.modal_done') }}
                     </button>
                 </footer>
             </div>
@@ -2662,10 +2662,10 @@ function orderPageData() {
     <div class="fixed inset-0 flex items-center justify-center p-4">
         <div class="relative bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all" onclick="event.stopPropagation()">
             <!-- Header -->
-            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 rounded-t-xl">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-t-xl">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 flex items-center justify-center bg-blue-600 rounded-lg">
+                        <div class="w-10 h-10 flex items-center justify-center bg-emerald-600 rounded-lg">
                             <i class="fas fa-percent text-white"></i>
                         </div>
                         <div>
@@ -2687,9 +2687,9 @@ function orderPageData() {
                     <div class="grid grid-cols-2 gap-3">
                         <label class="relative cursor-pointer">
                             <input type="radio" name="discount_type" value="fixed" checked class="peer sr-only" id="discount_type_fixed">
-                            <div class="flex items-center justify-center px-4 py-3 border-2 border-gray-200 rounded-lg peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
+                            <div class="flex items-center justify-center px-4 py-3 border-2 border-gray-200 rounded-lg peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all">
                                 <div class="text-center">
-                                    <i class="fas fa-rupee-sign text-lg text-gray-500 peer-checked:text-blue-600 mb-1"></i>
+                                    <i class="fas fa-rupee-sign text-lg text-gray-500 peer-checked:text-emerald-600 mb-1"></i>
                                     <p class="text-sm font-semibold text-gray-700">Fixed Amount</p>
                                     <p class="text-xs text-gray-500">₹ value</p>
                                 </div>
@@ -2697,9 +2697,9 @@ function orderPageData() {
                         </label>
                         <label class="relative cursor-pointer">
                             <input type="radio" name="discount_type" value="percent" class="peer sr-only" id="discount_type_percent">
-                            <div class="flex items-center justify-center px-4 py-3 border-2 border-gray-200 rounded-lg peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
+                            <div class="flex items-center justify-center px-4 py-3 border-2 border-gray-200 rounded-lg peer-checked:border-emerald-500 peer-checked:bg-emerald-50 transition-all">
                                 <div class="text-center">
-                                    <i class="fas fa-percent text-lg text-gray-500 peer-checked:text-blue-600 mb-1"></i>
+                                    <i class="fas fa-percent text-lg text-gray-500 peer-checked:text-emerald-600 mb-1"></i>
                                     <p class="text-sm font-semibold text-gray-700">Percentage</p>
                                     <p class="text-xs text-gray-500">% of subtotal</p>
                                 </div>
@@ -2719,7 +2719,7 @@ function orderPageData() {
                         </div>
                         <input type="number" name="discount_value" id="discount_value"
                                step="0.01" min="0" required
-                               class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                placeholder="Enter discount value">
                     </div>
                     <p class="mt-1.5 text-xs text-gray-500">
@@ -2735,7 +2735,7 @@ function orderPageData() {
                         {{ __('vendor.cancel') }}
                     </button>
                     <button type="submit" id="discountSubmitBtn"
-                            class="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 shadow-sm">
+                            class="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all active:scale-95 shadow-sm">
                         <i class="fas fa-check mr-2"></i>Apply Discount
                     </button>
                 </div>
@@ -2749,10 +2749,10 @@ function orderPageData() {
     <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="closeSecurityDepositModal()"></div>
     <div class="fixed inset-0 flex items-center justify-center p-4">
         <div class="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-2xl" onclick="event.stopPropagation()">
-            <div class="rounded-t-xl border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4">
+            <div class="rounded-t-xl border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-emerald-100 px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600">
                             <i class="fas fa-shield-alt text-white"></i>
                         </div>
                         <div>
@@ -2770,32 +2770,32 @@ function orderPageData() {
                 <div class="space-y-3">
                     <label class="block text-sm font-semibold text-gray-700">Deposit Rule</label>
 
-                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50">
-                        <input type="radio" name="security_deposit_type" value="none" class="mt-1 h-4 w-4 text-blue-600" @checked(($order->security_deposit_type ?? 'none') === 'none')>
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-emerald-300 hover:bg-emerald-50/50">
+                        <input type="radio" name="security_deposit_type" value="none" class="mt-1 h-4 w-4 text-emerald-600" @checked(($order->security_deposit_type ?? 'none') === 'none')>
                         <div>
                             <p class="text-sm font-semibold text-gray-900">None</p>
                             <p class="text-xs text-gray-600">Do not charge a security deposit by default.</p>
                         </div>
                     </label>
 
-                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50">
-                        <input type="radio" name="security_deposit_type" value="order_amount" class="mt-1 h-4 w-4 text-blue-600" @checked(($order->security_deposit_type ?? 'none') === 'order_amount')>
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-emerald-300 hover:bg-emerald-50/50">
+                        <input type="radio" name="security_deposit_type" value="order_amount" class="mt-1 h-4 w-4 text-emerald-600" @checked(($order->security_deposit_type ?? 'none') === 'order_amount')>
                         <div>
                             <p class="text-sm font-semibold text-gray-900">Order amount</p>
                             <p class="text-xs text-gray-600">Add a percentage of the total order amount.</p>
                         </div>
                     </label>
 
-                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50">
-                        <input type="radio" name="security_deposit_type" value="product_security_deposit" class="mt-1 h-4 w-4 text-blue-600" @checked(($order->security_deposit_type ?? 'none') === 'product_security_deposit')>
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-emerald-300 hover:bg-emerald-50/50">
+                        <input type="radio" name="security_deposit_type" value="product_security_deposit" class="mt-1 h-4 w-4 text-emerald-600" @checked(($order->security_deposit_type ?? 'none') === 'product_security_deposit')>
                         <div>
                             <p class="text-sm font-semibold text-gray-900">Product security deposit value</p>
                             <p class="text-xs text-gray-600">Charge a percentage of the security deposit value of all products on an order.</p>
                         </div>
                     </label>
 
-                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-blue-300 hover:bg-blue-50/50">
-                        <input type="radio" name="security_deposit_type" value="fixed_amount" class="mt-1 h-4 w-4 text-blue-600" @checked(($order->security_deposit_type ?? 'none') === 'fixed_amount')>
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 transition hover:border-emerald-300 hover:bg-emerald-50/50">
+                        <input type="radio" name="security_deposit_type" value="fixed_amount" class="mt-1 h-4 w-4 text-emerald-600" @checked(($order->security_deposit_type ?? 'none') === 'fixed_amount')>
                         <div>
                             <p class="text-sm font-semibold text-gray-900">Fixed amount</p>
                             <p class="text-xs text-gray-600">Charge a fixed amount, regardless of the products on an order.</p>
@@ -2813,7 +2813,7 @@ function orderPageData() {
                                id="security_deposit_value"
                                step="0.01"
                                min="0"
-                               class="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 text-sm focus:border-transparent focus:ring-2 focus:ring-blue-500"
+                               class="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 text-sm focus:border-transparent focus:ring-2 focus:ring-emerald-500"
                                placeholder="Enter value">
                     </div>
                     <p id="securityDepositValueHelp" class="mt-1.5 text-xs text-gray-500"></p>
@@ -2825,7 +2825,7 @@ function orderPageData() {
                     <button type="button" onclick="closeSecurityDepositModal()" class="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50">
                         {{ __('vendor.cancel') }}
                     </button>
-                    <button type="submit" class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95">
+                    <button type="submit" class="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 active:scale-95">
                         <i class="fas fa-check mr-2"></i>Apply
                     </button>
                 </div>
@@ -2903,10 +2903,10 @@ function orderPageData() {
     <div class="fixed inset-0 flex items-center justify-center p-4">
         <div class="relative bg-white rounded-xl shadow-2xl max-w-lg w-full transform transition-all" onclick="event.stopPropagation()">
             <!-- Modal Header -->
-            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100 rounded-t-xl">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-t-xl">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 flex items-center justify-center bg-blue-600 rounded-lg">
+                        <div class="w-10 h-10 flex items-center justify-center bg-emerald-600 rounded-lg">
                             <i class="fas fa-shopping-cart text-white"></i>
                         </div>
                         <div>
@@ -2988,7 +2988,7 @@ function orderPageData() {
                         {{ __('vendor.cancel') }}
                     </button>
                     <button type="submit" id="editCartSubmitBtn"
-                            class="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-all active:scale-95 shadow-sm">
+                            class="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all active:scale-95 shadow-sm">
                         <i class="fas fa-save mr-2"></i>{{ __('vendor.update') }}
                     </button>
                 </div>
@@ -3057,12 +3057,12 @@ function orderPageData() {
     <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="closeMarkReturnedModal()"></div>
     <div class="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4">
         <div class="relative flex max-h-[min(92dvh,640px)] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl ring-1 ring-gray-200 sm:rounded-2xl" onclick="event.stopPropagation()">
-            <div class="shrink-0 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-violet-50 px-4 py-3.5 sm:px-5">
+            <div class="shrink-0 border-b border-gray-100 bg-gradient-to-r from-teal-50 to-teal-50 px-4 py-3.5 sm:px-5">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <h3 id="markReturnedModalTitle" class="text-base font-bold text-gray-900 sm:text-lg">{{ __('vendor.mark_returned_modal_title') }}</h3>
                         <p class="mt-1 text-xs leading-snug text-gray-600 sm:text-sm">{{ __('vendor.mark_returned_modal_hint') }}</p>
-                        <p id="markReturnedAlreadySummary" class="mt-2 hidden rounded-lg border border-indigo-200/80 bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-indigo-900"></p>
+                        <p id="markReturnedAlreadySummary" class="mt-2 hidden rounded-lg border border-teal-200/80 bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-teal-900"></p>
                     </div>
                     <button type="button" onclick="closeMarkReturnedModal()" class="shrink-0 rounded-lg p-2 text-gray-500 transition hover:bg-white/80 hover:text-gray-800" aria-label="{{ __('vendor.cancel') }}">
                         <i class="fas fa-times text-lg" aria-hidden="true"></i>
@@ -3072,7 +3072,7 @@ function orderPageData() {
             <div id="markReturnedItemList" class="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain px-4 py-3 sm:px-5 [-webkit-overflow-scrolling:touch]"></div>
             <div class="shrink-0 border-t border-gray-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">
                 <button type="button" id="markReturnedConfirmBtn" onclick="confirmMarkReturned()"
-                        class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-indigo-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
+                        class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-teal-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50">
                     <i class="fas fa-check" aria-hidden="true"></i><span id="markReturnedConfirmLabel">{{ __('vendor.mark_returned_confirm') }}</span>
                 </button>
             </div>
@@ -3752,7 +3752,7 @@ function loadCouponList() {
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center space-x-2">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${disabled ? 'bg-gray-100 text-gray-500' : 'bg-emerald-100 text-emerald-800'} border ${disabled ? 'border-gray-200' : 'border-emerald-200'} tracking-wider">${coupon.code}</span>
-                                <span class="text-xs font-semibold ${disabled ? 'text-gray-400' : 'text-blue-600'}">${typeLabel}</span>
+                                <span class="text-xs font-semibold ${disabled ? 'text-gray-400' : 'text-emerald-600'}">${typeLabel}</span>
                             </div>
                             <p class="text-sm text-gray-700 mt-1 truncate">${coupon.name}</p>
                             ${details ? `<p class="text-xs text-gray-400 mt-0.5">${details}</p>` : ''}

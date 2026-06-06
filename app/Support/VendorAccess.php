@@ -155,7 +155,7 @@ class VendorAccess
             return 'support.view';
         }
 
-        if (str_starts_with($routeName, 'vendor.orders.create')) {
+        if (str_starts_with($routeName, 'vendor.orders.create') || $routeName === 'vendor.orders.new') {
             return 'orders.create';
         }
 

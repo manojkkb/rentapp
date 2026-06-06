@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Vendor;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Vendor\Concerns\RedirectsIfNumericRouteKey;
 use App\Models\Category;
+use App\Models\ItemAttribute;
 use App\Models\Items;
+use App\Models\ItemVariant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -60,21 +62,7 @@ class ItemController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
-        // Get all categories for filter
-        $categories = Category::where('vendor_id', $vendor->id)
-            ->whereNull('parent_id')
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        $rentalPeriods = $this->rentalPeriodOptions();
-
-        $items = Items::where('vendor_id', $vendor->id)
-            ->with('category')
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
-
-        return view('vendor.items.index', compact('items', 'vendor', 'categories', 'rentalPeriods'));
+        return view('vendor.items.index');
     }
 
     /**
@@ -147,8 +135,9 @@ class ItemController extends Controller
         $categories = $this->categoriesForItemForm($vendor->id);
 
         $rentalPeriods = $this->rentalPeriodOptions();
+        $variantFormState = $this->variantFormStateForView();
 
-        return view('vendor.items.create', compact('vendor', 'categories', 'rentalPeriods'));
+        return view('vendor.items.create', compact('vendor', 'categories', 'rentalPeriods', 'variantFormState'));
     }
 
     /**
@@ -164,6 +153,7 @@ class ItemController extends Controller
 
         $request->validate($this->itemPayloadValidationRules());
         $this->validateItemInventoryConsistency($request);
+        $this->validateVariantPayload($request);
 
         // Generate unique slug
         $slug = Str::slug($request->name);
@@ -192,17 +182,19 @@ class ItemController extends Controller
                 $item->update(['photo' => $path]);
             }
 
+            $this->syncItemVariantsFromRequest($item, $request);
+
             // If AJAX request, return JSON
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Item created successfully!',
-                    'item' => $item->fresh()->load('category'),
+                    'item' => $item->fresh()->load(['category', 'variantAttributes', 'variants']),
                 ]);
             }
 
             return redirect()->route('vendor.items.index')
-                ->with('success', 'Item created successfully!');
+                ->with('success', __('vendor.item_added'));
 
         } catch (\Exception $e) {
             // If AJAX request, return JSON error
@@ -341,7 +333,11 @@ class ItemController extends Controller
             return $redirect;
         }
 
-        $item->load('category');
+        $item->load([
+            'category',
+            'variantAttributes' => fn ($q) => $q->ordered(),
+            'variants' => fn ($q) => $q->ordered(),
+        ]);
         $rentalPeriods = $this->rentalPeriodOptions();
         $conditionLabels = Items::conditionStatusOptions();
 
@@ -379,8 +375,9 @@ class ItemController extends Controller
         $categories = $this->categoriesForItemForm($vendor->id, $item->category_id);
 
         $rentalPeriods = $this->rentalPeriodOptions();
+        $variantFormState = $this->variantFormStateForView($item);
 
-        return view('vendor.items.edit', compact('vendor', 'item', 'categories', 'rentalPeriods'));
+        return view('vendor.items.edit', compact('vendor', 'item', 'categories', 'rentalPeriods', 'variantFormState'));
     }
 
     /**
@@ -401,6 +398,7 @@ class ItemController extends Controller
 
         $request->validate($this->itemPayloadValidationRules($item));
         $this->validateItemInventoryConsistency($request);
+        $this->validateVariantPayload($request);
 
         // Generate unique slug if name changed
         $slug = Str::slug($request->name);
@@ -432,17 +430,19 @@ class ItemController extends Controller
 
             $item->update($data);
 
+            $this->syncItemVariantsFromRequest($item, $request);
+
             // If AJAX request, return JSON
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Item updated successfully!',
-                    'item' => $item->fresh()->load('category'),
+                    'item' => $item->fresh()->load(['category', 'variantAttributes', 'variants']),
                 ]);
             }
 
             return redirect()->route('vendor.items.index')
-                ->with('success', 'Item updated successfully!');
+                ->with('success', __('vendor.item_updated'));
 
         } catch (\Exception $e) {
             // If AJAX request, return JSON error
@@ -538,8 +538,9 @@ class ItemController extends Controller
     private function itemPayloadValidationRules(?Items $item = null): array
     {
         $vendor = Auth::user()->currentVendor();
+        $usesVariants = request()->boolean('has_variants');
 
-        return [
+        $rules = [
             'item_code' => [
                 'nullable',
                 'string',
@@ -552,7 +553,7 @@ class ItemController extends Controller
             'name' => 'required|string|max:255',
             'category_id' => 'required|numeric|exists:categories,id',
             'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
+            'price' => ($usesVariants ? 'nullable' : 'required').'|numeric|min:0',
             'rental_period' => ['required', Rule::in(Items::rentalPeriodKeys())],
             'security_deposit' => 'required|numeric|min:0',
             'replacement_cost' => 'required|numeric|min:0',
@@ -560,14 +561,39 @@ class ItemController extends Controller
             'min_rental_duration' => 'required|integer|min:1|max:3650',
             'max_rental_duration' => 'required|integer|min:1|max:3650',
             'condition_status' => ['required', Rule::in(Items::CONDITION_STATUSES)],
-            'stock' => 'required|integer|min:0',
-            'damaged_stock' => 'required|integer|min:0',
-            'maintenance_stock' => 'required|integer|min:0',
+            'stock' => ($usesVariants ? 'nullable' : 'required').'|integer|min:0',
+            'damaged_stock' => ($usesVariants ? 'nullable' : 'required').'|integer|min:0',
+            'maintenance_stock' => ($usesVariants ? 'nullable' : 'required').'|integer|min:0',
             'manage_stock' => 'nullable',
+            'has_variants' => 'nullable|boolean',
             'is_available' => 'nullable',
             'is_active' => 'nullable',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ];
+
+        return $rules;
+    }
+
+    private function validateVariantPayload(Request $request): void
+    {
+        if (! $request->boolean('has_variants')) {
+            return;
+        }
+
+        $request->validate([
+            'variant_attributes' => ['required', 'array', 'min:1'],
+            'variant_attributes.*.name' => ['required', 'string', 'max:64'],
+            'variants' => ['required', 'array', 'min:1'],
+            'variants.*.price' => ['required', 'numeric', 'min:0'],
+            'variants.*.stock' => ['required', 'integer', 'min:0'],
+            'variants.*.damaged_stock' => ['nullable', 'integer', 'min:0'],
+            'variants.*.maintenance_stock' => ['nullable', 'integer', 'min:0'],
+            'variants.*.attributes' => ['nullable', 'array'],
+        ], [
+            'variant_attributes.required' => __('vendor.item_variants_attributes_required'),
+            'variants.required' => __('vendor.item_variants_rows_required'),
+            'variants.min' => __('vendor.item_variants_rows_required'),
+        ]);
     }
 
     private function validateItemInventoryConsistency(Request $request): void
@@ -586,13 +612,14 @@ class ItemController extends Controller
      */
     private function itemAttributesFromRequest(Request $request): array
     {
-        $stock = (int) $request->input('stock');
+        $usesVariants = $request->boolean('has_variants');
+        $stock = (int) $request->input('stock', 0);
 
         return [
             'category_id' => $request->category_id,
             'name' => $request->name,
             'description' => $request->description,
-            'price' => $request->price,
+            'price' => $usesVariants ? 0 : $request->price,
             'rental_period' => $request->rental_period,
             'security_deposit' => round((float) $request->security_deposit, 2),
             'replacement_cost' => round((float) $request->replacement_cost, 2),
@@ -600,13 +627,279 @@ class ItemController extends Controller
             'min_rental_duration' => (int) $request->min_rental_duration,
             'max_rental_duration' => (int) $request->max_rental_duration,
             'condition_status' => $request->condition_status,
-            'stock' => $stock,
-            'damaged_stock' => (int) $request->input('damaged_stock'),
-            'maintenance_stock' => (int) $request->input('maintenance_stock'),
-            'manage_stock' => $request->boolean('manage_stock', true),
-            'is_available' => $request->boolean('is_available', $stock > 0),
+            'stock' => $usesVariants ? 0 : $stock,
+            'damaged_stock' => $usesVariants ? 0 : (int) $request->input('damaged_stock'),
+            'maintenance_stock' => $usesVariants ? 0 : (int) $request->input('maintenance_stock'),
+            'manage_stock' => $usesVariants ? true : $request->boolean('manage_stock', true),
+            'has_variants' => $usesVariants,
+            'is_available' => $request->boolean('is_available', $usesVariants || $stock > 0),
             'is_active' => $request->boolean('is_active', true),
         ];
+    }
+
+    /**
+     * @return array{hasVariants: bool, attributes: list<array<string, mixed>>, variants: list<array<string, mixed>>}
+     */
+    private function variantFormStateForView(?Items $item = null): array
+    {
+        if (old('has_variants') !== null || old('variant_attributes') !== null || old('variants') !== null) {
+            return $this->variantFormStateFromOld();
+        }
+
+        if ($item?->usesVariants()) {
+            $item->load([
+                'variantAttributes' => fn ($q) => $q->ordered(),
+                'variants' => fn ($q) => $q->ordered(),
+            ]);
+
+            return [
+                'hasVariants' => true,
+                'attributes' => $item->variantAttributes->map(fn (ItemAttribute $a) => [
+                    'id' => $a->id,
+                    'name' => $a->name,
+                    'slug' => $a->slug,
+                    'sort_order' => $a->sort_order,
+                ])->values()->all(),
+                'variants' => $item->variants->map(fn (ItemVariant $v) => [
+                    'id' => $v->id,
+                    'variant_code' => $v->variant_code,
+                    'attributes' => $v->getAttribute('attributes') ?? [],
+                    'price' => (float) $v->price,
+                    'stock' => (int) $v->stock,
+                    'damaged_stock' => (int) $v->damaged_stock,
+                    'maintenance_stock' => (int) $v->maintenance_stock,
+                    'manage_stock' => (bool) $v->manage_stock,
+                    'is_available' => (bool) $v->is_available,
+                ])->values()->all(),
+            ];
+        }
+
+        return [
+            'hasVariants' => false,
+            'attributes' => [],
+            'variants' => [],
+        ];
+    }
+
+    /**
+     * @return array{hasVariants: bool, attributes: list<array<string, mixed>>, variants: list<array<string, mixed>>}
+     */
+    private function variantFormStateFromOld(): array
+    {
+        $attributes = collect(old('variant_attributes', []))
+            ->values()
+            ->map(function ($row, $index) {
+                if (! is_array($row)) {
+                    return null;
+                }
+                $name = trim((string) ($row['name'] ?? ''));
+                if ($name === '') {
+                    return null;
+                }
+
+                return [
+                    'id' => ! empty($row['id']) ? (int) $row['id'] : null,
+                    'name' => $name,
+                    'slug' => trim((string) ($row['slug'] ?? '')) ?: ItemAttribute::slugFromName($name),
+                    'sort_order' => (int) ($row['sort_order'] ?? $index),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        $variants = collect(old('variants', []))
+            ->values()
+            ->map(function ($row) {
+                if (! is_array($row)) {
+                    return null;
+                }
+
+                return [
+                    'id' => ! empty($row['id']) ? (int) $row['id'] : null,
+                    'variant_code' => $row['variant_code'] ?? null,
+                    'attributes' => is_array($row['attributes'] ?? null) ? $row['attributes'] : [],
+                    'price' => (float) ($row['price'] ?? 0),
+                    'stock' => (int) ($row['stock'] ?? 0),
+                    'damaged_stock' => (int) ($row['damaged_stock'] ?? 0),
+                    'maintenance_stock' => (int) ($row['maintenance_stock'] ?? 0),
+                    'manage_stock' => filter_var($row['manage_stock'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                    'is_available' => filter_var($row['is_available'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'hasVariants' => (bool) old('has_variants'),
+            'attributes' => $attributes,
+            'variants' => $variants,
+        ];
+    }
+
+    private function syncItemVariantsFromRequest(Items $item, Request $request): void
+    {
+        $usesVariants = $request->boolean('has_variants');
+        $item->update(['has_variants' => $usesVariants]);
+
+        if (! $usesVariants) {
+            $item->variants()->delete();
+            $item->variantAttributes()->delete();
+
+            return;
+        }
+
+        $attributeRows = collect($request->input('variant_attributes', []))
+            ->values()
+            ->filter(fn ($row) => is_array($row) && trim((string) ($row['name'] ?? '')) !== '');
+
+        $keptAttributeIds = [];
+        foreach ($attributeRows as $index => $row) {
+            $name = trim((string) $row['name']);
+            $slug = ItemAttribute::slugFromName(trim((string) ($row['slug'] ?? '')) ?: $name);
+            $attribute = null;
+
+            if (! empty($row['id'])) {
+                $attribute = ItemAttribute::where('item_id', $item->id)->find((int) $row['id']);
+            }
+
+            if ($attribute) {
+                $oldSlug = $attribute->slug;
+                $attribute->update([
+                    'name' => $name,
+                    'slug' => $slug,
+                    'sort_order' => $index,
+                ]);
+
+                if ($oldSlug !== $slug) {
+                    $this->renameVariantAttributeKey($item, $oldSlug, $slug);
+                }
+            } else {
+                $attribute = ItemAttribute::create([
+                    'item_id' => $item->id,
+                    'name' => $name,
+                    'slug' => $slug,
+                    'sort_order' => $index,
+                ]);
+            }
+
+            $keptAttributeIds[] = $attribute->id;
+        }
+
+        $removedAttributes = ItemAttribute::where('item_id', $item->id)
+            ->when($keptAttributeIds !== [], fn ($q) => $q->whereNotIn('id', $keptAttributeIds))
+            ->get();
+
+        foreach ($removedAttributes as $removed) {
+            $this->removeVariantAttributeKey($item, $removed->slug);
+            $removed->delete();
+        }
+
+        $definitions = $item->variantAttributes()->ordered()->get();
+        $variantRows = collect($request->input('variants', []))
+            ->values()
+            ->filter(fn ($row) => is_array($row));
+
+        $keptVariantIds = [];
+        foreach ($variantRows as $index => $row) {
+            $normalizedAttributes = ItemVariant::normalizeAttributesForDefinitions(
+                is_array($row['attributes'] ?? null) ? $row['attributes'] : [],
+                $definitions
+            );
+
+            $stock = (int) ($row['stock'] ?? 0);
+            $payload = [
+                'attributes' => $normalizedAttributes,
+                'price' => round((float) ($row['price'] ?? 0), 2),
+                'stock' => $stock,
+                'damaged_stock' => (int) ($row['damaged_stock'] ?? 0),
+                'maintenance_stock' => (int) ($row['maintenance_stock'] ?? 0),
+                'manage_stock' => filter_var($row['manage_stock'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                'is_available' => filter_var($row['is_available'] ?? ($stock > 0), FILTER_VALIDATE_BOOLEAN),
+                'sort_order' => $index,
+            ];
+
+            $variant = null;
+            if (! empty($row['id'])) {
+                $variant = ItemVariant::where('item_id', $item->id)->find((int) $row['id']);
+            }
+
+            if ($variant) {
+                $variant->update($payload);
+            } else {
+                $variant = ItemVariant::create(array_merge($payload, [
+                    'item_id' => $item->id,
+                ]));
+            }
+
+            $keptVariantIds[] = $variant->id;
+        }
+
+        if ($keptVariantIds !== []) {
+            $item->variants()->whereNotIn('id', $keptVariantIds)->delete();
+        } else {
+            $item->variants()->delete();
+        }
+
+        $this->syncItemAggregatesFromVariants($item->fresh(['variants']));
+    }
+
+    private function renameVariantAttributeKey(Items $item, string $oldSlug, string $newSlug): void
+    {
+        foreach ($item->variants as $variant) {
+            $values = $variant->getAttribute('attributes');
+            if (! is_array($values) || ! array_key_exists($oldSlug, $values)) {
+                continue;
+            }
+
+            $values[$newSlug] = $values[$oldSlug];
+            unset($values[$oldSlug]);
+            $variant->update(['attributes' => $values]);
+        }
+    }
+
+    private function removeVariantAttributeKey(Items $item, string $slug): void
+    {
+        foreach ($item->variants as $variant) {
+            $values = $variant->getAttribute('attributes');
+            if (! is_array($values) || ! array_key_exists($slug, $values)) {
+                continue;
+            }
+
+            unset($values[$slug]);
+            $variant->update(['attributes' => $values]);
+        }
+    }
+
+    private function syncItemAggregatesFromVariants(Items $item): void
+    {
+        if (! $item->usesVariants()) {
+            return;
+        }
+
+        $variants = $item->variants;
+        if ($variants->isEmpty()) {
+            $item->updateQuietly([
+                'price' => 0,
+                'stock' => 0,
+                'damaged_stock' => 0,
+                'maintenance_stock' => 0,
+                'is_available' => false,
+            ]);
+
+            return;
+        }
+
+        $item->updateQuietly([
+            'price' => (float) $variants->min('price'),
+            'stock' => (int) $variants->sum('stock'),
+            'damaged_stock' => (int) $variants->sum('damaged_stock'),
+            'maintenance_stock' => (int) $variants->sum('maintenance_stock'),
+            'is_available' => $variants->contains(
+                fn (ItemVariant $variant) => $variant->is_available && $variant->is_active && $variant->stock > 0
+            ),
+        ]);
     }
 
     /**

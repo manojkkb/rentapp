@@ -96,7 +96,7 @@
                         <button type="button"
                                 @click="saveQuickCategory()"
                                 :disabled="categoryCreateSaving"
-                                class="h-10 w-full rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+                                class="{{ $btnLight ?? 'inline-flex h-10 w-full items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100' }} disabled:opacity-60">
                             <span x-show="!categoryCreateSaving">{{ __('vendor.order_wizard_save_and_select_category') }}</span>
                             <span x-show="categoryCreateSaving" x-cloak>{{ __('vendor.save') }}…</span>
                         </button>
@@ -144,12 +144,12 @@
                 <div class="flex flex-col gap-2 border-t border-gray-200 pt-4 sm:flex-row sm:justify-end">
                     <button type="button"
                             @click="closeAddItemModal()"
-                            class="h-10 w-full rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:w-auto">
+                            class="{{ $btnOutlineNeutral ?? 'inline-flex h-10 items-center justify-center rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50' }} w-full sm:w-auto">
                         {{ __('vendor.cancel') }}
                     </button>
                     <button type="submit"
                             :disabled="quickItemSaving"
-                            class="h-10 w-full rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60 sm:w-auto">
+                            class="{{ $btnPrimary ?? 'inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700' }} w-full disabled:opacity-60 sm:w-auto">
                         <span x-show="!quickItemSaving">{{ __('vendor.order_wizard_save_and_add_item') }}</span>
                         <span x-show="quickItemSaving" x-cloak>{{ __('vendor.save') }}…</span>
                     </button>

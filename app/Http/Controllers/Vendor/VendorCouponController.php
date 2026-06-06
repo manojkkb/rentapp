@@ -17,34 +17,8 @@ class VendorCouponController extends Controller
     public function index(Request $request)
     {
         $vendor = $this->vendor();
-        $query = Coupon::where('vendor_id', $vendor->id);
 
-        if ($search = $request->input('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('code', 'like', "%{$search}%")
-                  ->orWhere('name', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('type')) {
-            $query->where('type', $request->input('type'));
-        }
-
-        if ($request->filled('status')) {
-            $query->where('is_active', $request->input('status') === 'active');
-        }
-
-        $coupons = $query->orderBy('created_at', 'desc')->paginate(15);
-
-        if ($request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'html' => view('vendor.coupons._list', compact('coupons'))->render(),
-                'total' => $coupons->total(),
-            ]);
-        }
-
-        return view('vendor.coupons.index', compact('coupons'));
+        return view('vendor.coupons.index');
     }
 
     public function store(Request $request)

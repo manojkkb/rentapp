@@ -73,6 +73,20 @@
 
                     <td class="px-6 py-4">
                         @if(!$vendorUser->is_owner)
+                            @if($livewireList ?? false)
+                                <div class="inline-block" wire:key="staff-toggle-{{ $vendorUser->id }}">
+                                    <button type="button"
+                                            wire:click="toggleStatus({{ $vendorUser->id }})"
+                                            wire:loading.attr="disabled"
+                                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 {{ $vendorUser->is_active ? 'bg-emerald-500' : 'bg-gray-300' }}"
+                                            title="{{ $vendorUser->is_active ? __('vendor.click_to_deactivate') : __('vendor.click_to_activate') }}">
+                                        <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $vendorUser->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                    </button>
+                                    <span class="ml-2 text-xs font-medium {{ $vendorUser->is_active ? 'text-emerald-700' : 'text-gray-500' }}">
+                                        {{ $vendorUser->is_active ? __('vendor.active') : __('vendor.inactive') }}
+                                    </span>
+                                </div>
+                            @else
                             <div class="inline-block" x-data="{ isActive: {{ $vendorUser->is_active ? 'true' : 'false' }} }">
                                 <form action="{{ route('vendor.staff.toggle', $vendorUser) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
                                     @csrf
@@ -86,6 +100,7 @@
                                 </form>
                                 <span class="ml-2 text-xs font-medium" :class="isActive ? 'text-emerald-700' : 'text-gray-500'" x-text="isActive ? '{{ __('vendor.active') }}' : '{{ __('vendor.inactive') }}'"></span>
                             </div>
+                            @endif
                         @else
                             <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
                                 <i class="fas fa-crown mr-1"></i>
@@ -125,10 +140,20 @@
                                          }
                                      })">
                                     <a href="{{ route('vendor.staff.edit', $vendorUser) }}"
-                                       class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                        <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
+                                       @if($livewireList ?? false) wire:navigate @endif
+                                       class="block px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
+                                        <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
                                         {{ __('vendor.edit') }}
                                     </a>
+                                    @if($livewireList ?? false)
+                                        <button type="button"
+                                                wire:click="deleteStaff({{ $vendorUser->id }})"
+                                                wire:confirm="{{ __('vendor.confirm_delete') }}"
+                                                class="block w-full px-4 py-2.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50">
+                                            <i class="fas fa-trash-alt w-5 mr-3"></i>
+                                            {{ __('vendor.delete') }}
+                                        </button>
+                                    @else
                                     <form action="{{ route('vendor.staff.destroy', $vendorUser) }}"
                                           method="POST"
                                           onsubmit="return confirm(@js(__('vendor.confirm_delete')));">
@@ -140,6 +165,7 @@
                                             {{ __('vendor.delete') }}
                                         </button>
                                     </form>
+                                    @endif
                                 </div>
                             </div>
                         @else
@@ -182,10 +208,20 @@
                              class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
                              style="display: none;">
                             <a href="{{ route('vendor.staff.edit', $vendorUser) }}"
-                               class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
-                                <i class="fas fa-edit w-5 text-blue-500 mr-3"></i>
+                               @if($livewireList ?? false) wire:navigate @endif
+                               class="block border-b border-gray-100 px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 active:bg-gray-100">
+                                <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
                                 {{ __('vendor.edit') }}
                             </a>
+                            @if($livewireList ?? false)
+                                <button type="button"
+                                        wire:click="deleteStaff({{ $vendorUser->id }})"
+                                        wire:confirm="{{ __('vendor.confirm_delete') }}"
+                                        class="block w-full px-4 py-3 text-left text-sm text-red-600 transition-colors hover:bg-red-50 active:bg-red-100">
+                                    <i class="fas fa-trash-alt w-5 mr-3"></i>
+                                    {{ __('vendor.delete') }}
+                                </button>
+                            @else
                             <form action="{{ route('vendor.staff.destroy', $vendorUser) }}"
                                   method="POST"
                                   onsubmit="return confirm(@js(__('vendor.confirm_delete')));">
@@ -197,6 +233,7 @@
                                     {{ __('vendor.delete') }}
                                 </button>
                             </form>
+                            @endif
                         </div>
                     </div>
                 @endif
@@ -224,6 +261,18 @@
             @if(!$vendorUser->is_owner)
                 <div class="flex items-center justify-between">
                     <span class="text-sm font-medium text-gray-700">{{ __('vendor.status') }}</span>
+                    @if($livewireList ?? false)
+                        <div class="inline-block">
+                            <button type="button"
+                                    wire:click="toggleStatus({{ $vendorUser->id }})"
+                                    class="relative inline-flex h-7 w-12 items-center rounded-full transition-colors {{ $vendorUser->is_active ? 'bg-emerald-500' : 'bg-gray-300' }}">
+                                <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform {{ $vendorUser->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                            </button>
+                            <span class="ml-2 text-xs font-semibold {{ $vendorUser->is_active ? 'text-emerald-700' : 'text-gray-600' }}">
+                                {{ $vendorUser->is_active ? __('vendor.active') : __('vendor.inactive') }}
+                            </span>
+                        </div>
+                    @else
                     <div class="inline-block" x-data="{ isActive: {{ $vendorUser->is_active ? 'true' : 'false' }} }">
                         <form action="{{ route('vendor.staff.toggle', $vendorUser) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
                             @csrf
@@ -237,6 +286,7 @@
                         </form>
                         <span class="ml-2 text-xs font-semibold" :class="isActive ? 'text-emerald-700' : 'text-gray-600'" x-text="isActive ? '{{ __('vendor.active') }}' : '{{ __('vendor.inactive') }}'"></span>
                     </div>
+                    @endif
                 </div>
             @else
                 <span class="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
@@ -261,8 +311,12 @@
         <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('vendor.no_staff_yet') }}</h3>
         <p class="text-gray-600 mb-6">{{ __('vendor.manage_team_members') }}</p>
         <button type="button"
-                @click="$dispatch('open-create-staff-modal')"
-                class="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium">
+                @if($livewireList ?? false)
+                    wire:click="openCreateModal"
+                @else
+                    @click="$dispatch('open-create-staff-modal')"
+                @endif
+                class="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white transition-colors hover:bg-emerald-700">
             <i class="fas fa-plus mr-2"></i>
             {{ __('vendor.add_staff_member') }}
         </button>

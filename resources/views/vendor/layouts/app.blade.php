@@ -17,15 +17,23 @@
     
     <!-- Vite Assets (includes Tailwind CSS, Alpine.js, Font Awesome, and Inter Font) -->
     @stack('vite-before-app')
+    @livewireStyles
     @vite(['resources/css/app.css', 'resources/js/app.js'])
  
     <style>
         [x-cloak] { display: none !important; }
+
+        /* Vendor panel — emerald theme defaults */
+        .vendor-panel input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]):not([type="range"]):focus,
+        .vendor-panel select:focus,
+        .vendor-panel textarea:focus {
+            --tw-ring-color: rgb(16 185 129 / 0.5);
+        }
     </style>
  
     @yield('styles')
 </head>
-<body class="h-full overflow-hidden bg-gray-50" 
+<body class="vendor-panel h-full overflow-hidden bg-gray-50"
       x-data="{ 
           sidebarOpen: localStorage.getItem('sidebarOpen') !== null 
               ? localStorage.getItem('sidebarOpen') === 'true' 
@@ -36,6 +44,9 @@
           }
       }"
       @resize.window="if (window.innerWidth < 768 && sidebarOpen) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }">
+    <div id="vendor-nav-progress" class="pointer-events-none fixed inset-x-0 top-0 z-[100] h-0.5 opacity-0 transition-opacity duration-200" aria-hidden="true">
+        <div id="vendor-nav-progress-bar" class="h-full w-0 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] transition-[width] duration-300 ease-out"></div>
+    </div>
     
     <div class="flex h-full min-h-0 overflow-hidden">
         <!-- Sidebar -->
@@ -73,6 +84,7 @@
         })();
     </script>
     
+    @livewireScriptConfig
     @yield('scripts')
 </body>
 </html>

@@ -2,9 +2,12 @@ import './bootstrap';
 
 // Category image square crop (Croppie) — bundled here so it always loads with the vendor app
 import './category-image-crop';
+import './vendor/item-variant-form';
+import './order-wizard-datetime';
+import './order-wizard-step-one';
+import './order-wizard-items';
 
-// Import Alpine.js
-import Alpine from 'alpinejs';
+import { Livewire, Alpine } from '../../vendor/livewire/livewire/dist/livewire.esm';
 
 window.Alpine = Alpine;
 
@@ -79,4 +82,33 @@ Alpine.data('vendorDashboardPwaInstall', () => ({
     },
 }));
 
-Alpine.start();
+Livewire.start();
+
+(function initVendorNavigateProgress() {
+    const wrap = () => document.getElementById('vendor-nav-progress');
+    const bar = () => document.getElementById('vendor-nav-progress-bar');
+
+    document.addEventListener('livewire:navigate', () => {
+        const w = wrap();
+        const b = bar();
+        if (!w || !b) return;
+        w.classList.remove('opacity-0');
+        b.style.width = '35%';
+    });
+
+    document.addEventListener('livewire:navigating', () => {
+        const b = bar();
+        if (b) b.style.width = '75%';
+    });
+
+    document.addEventListener('livewire:navigated', () => {
+        const w = wrap();
+        const b = bar();
+        if (!w || !b) return;
+        b.style.width = '100%';
+        window.setTimeout(() => {
+            w.classList.add('opacity-0');
+            b.style.width = '0%';
+        }, 180);
+    });
+})();

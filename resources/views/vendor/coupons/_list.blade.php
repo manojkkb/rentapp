@@ -11,7 +11,7 @@
                             {{ $coupon->code }}
                         </span>
                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold
-                            {{ $coupon->type === 'percent' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700' }}">
+                            {{ $coupon->type === 'percent' ? 'bg-emerald-50 text-emerald-700' : 'bg-emerald-50 text-emerald-700' }}">
                             @if($coupon->type === 'percent')
                                 {{ rtrim(rtrim(number_format($coupon->value, 2), '0'), '.') }}% {{ __('vendor.off') }}
                             @else
@@ -69,7 +69,30 @@
                 </div>
 
                 <!-- Right: Actions -->
-                <div class="flex items-center space-x-1 flex-shrink-0">
+                <div class="flex flex-shrink-0 items-center space-x-1">
+                    @if($livewireList ?? false)
+                        <button type="button"
+                                wire:click="toggleStatus(@js($coupon->uuid))"
+                                wire:loading.attr="disabled"
+                                wire:target="toggleStatus(@js($coupon->uuid))"
+                                class="rounded-lg p-2 transition-colors {{ $coupon->is_active ? 'text-emerald-600 hover:bg-emerald-50' : 'text-gray-400 hover:bg-gray-100' }}"
+                                title="{{ $coupon->is_active ? __('vendor.deactivate') : __('vendor.activate') }}">
+                            <i class="fas {{ $coupon->is_active ? 'fa-toggle-on text-lg' : 'fa-toggle-off text-lg' }}" aria-hidden="true"></i>
+                        </button>
+                        <button type="button"
+                                wire:click="openEditModal(@js($coupon->uuid))"
+                                class="rounded-lg p-2 text-emerald-600 transition-colors hover:bg-emerald-50"
+                                title="{{ __('vendor.edit') }}">
+                            <i class="fas fa-edit" aria-hidden="true"></i>
+                        </button>
+                        <button type="button"
+                                wire:click="deleteCoupon(@js($coupon->uuid))"
+                                wire:confirm="{{ __('vendor.confirm_delete') }}"
+                                class="rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50"
+                                title="{{ __('vendor.delete') }}">
+                            <i class="fas fa-trash-alt" aria-hidden="true"></i>
+                        </button>
+                    @else
                     <!-- Toggle -->
                     <button data-coupon-toggle="{{ $coupon->uuid }}" onclick="toggleCoupon(@js($coupon->uuid))" 
                             class="p-2 rounded-lg transition-colors {{ $coupon->is_active ? 'text-emerald-600 hover:bg-emerald-50' : 'text-gray-400 hover:bg-gray-100' }}"
@@ -78,7 +101,7 @@
                     </button>
                     <!-- Edit -->
                     <button onclick="editCoupon(@js($coupon->uuid))" 
-                            class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="{{ __('vendor.edit') }}">
+                            class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="{{ __('vendor.edit') }}">
                         <i class="fas fa-edit"></i>
                     </button>
                     <!-- Delete -->
@@ -86,6 +109,7 @@
                             class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="{{ __('vendor.delete') }}">
                         <i class="fas fa-trash-alt"></i>
                     </button>
+                    @endif
                 </div>
             </div>
         </div>

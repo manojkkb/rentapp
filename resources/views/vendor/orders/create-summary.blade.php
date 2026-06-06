@@ -20,44 +20,129 @@
     };
     $startTimeDisplay = $formatWizardDateTime($wizard['start_time'] ?? null);
     $endTimeDisplay = $formatWizardDateTime($wizard['end_time'] ?? null);
+
+    $btnPrimary = 'inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm shadow-emerald-600/15 transition [touch-action:manipulation] hover:bg-emerald-700 active:bg-emerald-800';
+    $btnOutlineNeutral = 'inline-flex h-10 items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 transition [touch-action:manipulation] hover:bg-gray-50';
+    $btnPrimaryLg = 'inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white shadow-sm shadow-emerald-600/15 transition hover:bg-emerald-700 sm:w-auto';
+    $btnOutlineNeutralLg = 'inline-flex h-11 w-full items-center justify-center rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 sm:w-auto';
 @endphp
 <script>
     function orderWizardSummaryPage() {
+        const p = {
+            rentalPeriods: @json($rentalPeriods),
+            billingUnitsLabels: @json($billingUnitsLabels),
+            bookingDefaultUnitsByPriceType: @json($bookingDefaultUnitsByPriceType ?? []),
+        };
         return {
+            rentalPeriods: p.rentalPeriods,
+            billingUnitsLabels: p.billingUnitsLabels,
+            bookingDefaultUnitsByPriceType: p.bookingDefaultUnitsByPriceType,
             editOpen: false,
+            editLineKey: null,
             editItemId: null,
             editName: '',
             editQty: 1,
+            editPrice: '',
+            editRentalPeriod: 'per_day',
             editBilling: '',
             editUsesBilling: false,
             removeOpen: false,
+            removeLineKey: null,
             removeItemId: null,
             removeItemName: '',
+            rentalPeriodUsesBilling(period) {
+                return String(period || '') !== 'fixed';
+            },
+            formatRupeeInt(amount) {
+                const n = parseInt(String(Math.round(Number(amount) || 0)), 10) || 0;
+                return n.toLocaleString('en-IN');
+            },
+            formatBillingUnitsDisplay(val) {
+                const n = parseFloat(String(val));
+                if (!Number.isFinite(n)) {
+                    return '0';
+                }
+                return n.toFixed(2).replace(/\.?0+$/, '') || '0';
+            },
+            defaultBillingUnitsForType(period) {
+                const map = this.bookingDefaultUnitsByPriceType || {};
+                const raw = map[period];
+                const v = raw !== undefined && raw !== null ? parseFloat(String(raw)) : NaN;
+                return Number.isFinite(v) ? v : 1;
+            },
             openEdit(d) {
+                this.editLineKey = d.line_key || String(d.item_id);
                 this.editItemId = d.item_id;
                 this.editName = d.name ?? '';
                 this.editQty = parseInt(String(d.quantity), 10) || 1;
-                this.editUsesBilling = !!d.uses_billing;
-                if (d.billing_units !== null && d.billing_units !== undefined && d.billing_units !== '') {
-                    const n = parseFloat(String(d.billing_units));
-                    this.editBilling = Number.isFinite(n) ? String(n) : '';
+                this.editRentalPeriod = d.rental_period || 'per_day';
+                this.editUsesBilling = this.rentalPeriodUsesBilling(this.editRentalPeriod);
+                const price = parseFloat(String(d.unit_price ?? d.price ?? ''));
+                this.editPrice = Number.isFinite(price) ? String(price) : '';
+                if (this.editUsesBilling) {
+                    if (d.billing_units !== null && d.billing_units !== undefined && d.billing_units !== '') {
+                        const n = parseFloat(String(d.billing_units));
+                        this.editBilling = Number.isFinite(n) ? String(n) : String(this.defaultBillingUnitsForType(this.editRentalPeriod));
+                    } else {
+                        this.editBilling = String(this.defaultBillingUnitsForType(this.editRentalPeriod));
+                    }
                 } else {
                     this.editBilling = '';
                 }
                 this.editOpen = true;
+                document.documentElement.classList.add('overflow-hidden');
             },
             closeEdit() {
                 this.editOpen = false;
+                if (!this.removeOpen) {
+                    document.documentElement.classList.remove('overflow-hidden');
+                }
+            },
+            onEditRentalChange() {
+                this.editUsesBilling = this.rentalPeriodUsesBilling(this.editRentalPeriod);
+                if (!this.editUsesBilling) {
+                    this.editBilling = '';
+                    return;
+                }
+                if (!this.editBilling || this.editBilling === '') {
+                    this.editBilling = String(this.defaultBillingUnitsForType(this.editRentalPeriod));
+                }
+            },
+            editBillingLabel() {
+                return this.billingUnitsLabels[this.editRentalPeriod] || @json(__('vendor.billing_units'));
+            },
+            editRentalPeriodLabel() {
+                return this.rentalPeriods[this.editRentalPeriod] || this.editRentalPeriod || '';
+            },
+            editPreviewTotal() {
+                const price = parseFloat(String(this.editPrice));
+                const qty = parseInt(String(this.editQty), 10);
+                if (!Number.isFinite(price) || !Number.isFinite(qty) || qty < 1) {
+                    return 0;
+                }
+                let total = price * qty;
+                if (this.rentalPeriodUsesBilling(this.editRentalPeriod)) {
+                    const bu = parseFloat(String(this.editBilling));
+                    if (Number.isFinite(bu) && bu >= 0.01) {
+                        total *= bu;
+                    }
+                }
+                return Math.round(total);
             },
             openRemove(d) {
+                this.removeLineKey = d.line_key || String(d.item_id);
                 this.removeItemId = d.item_id;
                 this.removeItemName = d.name ?? '';
                 this.removeOpen = true;
+                document.documentElement.classList.add('overflow-hidden');
             },
             closeRemove() {
                 this.removeOpen = false;
                 this.removeItemId = null;
                 this.removeItemName = '';
+                if (!this.editOpen) {
+                    document.documentElement.classList.remove('overflow-hidden');
+                }
             },
             onEscape() {
                 if (this.removeOpen) {
@@ -136,20 +221,24 @@
                         default => '',
                     };
                     $editPayload = [
+                        'line_key' => $row['line_key'] ?? (string) (int) $row['item_id'],
                         'item_id' => (int) $row['item_id'],
                         'name' => $row['name'],
                         'quantity' => (int) $row['quantity'],
+                        'unit_price' => (float) $row['unit_price'],
+                        'rental_period' => $linePt,
                         'billing_units' => $row['billing_units'],
                         'uses_billing' => $usesBilling,
                     ];
                     $editPayloadB64 = base64_encode(json_encode($editPayload));
                     $removePayloadB64 = base64_encode(json_encode([
+                        'line_key' => $row['line_key'] ?? (string) (int) $row['item_id'],
                         'item_id' => (int) $row['item_id'],
                         'name' => $row['name'],
                     ]));
                 @endphp
                 <li class="flex items-center gap-2 py-2.5 first:pt-0 sm:gap-3">
-                    <div class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-slate-100 to-blue-50 ring-1 ring-gray-200/80 sm:h-12 sm:w-12">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-slate-100 to-emerald-50 ring-1 ring-gray-200/80 sm:h-12 sm:w-12">
                         @if(! empty($row['photo_url']))
                             <img src="{{ $row['photo_url'] }}"
                                  alt=""
@@ -157,7 +246,7 @@
                                  loading="lazy"
                                  decoding="async">
                         @else
-                            <i class="fas fa-box-open text-lg text-blue-600/90" aria-hidden="true"></i>
+                            <i class="fas fa-box-open text-lg text-emerald-600/90" aria-hidden="true"></i>
                         @endif
                     </div>
                     <div class="min-w-0 flex-1 pr-1">
@@ -201,7 +290,7 @@
                                         class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-800 hover:bg-gray-50"
                                         data-edit-b64="{{ $editPayloadB64 }}"
                                         @click="menu = false; $dispatch('wizard-summary-open-edit', JSON.parse(atob($event.currentTarget.dataset.editB64)))">
-                                    <i class="fas fa-pen w-4 text-center text-xs text-gray-400" aria-hidden="true"></i>
+                                    <i class="fas fa-pen w-4 text-center text-xs text-emerald-500" aria-hidden="true"></i>
                                     {{ __('vendor.edit') }}
                                 </button>
                                 <button type="button"
@@ -233,32 +322,104 @@
          x-cloak
          class="fixed inset-0 z-[80] flex items-end justify-center p-2 sm:items-center sm:p-4"
          role="dialog"
-         aria-modal="true">
-        <div class="absolute inset-0 bg-gray-900/50" @click="closeEdit()"></div>
-        <div class="relative z-10 w-full max-w-md overflow-hidden rounded-t-2xl bg-white shadow-xl ring-1 ring-gray-900/5 sm:rounded-2xl"
+         aria-modal="true"
+         @keydown.escape.window="onEscape()">
+        <div x-show="editOpen"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             class="absolute inset-0 bg-gray-900/55 backdrop-blur-[1px]"
+             @click="closeEdit()"></div>
+        <div x-show="editOpen"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+             class="relative z-10 w-full max-w-md overflow-hidden rounded-t-2xl bg-white shadow-2xl ring-1 ring-gray-900/5 sm:rounded-2xl"
              @click.stop>
-            <div class="border-b border-gray-100 px-4 py-3">
-                <h4 class="text-base font-bold text-gray-900">{{ __('vendor.order_wizard_summary_edit_line') }}</h4>
-                <p class="mt-0.5 truncate text-sm text-gray-600" x-text="editName"></p>
+            <div class="relative overflow-hidden border-b border-emerald-100 bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-600 px-4 py-4 text-white sm:px-5">
+                <div class="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10"></div>
+                <div class="absolute -bottom-8 right-8 h-20 w-20 rounded-full bg-white/5"></div>
+                <div class="relative flex items-start gap-3 pr-8">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20">
+                        <i class="fas fa-sliders-h text-sm" aria-hidden="true"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h4 class="text-base font-bold leading-tight">{{ __('vendor.order_wizard_summary_edit_line') }}</h4>
+                        <p class="mt-1 line-clamp-2 text-sm text-emerald-100" x-text="editName"></p>
+                    </div>
+                </div>
+                <button type="button"
+                        @click="closeEdit()"
+                        class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg text-white/80 transition hover:bg-white/15 hover:text-white"
+                        aria-label="{{ __('vendor.cancel') }}">
+                    <i class="fas fa-times text-sm" aria-hidden="true"></i>
+                </button>
             </div>
             <form method="post"
                   action="{{ route('vendor.orders.create.summary.update-line') }}"
-                  class="space-y-3 px-4 py-4">
+                  class="space-y-4 px-4 py-4 sm:px-5 sm:py-5">
                 @csrf
+                <input type="hidden" name="line_key" x-bind:value="editLineKey || ''">
                 <input type="hidden" name="item_id" x-bind:value="editItemId != null ? String(editItemId) : ''">
-                <div>
-                    <label for="summary_edit_qty" class="mb-1 block text-xs font-semibold text-gray-800">{{ __('vendor.quantity') }}</label>
-                    <input id="summary_edit_qty"
-                           type="number"
-                           name="quantity"
-                           min="1"
-                           step="1"
-                           required
-                           x-model="editQty"
-                           class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2 sm:col-span-1">
+                        <label for="summary_edit_price" class="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+                            <i class="fas fa-rupee-sign text-[10px] text-emerald-600" aria-hidden="true"></i>
+                            {{ __('vendor.price') }}
+                        </label>
+                        <div class="relative">
+                            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-medium text-gray-500">₹</span>
+                            <input id="summary_edit_price"
+                                   type="number"
+                                   name="price"
+                                   min="0"
+                                   step="0.01"
+                                   inputmode="decimal"
+                                   required
+                                   x-model="editPrice"
+                                   class="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 pl-8 pr-3 text-sm font-medium text-gray-900 transition focus:border-transparent focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                        <label for="summary_edit_qty" class="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+                            <i class="fas fa-cubes text-[10px] text-emerald-600" aria-hidden="true"></i>
+                            {{ __('vendor.quantity') }}
+                        </label>
+                        <input id="summary_edit_qty"
+                               type="number"
+                               name="quantity"
+                               min="1"
+                               step="1"
+                               required
+                               x-model.number="editQty"
+                               class="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-sm font-medium text-gray-900 transition focus:border-transparent focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
                 </div>
-                <div x-show="editUsesBilling" x-cloak>
-                    <label for="summary_edit_billing" class="mb-1 block text-xs font-semibold text-gray-800">{{ __('vendor.billing_units') }}</label>
+                <div>
+                    <label for="summary_edit_rental" class="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+                        <i class="fas fa-clock text-[10px] text-emerald-600" aria-hidden="true"></i>
+                        {{ __('vendor.rental_period') }}
+                    </label>
+                    <div class="relative">
+                        <select id="summary_edit_rental"
+                                name="rental_period"
+                                x-model="editRentalPeriod"
+                                @change="onEditRentalChange()"
+                                class="h-11 w-full appearance-none rounded-xl border border-gray-200 bg-gray-50/50 px-3 pr-9 text-sm font-medium text-gray-900 transition focus:border-transparent focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            @foreach($rentalPeriods as $key => $label)
+                                <option value="{{ $key }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
+                            <i class="fas fa-chevron-down text-xs" aria-hidden="true"></i>
+                        </span>
+                    </div>
+                </div>
+                <div x-show="editUsesBilling" x-cloak x-transition>
+                    <label for="summary_edit_billing" class="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+                        <i class="fas fa-hourglass-half text-[10px] text-emerald-600" aria-hidden="true"></i>
+                        <span x-text="editBillingLabel()"></span>
+                    </label>
                     <input id="summary_edit_billing"
                            type="number"
                            name="billing_units"
@@ -266,17 +427,34 @@
                            min="0.01"
                            lang="en"
                            x-model="editBilling"
-                           x-bind:disabled="!editUsesBilling"
-                           class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25 disabled:bg-gray-50 disabled:text-gray-400">
+                           x-bind:required="editUsesBilling"
+                           class="h-11 w-full rounded-xl border border-gray-200 bg-gray-50/50 px-3 text-sm font-medium text-gray-900 transition focus:border-transparent focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
                 </div>
-                <div class="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end sm:gap-2">
+                <div class="rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50/50 px-4 py-3 ring-1 ring-emerald-100/80">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-emerald-700/80">{{ __('vendor.order_wizard_summary_total_amount_label') }}</p>
+                            <p class="mt-0.5 truncate text-xs text-gray-600">
+                                <span x-text="editRentalPeriodLabel()"></span>
+                                <template x-if="editUsesBilling && editBilling">
+                                    <span> · <span x-text="formatBillingUnitsDisplay(editBilling)"></span></span>
+                                </template>
+                            </p>
+                        </div>
+                        <p class="shrink-0 text-xl font-bold tabular-nums text-emerald-700 sm:text-2xl">
+                            ₹<span x-text="formatRupeeInt(editPreviewTotal())"></span>
+                        </p>
+                    </div>
+                </div>
+                <div class="flex flex-col-reverse gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end sm:gap-3">
                     <button type="button"
                             @click="closeEdit()"
-                            class="inline-flex h-10 w-full items-center justify-center rounded-lg bg-gray-100 px-4 text-sm font-semibold text-gray-800 hover:bg-gray-200 sm:w-auto">
+                            class="{{ $btnOutlineNeutralLg }}">
                         {{ __('vendor.cancel') }}
                     </button>
                     <button type="submit"
-                            class="inline-flex h-10 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 sm:w-auto">
+                            class="{{ $btnPrimaryLg }}">
+                        <i class="fas fa-check text-xs" aria-hidden="true"></i>
                         {{ __('vendor.save') }}
                     </button>
                 </div>
@@ -302,14 +480,15 @@
                   action="{{ route('vendor.orders.create.summary.remove-line') }}"
                   class="flex flex-col-reverse gap-2 border-t border-gray-100 px-4 py-3 sm:flex-row sm:justify-end sm:gap-2">
                 @csrf
+                <input type="hidden" name="line_key" x-bind:value="removeLineKey || ''">
                 <input type="hidden" name="item_id" x-bind:value="removeItemId != null ? String(removeItemId) : ''">
                 <button type="button"
                         @click="closeRemove()"
-                        class="inline-flex h-10 w-full items-center justify-center rounded-lg bg-gray-100 px-4 text-sm font-semibold text-gray-800 hover:bg-gray-200 sm:w-auto">
+                        class="{{ $btnOutlineNeutralLg }}">
                     {{ __('vendor.cancel') }}
                 </button>
                 <button type="submit"
-                        class="inline-flex h-10 w-full items-center justify-center rounded-lg bg-red-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-red-700 sm:w-auto">
+                        class="inline-flex h-11 w-full items-center justify-center rounded-lg bg-red-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-red-700 sm:w-auto">
                     {{ __('vendor.remove') }}
                 </button>
             </form>
@@ -318,12 +497,12 @@
 
     <x-order-wizard-actions class="mt-1">
         <a href="{{ route('vendor.orders.create.items') }}"
-           class="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-gray-600 transition hover:text-blue-700 [touch-action:manipulation] sm:mr-auto">
+           class="{{ $btnOutlineNeutral }} sm:mr-auto">
             <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>
             {{ __('vendor.back') }}
         </a>
         <a href="{{ route('vendor.orders.create.fulfillment') }}"
-           class="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm shadow-emerald-600/15 transition [touch-action:manipulation] hover:bg-emerald-700 active:bg-emerald-800 sm:w-auto sm:min-w-[8rem]">
+           class="{{ $btnPrimary }} w-full sm:w-auto sm:min-w-[8rem]">
             <i class="fas fa-arrow-right text-xs" aria-hidden="true"></i>
             {{ __('vendor.order_wizard_continue_fulfillment') }}
         </a>

@@ -45,7 +45,7 @@
                 data-line-rental-period="{{ $linePt }}"
                 data-line-qty="{{ $cartItem->quantity }}"
                 data-line-billing="{{ (float) ($cartItem->billing_units ?? 1) }}">
-                <div class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-slate-100 to-blue-50 ring-1 ring-gray-200/80 sm:h-12 sm:w-12">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-slate-100 to-emerald-50 ring-1 ring-gray-200/80 sm:h-12 sm:w-12">
                     @if($photoUrl)
                         <img src="{{ $photoUrl }}"
                              alt=""
@@ -53,7 +53,7 @@
                              loading="lazy"
                              decoding="async">
                     @else
-                        <i class="fas fa-box-open text-lg text-blue-600/90" aria-hidden="true"></i>
+                        <i class="fas fa-box-open text-lg text-emerald-600/90" aria-hidden="true"></i>
                     @endif
                 </div>
                 <div class="min-w-0 flex-1 pr-1">
@@ -76,7 +76,7 @@
                                 </span>
                             @endif
                             @if($lineReturnedQty > 0)
-                                <span class="inline-flex items-center gap-1 font-medium text-indigo-800" data-line-returned-label>
+                                <span class="inline-flex items-center gap-1 font-medium text-teal-800" data-line-returned-label>
                                     <i class="fas fa-rotate-left text-[9px] opacity-80" aria-hidden="true"></i>
                                     {{ trans_choice('vendor.line_returned_items', $lineReturnedQty, ['count' => $lineReturnedQty]) }}
                                 </span>
@@ -156,7 +156,7 @@
         <p class="mt-2 max-w-sm text-sm leading-relaxed text-gray-600">{{ __('vendor.add_to_cart') }}</p>
         @if(! $orderReadOnlyList)
             <button type="button" @click="showAddItem = true"
-                    class="mt-6 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-base font-semibold text-white shadow-md transition hover:bg-blue-700 active:scale-[0.99]">
+                    class="mt-6 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-base font-semibold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.99]">
                 <i class="fas fa-plus" aria-hidden="true"></i>{{ __('vendor.add_item') }}
             </button>
         @endif

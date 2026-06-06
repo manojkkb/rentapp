@@ -102,7 +102,7 @@
                     </div>
                     <input type="text"
                            id="orderWizard_customerSearch"
-                           class="h-10 w-full rounded-lg border border-gray-300 bg-white pl-10 pr-10 text-sm text-gray-900 shadow-inner placeholder:text-gray-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 @error('customer_id') border-red-500 @enderror"
+                           class="h-10 w-full rounded-lg border border-gray-300 bg-white pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:border-transparent focus:ring-2 focus:ring-emerald-500 @error('customer_id') border-red-500 @enderror"
                            placeholder="{{ __('vendor.order_wizard_search_customer_placeholder') }}"
                            autocomplete="off"
                            value="{{ $selectedCustomer ? $selectedCustomer->name.' — '.$selectedCustomer->mobile : '' }}">
@@ -154,16 +154,16 @@
                     <div class="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                         <div>
                             <label for="orderWizard_newCustomerName" class="mb-0.5 block text-[11px] font-medium text-gray-600 sm:text-xs">{{ __('vendor.customer_name') }} <span class="text-red-500">*</span></label>
-                            <input type="text" id="orderWizard_newCustomerName" maxlength="255" class="h-9 w-full rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 sm:h-10" placeholder="{{ __('vendor.customer_name') }}">
+                            <input type="text" id="orderWizard_newCustomerName" maxlength="255" class="h-9 w-full rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-emerald-500 sm:h-10" placeholder="{{ __('vendor.customer_name') }}">
                         </div>
                         <div>
                             <label for="orderWizard_newCustomerMobile" class="mb-0.5 block text-[11px] font-medium text-gray-600 sm:text-xs">{{ __('vendor.mobile') }} <span class="text-red-500">*</span></label>
-                            <input type="text" id="orderWizard_newCustomerMobile" maxlength="10" inputmode="numeric" class="h-9 w-full rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 sm:h-10" placeholder="{{ __('vendor.customer_mobile') }}">
+                            <input type="text" id="orderWizard_newCustomerMobile" maxlength="10" inputmode="numeric" class="h-9 w-full rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-emerald-500 sm:h-10" placeholder="{{ __('vendor.customer_mobile') }}">
                         </div>
                     </div>
                     <div class="mb-2">
                         <label for="orderWizard_newCustomerAddress" class="mb-0.5 block text-[11px] font-medium text-gray-600 sm:text-xs">{{ __('vendor.address') }}</label>
-                        <input type="text" id="orderWizard_newCustomerAddress" maxlength="500" class="h-9 w-full rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 sm:h-10" placeholder="{{ __('vendor.optional') }}">
+                        <input type="text" id="orderWizard_newCustomerAddress" maxlength="500" class="h-9 w-full rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-emerald-500 sm:h-10" placeholder="{{ __('vendor.optional') }}">
                     </div>
                     <p id="orderWizard_addCustomerError" class="mb-2 hidden text-xs text-red-600"></p>
                     <button type="button" id="orderWizard_saveNewCustomer" class="h-10 w-full rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white transition hover:bg-emerald-700 active:scale-[0.99]">
@@ -193,7 +193,7 @@
                            name="event_name"
                            id="event_name"
                            value="{{ old('event_name', old('cart_name', $wizardPrefill['event_name'] ?? '')) }}"
-                           class="h-10 w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 text-sm text-gray-900 shadow-inner transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 @error('event_name') border-red-500 @enderror @error('cart_name') border-red-500 @enderror"
+                           class="h-10 w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 text-sm text-gray-900 transition focus:border-transparent focus:ring-2 focus:ring-emerald-500 @error('event_name') border-red-500 @enderror @error('cart_name') border-red-500 @enderror"
                            placeholder="{{ __('vendor.cart_name_placeholder') }}"
                            required
                            maxlength="255">
@@ -315,7 +315,7 @@
 
             <x-order-wizard-actions class="border-t border-gray-200 pt-3 sm:pt-3">
                 <a href="{{ route('vendor.orders.index') }}"
-                   class="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-gray-600 transition hover:text-blue-700 [touch-action:manipulation] sm:mr-auto">
+                   class="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-gray-600 transition hover:text-emerald-700 [touch-action:manipulation] sm:mr-auto">
                     <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>
                     {{ __('vendor.back') }}
                 </a>

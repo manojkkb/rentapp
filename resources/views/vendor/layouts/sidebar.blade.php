@@ -12,35 +12,31 @@
     x-transition:leave-end="-translate-x-full"
     class="fixed inset-y-0 left-0 z-30 flex max-h-[100dvh] min-h-0 w-56 transform flex-col border-r border-gray-200 bg-white transition-transform duration-300 max-md:max-h-screen md:static md:max-h-none md:w-52 md:translate-x-0 lg:w-56"
 >
-    <div class="flex shrink-0 items-center justify-between gap-1.5 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-green-50 px-2 py-2 md:px-2.5">
+    <div class="flex h-11 shrink-0 items-center justify-between gap-1.5 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-green-50 px-2 sm:h-12 md:px-2.5">
         <div class="flex min-w-0 flex-1 items-center gap-2">
             @if($sidebarVendor && $sidebarVendor->logo_url)
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-emerald-400/80 bg-white p-0.5 shadow-sm">
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-emerald-400/80 bg-white p-0.5 shadow-sm">
                     <img src="{{ $sidebarVendor->logo_url }}"
                          alt="{{ $sidebarVendor->name }}"
-                         width="36"
-                         height="36"
+                         width="32"
+                         height="32"
                          class="max-h-full max-w-full object-contain object-center"
                          loading="lazy"
                          decoding="async">
                 </div>
             @else
-                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-sm">
-                    <span class="text-base font-bold leading-none text-white">
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-emerald-500 to-emerald-600 shadow-sm">
+                    <span class="text-sm font-bold leading-none text-white">
                         {{ strtoupper(substr($sidebarVendor->name ?? 'V', 0, 1)) }}
                     </span>
                 </div>
             @endif
             <div class="min-w-0 flex-1">
-                <h2 class="truncate text-xs font-bold leading-tight text-gray-900">{{ $sidebarVendor->name ?? __('vendor.vendor') }}</h2>
-                <p class="mt-px flex items-center truncate text-[10px] leading-tight text-gray-600">
-                    <i class="fas fa-phone mr-1 shrink-0 text-[9px] text-emerald-600"></i>
-                    <span class="truncate">{{ Auth::user()->mobile ?? __('vendor.no_phone') }}</span>
-                </p>
+                <h2 class="truncate text-xs font-bold leading-snug text-gray-900 sm:text-sm">{{ $sidebarVendor->name ?? __('vendor.vendor') }}</h2>
             </div>
         </div>
-        <button type="button" @click="sidebarOpen = false; localStorage.setItem('sidebarOpen', false);" class="shrink-0 rounded-md p-1 text-gray-500 hover:bg-white/60 hover:text-gray-700 md:hidden" aria-label="Close menu">
-            <i class="fas fa-times text-lg leading-none"></i>
+        <button type="button" @click="sidebarOpen = false; localStorage.setItem('sidebarOpen', false);" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-500 hover:bg-white/60 hover:text-gray-700 md:hidden" aria-label="Close menu">
+            <i class="fas fa-times text-base leading-none"></i>
         </button>
     </div>
 
@@ -48,7 +44,7 @@
         <ul class="space-y-px">
             @vendorCan('dashboard.view')
             <li>
-                <a href="{{ route('vendor.home') }}"
+                <a wire:navigate href="{{ route('vendor.home') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                           {{ request()->routeIs('vendor.home')
@@ -65,7 +61,7 @@
 
             @vendorCan('orders.view')
             <li>
-                <a href="{{ route('vendor.orders.index') }}"
+                <a wire:navigate href="{{ route('vendor.orders.index') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                           {{ request()->routeIs('vendor.orders.*')
@@ -82,7 +78,7 @@
 
             @vendorCan('deliveries.view')
             <li>
-                <a href="{{ route('vendor.deliveries.index') }}"
+                <a wire:navigate href="{{ route('vendor.deliveries.index') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                           {{ request()->routeIs('vendor.deliveries.*')
@@ -99,7 +95,7 @@
 
             @vendorCan('returns.view')
             <li>
-                <a href="{{ route('vendor.returns.index') }}"
+                <a wire:navigate href="{{ route('vendor.returns.index') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                           {{ request()->routeIs('vendor.returns.*')
@@ -116,7 +112,7 @@
 
             @vendorCan('items.view')
             <li>
-                <a href="{{ route('vendor.items.index') }}"
+                <a wire:navigate href="{{ route('vendor.items.index') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                    {{ request()->routeIs('vendor.items.*') ? 'bg-emerald-500 text-white shadow-sm' : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-700' }}">
@@ -131,7 +127,7 @@
 
             @vendorCan('categories.manage')
             <li>
-                <a href="{{ route('vendor.categories.index') }}"
+                <a wire:navigate href="{{ route('vendor.categories.index') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                           {{ request()->routeIs('vendor.categories.*')
@@ -148,7 +144,7 @@
 
             @vendorCan('reviews.view')
             <li>
-                <a href="{{ route('vendor.reviews.index') }}"
+                <a wire:navigate href="{{ route('vendor.reviews.index') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                           {{ request()->routeIs('vendor.reviews.*')
@@ -165,7 +161,7 @@
 
             @vendorCan('customers.view')
             <li>
-                <a href="{{ route('vendor.customers.index') }}"
+                <a wire:navigate href="{{ route('vendor.customers.index') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                           {{ request()->routeIs('vendor.customers.*')
@@ -182,7 +178,7 @@
 
             @vendorCan('staff.view')
             <li>
-                <a href="{{ route('vendor.staff.index') }}"
+                <a wire:navigate href="{{ route('vendor.staff.index') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                           {{ request()->routeIs('vendor.staff.*') && !request()->routeIs('vendor.staff-permissions.*')
@@ -199,7 +195,7 @@
 
             @vendorCan('roles.manage')
             <li>
-                <a href="{{ route('vendor.staff-permissions.index') }}"
+                <a wire:navigate href="{{ route('vendor.staff-permissions.index') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                           {{ request()->routeIs('vendor.staff-permissions.*')
@@ -216,7 +212,7 @@
 
             @vendorCan('coupons.manage')
             <li>
-                <a href="{{ route('vendor.coupons.index') }}"
+                <a wire:navigate href="{{ route('vendor.coupons.index') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                           {{ request()->routeIs('vendor.coupons.*')
@@ -233,7 +229,7 @@
 
             @vendorCan('calendar.view')
             <li>
-                <a href="{{ route('vendor.calendar') }}"
+                <a wire:navigate href="{{ route('vendor.calendar') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                           {{ request()->routeIs('vendor.calendar')
@@ -250,7 +246,7 @@
 
             @vendorCan('settings.view')
             <li>
-                <a href="{{ route('vendor.subscription.plans') }}"
+                <a wire:navigate href="{{ route('vendor.subscription.plans') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                           {{ request()->routeIs('vendor.subscription.plans')
@@ -267,7 +263,7 @@
 
             @vendorCan('support.view')
             <li>
-                <a href="{{ route('vendor.support') }}"
+                <a wire:navigate href="{{ route('vendor.support') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
                           {{ request()->routeIs('vendor.support*')

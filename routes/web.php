@@ -155,19 +155,18 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
         Route::get('deliveries', [VendorOrderController::class, 'deliveries'])->name('deliveries.index');
         Route::get('returns', [VendorOrderController::class, 'returns'])->name('returns.index');
         Route::get('orders', [VendorOrderController::class, 'index'])->name('orders.index');
-        Route::get('orders/create', [VendorOrderController::class, 'create'])->name('orders.create');
+        Route::get('orders/new', [VendorOrderController::class, 'createNew'])->name('orders.new');
+        Route::get('orders/create', fn () => redirect()->route('vendor.orders.new'))->name('orders.create');
         Route::post('orders/create/step-1', [VendorOrderController::class, 'storeWizardStep1'])->name('orders.create.step1');
-        Route::get('orders/create/items', [VendorOrderController::class, 'createWizardItems'])->name('orders.create.items');
+        Route::get('orders/create/items', fn () => redirect()->route('vendor.orders.new', ['step' => 2]))->name('orders.create.items');
         Route::post('orders/create/step-2', [VendorOrderController::class, 'storeWizardStep2'])->name('orders.create.step2');
-        Route::get('orders/create/checkout', function () {
-            return redirect()->route('vendor.orders.create.summary');
-        })->name('orders.create.checkout');
-        Route::get('orders/create/summary', [VendorOrderController::class, 'createWizardSummary'])->name('orders.create.summary');
+        Route::get('orders/create/checkout', fn () => redirect()->route('vendor.orders.new', ['step' => 3]))->name('orders.create.checkout');
+        Route::get('orders/create/summary', fn () => redirect()->route('vendor.orders.new', ['step' => 3]))->name('orders.create.summary');
         Route::post('orders/create/summary/line', [VendorOrderController::class, 'updateWizardSummaryLine'])->name('orders.create.summary.update-line');
         Route::post('orders/create/summary/line-remove', [VendorOrderController::class, 'removeWizardSummaryLine'])->name('orders.create.summary.remove-line');
-        Route::get('orders/create/fulfillment', [VendorOrderController::class, 'createWizardFulfillment'])->name('orders.create.fulfillment');
+        Route::get('orders/create/fulfillment', fn () => redirect()->route('vendor.orders.new', ['step' => 4]))->name('orders.create.fulfillment');
         Route::post('orders/create/fulfillment', [VendorOrderController::class, 'storeWizardFulfillment'])->name('orders.create.fulfillment.store');
-        Route::get('orders/create/payment', [VendorOrderController::class, 'createWizardPayment'])->name('orders.create.payment');
+        Route::get('orders/create/payment', fn () => redirect()->route('vendor.orders.new', ['step' => 5]))->name('orders.create.payment');
         Route::post('orders/create/complete', [VendorOrderController::class, 'storeWizardComplete'])->name('orders.create.complete');
         Route::get('orders/{order}', [VendorOrderController::class, 'show'])->name('orders.show');
         Route::get('orders/{order}/print', [VendorOrderController::class, 'printOrder'])->name('orders.print');

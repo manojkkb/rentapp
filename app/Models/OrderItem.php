@@ -32,7 +32,9 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'item_id',
+        'item_variant_id',
         'item_name',
+        'variant_label',
         'price',
         'quantity',
         'returned_qty',
@@ -85,6 +87,7 @@ class OrderItem extends Model
         'quantity' => 'integer',
         'rent_days' => 'integer',
         'rental_duration_minutes' => 'integer',
+        'item_variant_id' => 'integer',
         'returned_qty' => 'integer',
         'damaged_qty' => 'integer',
         'lost_qty' => 'integer',
@@ -150,5 +153,15 @@ class OrderItem extends Model
     public function item(): BelongsTo
     {
         return $this->belongsTo(Items::class, 'item_id');
+    }
+
+    public function itemVariant(): BelongsTo
+    {
+        return $this->belongsTo(ItemVariant::class, 'item_variant_id');
+    }
+
+    public function usesVariant(): bool
+    {
+        return $this->item_variant_id !== null;
     }
 }

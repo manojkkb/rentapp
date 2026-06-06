@@ -1,35 +1,34 @@
-<nav class="bg-white border-b border-gray-200 shadow-sm">
-    <div class="px-4 py-3">
-        <div class="flex items-center justify-between">
+<nav class="shrink-0 border-b border-gray-200 bg-white shadow-sm">
+    <div class="flex h-11 items-center justify-between gap-2 px-3 sm:h-12 sm:px-4">
             <!-- Left: Menu Toggle & Breadcrumb -->
-            <div class="flex items-center space-x-4">
+            <div class="flex min-w-0 items-center gap-2 sm:gap-3">
                 <!-- Mobile Menu Toggle -->
                 <button @click="toggleSidebar()" 
-                        class="text-gray-600 hover:text-gray-900 focus:outline-none">
-                    <i class="fas fa-bars text-xl"></i>
+                        class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none">
+                    <i class="fas fa-bars text-base"></i>
                 </button>
 
                 <!-- Breadcrumb -->
-                <div class="hidden md:flex items-center space-x-2 text-sm">
-                    <a href="{{ route('vendor.home') }}" class="text-gray-500 hover:text-emerald-600 transition-colors">
-                        <i class="fas fa-home"></i>
+                <div class="hidden min-w-0 items-center gap-1.5 text-xs md:flex sm:text-sm">
+                    <a wire:navigate href="{{ route('vendor.home') }}" class="text-gray-500 hover:text-emerald-600 transition-colors">
+                        <i class="fas fa-home text-sm"></i>
                     </a>
                     <span class="text-gray-400">/</span>
-                    <span class="text-gray-700 font-medium">@yield('page-title', 'Home')</span>
+                    <span class="truncate font-medium text-gray-700">@yield('page-title', 'Home')</span>
                 </div>
             </div>
 
             <!-- Right: Search, Notifications, Profile -->
-            <div class="flex items-center space-x-2 md:space-x-4">
+            <div class="flex shrink-0 items-center gap-0.5 sm:gap-1 md:gap-2">
                 
                 @include('vendor.layouts.partials.global-search')
 
                 <!-- Language Selector -->
                 <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" 
-                            class="p-2 text-gray-600 hover:text-gray-900 focus:outline-none flex items-center">
-                        <i class="fas fa-globe text-lg"></i>
-                        <span class="hidden md:inline ml-2 text-sm font-medium">
+                            class="inline-flex h-8 items-center rounded-md px-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none sm:px-2">
+                        <i class="fas fa-globe text-base"></i>
+                        <span class="ml-1.5 hidden text-xs font-medium md:inline">
                             {{ strtoupper($currentLanguage ?? 'en') }}
                         </span>
                     </button>
@@ -87,9 +86,9 @@
                 <!-- Notifications -->
                 <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" 
-                            class="relative p-2 text-gray-600 hover:text-gray-900 focus:outline-none">
-                        <i class="fas fa-bell text-lg"></i>
-                        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                            class="relative inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none">
+                        <i class="fas fa-bell text-base"></i>
+                        <span class="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-500"></span>
                     </button>
 
                     <!-- Notifications Dropdown -->
@@ -126,20 +125,20 @@
                 @php $navUser = Auth::user(); @endphp
                 <div class="relative" x-data="{ open: false }">
                     <button @click="open = !open" 
-                            class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50 focus:outline-none">
+                            class="flex items-center gap-1.5 rounded-md px-1.5 py-1 hover:bg-gray-50 focus:outline-none sm:px-2">
                         @if($navUser?->avatar_url)
                             <img src="{{ $navUser->avatar_url }}"
                                  alt=""
-                                 class="w-8 h-8 rounded-full object-cover ring-2 ring-emerald-500">
+                                 class="h-7 w-7 rounded-full object-cover ring-2 ring-emerald-500">
                         @else
-                            <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                            <div class="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-xs font-semibold text-white">
                                 {{ strtoupper(substr($navUser->name ?? __('vendor.user'), 0, 1)) }}
                             </div>
                         @endif
-                        <span class="hidden md:block text-sm font-medium text-gray-700">
+                        <span class="hidden max-w-[7rem] truncate text-xs font-medium text-gray-700 md:block">
                             {{ Str::limit($navUser->name ?? __('vendor.user'), 15) }}
                         </span>
-                        <i class="fas fa-chevron-down text-xs text-gray-500"></i>
+                        <i class="fas fa-chevron-down hidden text-[10px] text-gray-500 md:inline"></i>
                     </button>
 
                     <!-- Profile Dropdown Menu -->
@@ -175,20 +174,20 @@
 
                         <!-- Menu Items -->
                         <div class="py-2">
-                            <a href="{{ route('vendor.profile') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                            <a wire:navigate href="{{ route('vendor.profile') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
                                 <i class="fas fa-user w-5"></i>
                                 <span class="ml-3">{{ __('vendor.my_profile') }}</span>
                             </a>
-                            <a href="{{ route('vendor.select') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors">
+                            <a wire:navigate href="{{ route('vendor.select') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
                                 <i class="fas fa-exchange-alt w-5"></i>
                                 <span class="ml-3">{{ __('vendor.switch_vendor') }}</span>
                             </a>
-                            <a href="{{ route('vendor.create') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                            <a wire:navigate href="{{ route('vendor.create') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
                                 <i class="fas fa-plus-circle w-5"></i>
                                 <span class="ml-3">{{ __('vendor.create_new_vendor') }}</span>
                             </a>
                             @vendorCan('support.view')
-                            <a href="{{ route('vendor.support') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
+                            <a wire:navigate href="{{ route('vendor.support') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 transition-colors">
                                 <i class="fas fa-question-circle w-5"></i>
                                 <span class="ml-3">{{ __('vendor.help_support') }}</span>
                             </a>
@@ -209,6 +208,5 @@
                     </div>
                 </div>
             </div>
-        </div>
     </div>
 </nav>

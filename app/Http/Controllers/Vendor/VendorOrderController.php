@@ -9,6 +9,7 @@ use App\Http\Controllers\Vendor\Concerns\RedirectsIfNumericRouteKey;
 use App\Models\Category;
 use App\Models\CreateOrder;
 use App\Models\Items;
+use App\Models\ItemVariant;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\VendorCustomer;
@@ -42,43 +43,7 @@ class VendorOrderController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
-        $query = Order::where('vendor_id', $vendor->id)
-            ->with([
-                'customer' => fn ($q) => $q->withTrashed(),
-                'items',
-            ]);
-
-        // Filter by status if provided
-        if ($request->has('status') && $request->status != '') {
-            $query->where('status', $request->status);
-        }
-
-        // Search by order number or customer name
-        if ($request->has('search') && $request->search != '') {
-            $searchTerm = $request->search;
-            $query->where(function ($q) use ($searchTerm) {
-                $q->where('order_number', 'like', "%{$searchTerm}%")
-                    ->orWhere('event_name', 'like', "%{$searchTerm}%")
-                    ->orWhereHas('customer', function ($q) use ($searchTerm) {
-                        $q->where('name', 'like', "%{$searchTerm}%");
-                    });
-            });
-        }
-
-        $orders = $query->orderBy('created_at', 'desc')
-            ->paginate(15)
-            ->withQueryString();
-
-        // Get status counts for filter badges
-        $statusCounts = [
-            'all' => Order::where('vendor_id', $vendor->id)->count(),
-            'pending' => Order::where('vendor_id', $vendor->id)->where('status', 'pending')->count(),
-            'confirmed' => Order::where('vendor_id', $vendor->id)->where('status', 'confirmed')->count(),
-            'completed' => Order::where('vendor_id', $vendor->id)->where('status', 'completed')->count(),
-            'cancelled' => Order::where('vendor_id', $vendor->id)->where('status', 'cancelled')->count(),
-        ];
-
-        return view('vendor.orders.index', compact('orders', 'statusCounts'));
+        return view('vendor.orders.index');
     }
 
     public function deliveries(Request $request)
@@ -157,6 +122,24 @@ class VendorOrderController extends Controller
         ]);
     }
 
+    /**
+     * Step 1 (Livewire): customer, event name, booking dates.
+     */
+    public function createNew(Request $request)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+        }
+
+        if ($request->boolean('reset')) {
+            $this->orderCreateWizardClear();
+        }
+
+        return view('vendor.orders.new');
+    }
+
     public function storeWizardStep1(Request $request)
     {
         $vendor = Auth::user()->currentVendor();
@@ -202,11 +185,26 @@ class VendorOrderController extends Controller
                 ->withErrors(['error' => __('vendor.order_wizard_complete_step1_first')]);
         }
 
+        return view('vendor.orders.create-items', $this->wizardItemsViewData());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function wizardItemsViewData(): array
+    {
+        $vendor = Auth::user()->currentVendor();
+        $wizard = $this->orderCreateWizardGet();
+
         $catalogItems = Items::query()
             ->where('vendor_id', $vendor->id)
             ->where('is_active', true)
             ->where('is_available', true)
-            ->with('category')
+            ->with([
+                'category',
+                'variantAttributes' => fn ($q) => $q->ordered(),
+                'variants' => fn ($q) => $q->ordered(),
+            ])
             ->orderBy('name')
             ->get();
 
@@ -216,52 +214,84 @@ class VendorOrderController extends Controller
             ->orderBy('name')
             ->get();
 
-        $lineQty = [];
-        $lineUnits = [];
+        $initialLineMeta = [];
         foreach ($wizard['lines'] ?? [] as $row) {
-            if (! isset($row['item_id'])) {
+            if (! is_array($row) || empty($row['item_id'])) {
                 continue;
             }
-            $lineQty[(int) $row['item_id']] = (int) ($row['quantity'] ?? 0);
-            if (array_key_exists('billing_units', $row) && $row['billing_units'] !== null && $row['billing_units'] !== '') {
-                $lineUnits[(int) $row['item_id']] = (float) $row['billing_units'];
-            }
+            $itemId = (int) $row['item_id'];
+            $variantId = isset($row['item_variant_id']) && $row['item_variant_id'] !== '' && $row['item_variant_id'] !== null
+                ? (int) $row['item_variant_id']
+                : null;
+            $lineKey = (string) ($row['line_key'] ?? $this->orderWizardLineKey($itemId, $variantId));
+            $qty = (int) ($row['quantity'] ?? 0);
+            $bu = array_key_exists('billing_units', $row) && $row['billing_units'] !== null && $row['billing_units'] !== ''
+                ? (float) $row['billing_units']
+                : null;
+            $initialLineMeta[$lineKey] = [
+                'line_key' => $lineKey,
+                'item_id' => $itemId,
+                'item_variant_id' => $variantId,
+                'quantity' => $qty,
+                'billing_units' => $bu,
+                'rental_period' => isset($row['rental_period']) && is_string($row['rental_period']) ? $row['rental_period'] : null,
+                'price' => isset($row['price']) && $row['price'] !== '' && $row['price'] !== null ? (float) $row['price'] : null,
+            ];
         }
 
-        $initialQty = [];
-        $initialUnits = [];
         $bookingDefaultsByPriceType = $this->orderCreateWizardDefaultBillingUnitsByPriceType($wizard);
         foreach ($catalogItems as $i) {
-            $id = $i->id;
-            $initialQty[$id] = (int) old('lines.'.$id.'.quantity', $lineQty[$id] ?? 0);
-            $bu = old('lines.'.$id.'.billing_units', $lineUnits[$id] ?? null);
-            $initialUnits[$id] = $bu !== null && $bu !== '' ? (float) $bu : null;
             $pt = in_array($i->rental_period ?? '', Items::rentalPeriodKeys(), true) ? $i->rental_period : 'per_day';
-            if ($initialUnits[$id] === null && Items::rentalPeriodUsesBillingUnits($pt) && isset($bookingDefaultsByPriceType[$pt])) {
-                $initialUnits[$id] = $bookingDefaultsByPriceType[$pt];
+            foreach ($initialLineMeta as $lineKey => &$meta) {
+                if ((int) ($meta['item_id'] ?? 0) !== (int) $i->id) {
+                    continue;
+                }
+                $linePt = $meta['rental_period'] ?? null;
+                if (! is_string($linePt) || ! in_array($linePt, Items::rentalPeriodKeys(), true)) {
+                    $linePt = $pt;
+                }
+                $meta['rental_period'] = $linePt;
+                $meta['uses_billing_units'] = Items::rentalPeriodUsesBillingUnits($linePt);
+                if ($meta['billing_units'] === null && $meta['uses_billing_units'] && isset($bookingDefaultsByPriceType[$linePt])) {
+                    $meta['billing_units'] = $bookingDefaultsByPriceType[$linePt];
+                }
+                if ($meta['item_variant_id']) {
+                    $variant = $i->variants->firstWhere('id', (int) $meta['item_variant_id']);
+                    if ($variant) {
+                        $meta['variant_label'] = $variant->displayLabel($i->variantAttributes);
+                        $meta['price'] = $meta['price'] ?? (float) $variant->price;
+                    }
+                } else {
+                    $meta['price'] = $meta['price'] ?? (float) $i->price;
+                }
+            }
+            unset($meta);
+        }
+
+        if (old('lines') && is_array(old('lines'))) {
+            $initialLineMeta = [];
+            foreach (old('lines') as $lineKey => $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $itemId = (int) ($row['item_id'] ?? $lineKey);
+                $variantId = isset($row['item_variant_id']) && $row['item_variant_id'] !== '' && $row['item_variant_id'] !== null
+                    ? (int) $row['item_variant_id']
+                    : null;
+                $key = (string) ($row['line_key'] ?? $this->orderWizardLineKey($itemId, $variantId));
+                $initialLineMeta[$key] = [
+                    'line_key' => $key,
+                    'item_id' => $itemId,
+                    'item_variant_id' => $variantId,
+                    'quantity' => (int) ($row['quantity'] ?? 0),
+                    'billing_units' => isset($row['billing_units']) && $row['billing_units'] !== '' ? (float) $row['billing_units'] : null,
+                    'rental_period' => isset($row['rental_period']) && is_string($row['rental_period']) ? $row['rental_period'] : null,
+                    'price' => isset($row['price']) && $row['price'] !== '' && $row['price'] !== null ? (float) $row['price'] : null,
+                ];
             }
         }
 
-        $catalogItemsForJs = $catalogItems->map(function (Items $i) {
-            $id = $i->id;
-            $pt = in_array($i->rental_period ?? '', Items::rentalPeriodKeys(), true) ? $i->rental_period : 'per_day';
-
-            return [
-                'id' => $id,
-                'uuid' => $i->uuid,
-                'item_code' => $i->item_code,
-                'slug' => $i->slug,
-                'name' => $i->name,
-                'price' => (float) $i->price,
-                'photo_url' => $i->photo_url,
-                'category_id' => $i->category_id,
-                'category' => $i->category ? ['id' => $i->category->id, 'name' => $i->category->name] : null,
-                'stock' => (int) ($i->stock ?? 0),
-                'manage_stock' => (bool) ($i->manage_stock ?? false),
-                'rental_period' => $pt,
-                'uses_billing_units' => Items::rentalPeriodUsesBillingUnits($pt),
-            ];
-        })->values();
+        $catalogItemsForJs = $catalogItems->map(fn (Items $i) => $this->catalogItemPayloadForOrderWizard($i))->values();
 
         $billingUnitsLabels = collect(Items::rentalPeriodKeys())
             ->filter(fn ($k) => Items::rentalPeriodUsesBillingUnits($k))
@@ -270,41 +300,38 @@ class VendorOrderController extends Controller
 
         $rentalPeriods = Items::rentalPeriodSelectOptions();
 
-        return view('vendor.orders.create-items', [
+        return [
             'catalogItems' => $catalogItems,
             'categories' => $categories,
             'catalogItemsForJs' => $catalogItemsForJs,
             'billingUnitsLabels' => $billingUnitsLabels,
-            'initialQty' => $initialQty,
-            'initialUnits' => $initialUnits,
+            'initialLineMeta' => $initialLineMeta,
             'bookingDefaultUnitsByPriceType' => $bookingDefaultsByPriceType,
             'rentalPeriods' => $rentalPeriods,
             'wizard' => $wizard,
-        ]);
+        ];
     }
 
-    public function storeWizardStep2(Request $request)
+    /**
+     * @param  array<string, array<string, mixed>>  $rawLines
+     */
+    public function wizardSaveLines(array $rawLines): void
     {
         $vendor = Auth::user()->currentVendor();
-
         if (! $vendor) {
-            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_session_expired')]]);
         }
 
         $wizard = $this->orderCreateWizardGet();
         if (! $this->orderCreateWizardHasStep1($wizard)) {
-            return redirect()
-                ->route('vendor.orders.create')
-                ->withErrors(['error' => __('vendor.order_wizard_complete_step1_first')]);
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_complete_step1_first')]]);
         }
 
+        $request = Request::create('/', 'POST', ['lines' => $rawLines]);
         $lines = $this->orderCreateWizardNormalizeLinesFromRequest($request, $vendor);
 
         if ($lines === []) {
-            return redirect()
-                ->route('vendor.orders.create.items')
-                ->withErrors(['lines' => __('vendor.order_wizard_select_at_least_one_item')])
-                ->withInput();
+            throw ValidationException::withMessages(['lines' => [__('vendor.order_wizard_select_at_least_one_item')]]);
         }
 
         $validator = Validator::make(
@@ -316,16 +343,16 @@ class VendorOrderController extends Controller
                     'integer',
                     Rule::exists('items', 'id')->where(fn ($q) => $q->where('vendor_id', $vendor->id)),
                 ],
+                'items.*.item_variant_id' => ['nullable', 'integer'],
                 'items.*.quantity' => ['required', 'integer', 'min:1'],
                 'items.*.billing_units' => ['nullable', 'numeric', 'min:0.01', 'max:999999'],
+                'items.*.rental_period' => ['nullable', 'string', Rule::in(Items::rentalPeriodKeys())],
+                'items.*.price' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
             ],
         );
 
         if ($validator->fails()) {
-            return redirect()
-                ->route('vendor.orders.create.items')
-                ->withErrors($validator)
-                ->withInput();
+            throw ValidationException::withMessages($validator->errors()->toArray());
         }
 
         foreach ($lines as $row) {
@@ -333,33 +360,41 @@ class VendorOrderController extends Controller
                 ->where('vendor_id', $vendor->id)
                 ->where('is_active', true)
                 ->where('is_available', true)
+                ->with(['variants', 'variantAttributes'])
                 ->first();
             if (! $item) {
-                return redirect()
-                    ->route('vendor.orders.create.items')
-                    ->withErrors(['lines' => __('vendor.order_wizard_invalid_item')])
-                    ->withInput();
+                throw ValidationException::withMessages(['lines' => [__('vendor.order_wizard_invalid_item')]]);
             }
-            $type = $item->rental_period ?? 'per_day';
+
+            if ($item->usesVariants()) {
+                $variantId = (int) ($row['item_variant_id'] ?? 0);
+                if ($variantId < 1) {
+                    throw ValidationException::withMessages(['lines' => [__('vendor.order_wizard_variant_required')]]);
+                }
+                $variant = $item->variants->firstWhere('id', $variantId);
+                if (! $variant || ! $variant->is_active || ! $variant->is_available) {
+                    throw ValidationException::withMessages(['lines' => [__('vendor.order_wizard_variant_invalid')]]);
+                }
+                if ($variant->manage_stock && (int) $variant->stock < (int) $row['quantity']) {
+                    throw ValidationException::withMessages(['lines' => [__('vendor.order_wizard_variant_insufficient_stock', ['label' => $variant->displayLabel($item->variantAttributes)])]]);
+                }
+            } elseif (! empty($row['item_variant_id'])) {
+                throw ValidationException::withMessages(['lines' => [__('vendor.order_wizard_invalid_item')]]);
+            }
+
+            $type = $row['rental_period'] ?? $item->rental_period ?? 'per_day';
+            if (! in_array($type, Items::rentalPeriodKeys(), true)) {
+                $type = 'per_day';
+            }
             if (Items::rentalPeriodUsesBillingUnits($type) && empty($row['billing_units'])) {
-                return redirect()
-                    ->route('vendor.orders.create.items')
-                    ->withErrors(['lines' => __('vendor.order_wizard_billing_units_required')])
-                    ->withInput();
+                throw ValidationException::withMessages(['lines' => [__('vendor.order_wizard_billing_units_required')]]);
             }
         }
 
         $this->orderCreateWizardPut(['lines' => $lines]);
-
-        return redirect()
-            ->route('vendor.orders.create.summary')
-            ->with('success', __('vendor.order_wizard_step2_saved'));
     }
 
-    /**
-     * Step 3: read-only summary before fulfillment.
-     */
-    public function createWizardSummary()
+    public function storeWizardStep2(Request $request)
     {
         $vendor = Auth::user()->currentVendor();
 
@@ -367,12 +402,27 @@ class VendorOrderController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
-        $wizard = $this->orderCreateWizardGet();
-        if (! $this->orderCreateWizardHasStep1($wizard) || empty($wizard['lines'])) {
+        try {
+            $this->wizardSaveLines(is_array($request->input('lines')) ? $request->input('lines') : []);
+        } catch (ValidationException $e) {
             return redirect()
                 ->route('vendor.orders.create.items')
-                ->withErrors(['error' => __('vendor.order_wizard_add_items_before_checkout')]);
+                ->withErrors($e->errors())
+                ->withInput();
         }
+
+        return redirect()
+            ->route('vendor.orders.create.summary')
+            ->with('success', __('vendor.order_wizard_step2_saved'));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function wizardSummaryViewData(): array
+    {
+        $vendor = Auth::user()->currentVendor();
+        $wizard = $this->orderCreateWizardGet();
 
         $customer = VendorCustomer::where('vendor_id', $vendor->id)
             ->where('id', $wizard['customer_id'])
@@ -385,192 +435,197 @@ class VendorOrderController extends Controller
         ));
         $summaryItemsSubtotal = $this->orderCreateWizardFinancialPreview($vendor, $wizard)['sub_total'];
 
-        return view('vendor.orders.create-summary', [
+        $billingUnitsLabels = collect(Items::rentalPeriodKeys())
+            ->filter(fn ($k) => Items::rentalPeriodUsesBillingUnits($k))
+            ->mapWithKeys(fn ($k) => [$k => Items::billingUnitsFieldLabel($k)])
+            ->all();
+
+        return [
             'wizard' => $wizard,
             'customer' => $customer,
             'lineSummaries' => $lineSummaries,
             'summaryTotalQuantity' => $summaryTotalQuantity,
             'summaryItemsSubtotal' => $summaryItemsSubtotal,
-        ]);
+            'rentalPeriods' => Items::rentalPeriodSelectOptions(),
+            'billingUnitsLabels' => $billingUnitsLabels,
+            'bookingDefaultUnitsByPriceType' => $this->orderCreateWizardDefaultBillingUnitsByPriceType($wizard),
+        ];
     }
 
     /**
-     * Update a single wizard line from the summary step (quantity / billing units).
+     * @param  array<string, mixed>  $data
      */
-    public function updateWizardSummaryLine(Request $request)
+    public function wizardUpdateSummaryLine(array $data): void
     {
         $vendor = Auth::user()->currentVendor();
-
         if (! $vendor) {
-            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_session_expired')]]);
         }
 
+        $request = Request::create('/', 'POST', $data);
         $wizard = $this->orderCreateWizardGet();
         if (! $this->orderCreateWizardHasStep1($wizard) || empty($wizard['lines'])) {
-            return redirect()
-                ->route('vendor.orders.create.items')
-                ->withErrors(['error' => __('vendor.order_wizard_add_items_before_checkout')]);
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_add_items_before_checkout')]]);
         }
 
         $validated = $request->validate([
+            'line_key' => ['nullable', 'string', 'max:64'],
             'item_id' => ['required', 'integer', Rule::exists('items', 'id')->where(fn ($q) => $q->where('vendor_id', $vendor->id))],
             'quantity' => ['required', 'integer', 'min:1'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'rental_period' => ['required', 'string', Rule::in(Items::rentalPeriodKeys())],
             'billing_units' => ['nullable', 'numeric', 'min:0.01', 'max:999999'],
         ]);
 
+        $lineKey = trim((string) ($validated['line_key'] ?? ''));
+        if ($lineKey === '') {
+            $lineKey = (string) (int) $validated['item_id'];
+        }
+
         $wizardItemIds = array_map(static fn ($l) => (int) ($l['item_id'] ?? 0), $wizard['lines']);
         if (! in_array((int) $validated['item_id'], $wizardItemIds, true)) {
-            return redirect()
-                ->route('vendor.orders.create.summary')
-                ->withErrors(['line' => __('vendor.order_wizard_invalid_item')]);
+            throw ValidationException::withMessages(['line' => [__('vendor.order_wizard_invalid_item')]]);
         }
 
         $item = Items::where('id', $validated['item_id'])
             ->where('vendor_id', $vendor->id)
             ->where('is_active', true)
             ->where('is_available', true)
+            ->with('variants')
             ->first();
 
         if (! $item) {
-            return redirect()
-                ->route('vendor.orders.create.summary')
-                ->withErrors(['line' => __('vendor.order_wizard_invalid_item')]);
+            throw ValidationException::withMessages(['line' => [__('vendor.order_wizard_invalid_item')]]);
         }
 
-        $type = $item->rental_period ?? 'per_day';
-        if (! in_array($type, Items::rentalPeriodKeys(), true)) {
-            $type = 'per_day';
+        $lineRentalPeriod = $validated['rental_period'];
+        if (! in_array($lineRentalPeriod, Items::rentalPeriodKeys(), true)) {
+            $lineRentalPeriod = $item->rental_period ?? 'per_day';
         }
+
+        $price = round(max(0, (float) $validated['price']), 2);
 
         $billing = null;
-        if (Items::rentalPeriodUsesBillingUnits($type)) {
+        if (Items::rentalPeriodUsesBillingUnits($lineRentalPeriod)) {
             if ($request->input('billing_units') === null || $request->input('billing_units') === '') {
-                return redirect()
-                    ->route('vendor.orders.create.summary')
-                    ->withErrors(['billing_units' => __('vendor.order_wizard_billing_units_required')])
-                    ->withInput();
+                throw ValidationException::withMessages(['billing_units' => [__('vendor.order_wizard_billing_units_required')]]);
             }
-            $billing = $this->normalizedBillingUnits((float) $request->input('billing_units'), $type);
+            $billing = $this->normalizedBillingUnits((float) $request->input('billing_units'), $lineRentalPeriod);
         }
 
         $lines = $wizard['lines'];
         $found = false;
         foreach ($lines as $i => $row) {
-            if (! is_array($row) || (int) ($row['item_id'] ?? 0) !== (int) $validated['item_id']) {
+            if (! is_array($row)) {
                 continue;
             }
-            $lines[$i] = [
+            $rowKey = (string) ($row['line_key'] ?? $this->orderWizardLineKey(
+                (int) ($row['item_id'] ?? 0),
+                isset($row['item_variant_id']) ? (int) $row['item_variant_id'] : null
+            ));
+            if ($rowKey !== $lineKey) {
+                continue;
+            }
+            $lines[$i] = array_merge($row, [
+                'line_key' => $lineKey,
                 'item_id' => (int) $validated['item_id'],
                 'quantity' => (int) $validated['quantity'],
-            ];
-            if (Items::rentalPeriodUsesBillingUnits($type)) {
+                'rental_period' => $lineRentalPeriod,
+                'price' => $price,
+            ]);
+            if (Items::rentalPeriodUsesBillingUnits($lineRentalPeriod)) {
                 $lines[$i]['billing_units'] = $billing;
+            } else {
+                unset($lines[$i]['billing_units']);
             }
             $found = true;
             break;
         }
 
         if (! $found) {
-            return redirect()
-                ->route('vendor.orders.create.summary')
-                ->withErrors(['line' => __('vendor.order_wizard_invalid_item')]);
+            throw ValidationException::withMessages(['line' => [__('vendor.order_wizard_invalid_item')]]);
         }
 
         $this->orderCreateWizardPut(['lines' => array_values($lines)]);
-
-        return redirect()
-            ->route('vendor.orders.create.summary')
-            ->with('success', __('vendor.order_wizard_summary_line_updated'));
     }
 
     /**
-     * Remove a line from the wizard draft on the summary step.
+     * @param  array<string, mixed>  $data
      */
-    public function removeWizardSummaryLine(Request $request)
+    public function wizardRemoveSummaryLine(array $data): void
     {
         $vendor = Auth::user()->currentVendor();
-
         if (! $vendor) {
-            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_session_expired')]]);
         }
 
         $wizard = $this->orderCreateWizardGet();
         if (! $this->orderCreateWizardHasStep1($wizard) || empty($wizard['lines'])) {
-            return redirect()
-                ->route('vendor.orders.create.items')
-                ->withErrors(['error' => __('vendor.order_wizard_add_items_before_checkout')]);
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_add_items_before_checkout')]]);
         }
 
-        $validated = $request->validate([
+        $validated = Validator::make($data, [
+            'line_key' => ['nullable', 'string', 'max:64'],
             'item_id' => ['required', 'integer'],
-        ]);
+        ])->validate();
+
+        $lineKey = trim((string) ($validated['line_key'] ?? ''));
+        if ($lineKey === '') {
+            $lineKey = (string) (int) $validated['item_id'];
+        }
 
         $newLines = array_values(array_filter(
             $wizard['lines'],
-            static fn ($row) => is_array($row) && (int) ($row['item_id'] ?? 0) !== (int) $validated['item_id']
+            static function ($row) use ($lineKey) {
+                if (! is_array($row)) {
+                    return false;
+                }
+                $rowKey = (string) ($row['line_key'] ?? (string) (int) ($row['item_id'] ?? 0));
+
+                return $rowKey !== $lineKey;
+            }
         ));
 
         if (count($newLines) === count($wizard['lines'])) {
-            return redirect()
-                ->route('vendor.orders.create.summary')
-                ->withErrors(['line' => __('vendor.order_wizard_invalid_item')]);
+            throw ValidationException::withMessages(['line' => [__('vendor.order_wizard_invalid_item')]]);
         }
 
         if ($newLines === []) {
-            return redirect()
-                ->route('vendor.orders.create.items')
-                ->withErrors(['error' => __('vendor.order_wizard_select_at_least_one_item')]);
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_select_at_least_one_item')]]);
         }
 
         $this->orderCreateWizardPut(['lines' => $newLines]);
-
-        return redirect()
-            ->route('vendor.orders.create.summary')
-            ->with('success', __('vendor.order_wizard_summary_line_removed'));
     }
 
     /**
-     * Step 4: pickup or delivery details.
+     * @return array<string, mixed>
      */
-    public function createWizardFulfillment()
+    public function wizardFulfillmentViewData(): array
     {
-        $vendor = Auth::user()->currentVendor();
-
-        if (! $vendor) {
-            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
-        }
-
-        $wizard = $this->orderCreateWizardGet();
-        if (! $this->orderCreateWizardHasStep1($wizard) || empty($wizard['lines'])) {
-            return redirect()
-                ->route('vendor.orders.create.items')
-                ->withErrors(['error' => __('vendor.order_wizard_add_items_before_checkout')]);
-        }
-
-        return view('vendor.orders.create-fulfillment', [
-            'wizard' => $wizard,
-        ]);
+        return [
+            'wizard' => $this->orderCreateWizardGet(),
+        ];
     }
 
-    public function storeWizardFulfillment(Request $request)
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function wizardSaveFulfillment(array $data): void
     {
         $vendor = Auth::user()->currentVendor();
-
         if (! $vendor) {
-            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_session_expired')]]);
         }
 
         $wizard = $this->orderCreateWizardGet();
         if (! $this->orderCreateWizardHasStep1($wizard) || empty($wizard['lines'])) {
-            return redirect()
-                ->route('vendor.orders.create')
-                ->withErrors(['error' => __('vendor.order_wizard_session_expired')]);
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_session_expired')]]);
         }
 
-        $request->merge([
-            'pickup_at' => $request->filled('pickup_at') ? $request->input('pickup_at') : null,
-            'delivery_at' => $request->filled('delivery_at') ? $request->input('delivery_at') : null,
-        ]);
+        $request = Request::create('/', 'POST', array_merge($data, [
+            'pickup_at' => ! empty($data['pickup_at']) ? $data['pickup_at'] : null,
+            'delivery_at' => ! empty($data['delivery_at']) ? $data['delivery_at'] : null,
+        ]));
 
         $validated = $request->validate([
             'fulfillment_type' => ['required', Rule::in(['pickup', 'delivery'])],
@@ -612,6 +667,314 @@ class VendorOrderController extends Controller
         }
 
         $this->orderCreateWizardPut($payload);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function wizardPaymentViewData(): array
+    {
+        $vendor = Auth::user()->currentVendor();
+        $wizard = $this->orderCreateWizardGet();
+
+        $customer = VendorCustomer::where('vendor_id', $vendor->id)
+            ->where('id', $wizard['customer_id'])
+            ->first();
+
+        $lineSummaries = $this->orderCreateWizardLineSummaries($vendor, $wizard['lines']);
+
+        $paymentPreview = $this->orderCreateWizardFinancialPreview($vendor, $wizard);
+        $paymentPreview['old_type'] = 'none';
+        $paymentPreview['old_value'] = null;
+        $paymentPreview['sd_labels'] = [
+            'modal_title' => __('vendor.order_wizard_security_deposit_modal_title'),
+            'modal_subtitle' => __('vendor.order_wizard_security_deposit_modal_subtitle'),
+            'configure' => __('vendor.order_wizard_security_deposit_configure'),
+        ];
+        $paymentPreview['deposit_names'] = [
+            'none' => __('vendor.order_wizard_sd_type_none'),
+            'order_amount' => __('vendor.order_wizard_sd_type_order_pct'),
+            'product_security_deposit' => __('vendor.order_wizard_sd_type_product_pct'),
+            'fixed_amount' => __('vendor.order_wizard_sd_type_fixed'),
+        ];
+
+        return [
+            'wizard' => $wizard,
+            'customer' => $customer,
+            'lineSummaries' => $lineSummaries,
+            'paymentPreview' => $paymentPreview,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payment
+     */
+    public function wizardPlaceOrder(array $payment): Order
+    {
+        $vendor = Auth::user()->currentVendor();
+        if (! $vendor) {
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_session_expired')]]);
+        }
+
+        $wizard = $this->orderCreateWizardGet();
+        if (! $this->orderCreateWizardHasStep1($wizard) || empty($wizard['lines'])) {
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_session_expired')]]);
+        }
+
+        if (! $this->orderCreateWizardHasFulfillment($wizard)) {
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_complete_fulfillment_first')]]);
+        }
+
+        $fake = Request::create('/', 'POST', [
+            'customer_id' => $wizard['customer_id'],
+            'event_name' => $wizard['event_name'],
+            'start_time' => $wizard['start_time'],
+            'end_time' => $wizard['end_time'],
+        ]);
+
+        try {
+            $payload = CreateOrder::validateForDirectOrder($fake, $vendor->id);
+        } catch (ValidationException $e) {
+            $this->orderCreateWizardClear();
+            throw $e;
+        }
+
+        $request = Request::create('/', 'POST', $payment);
+        $validated = $request->validate([
+            'initial_payment_amount' => ['nullable', 'numeric', 'min:0.01'],
+            'initial_payment_method' => ['nullable', 'string', 'max:50'],
+            'security_deposit_payment_amount' => ['nullable', 'numeric', 'min:0.01'],
+            'security_deposit_payment_method' => ['nullable', 'string', 'max:50'],
+            'security_deposit_type' => ['required', Rule::in(['none', 'order_amount', 'product_security_deposit', 'fixed_amount'])],
+            'security_deposit_value' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        if (! empty($validated['initial_payment_amount']) && trim((string) ($validated['initial_payment_method'] ?? '')) === '') {
+            throw ValidationException::withMessages(['initial_payment_method' => [__('vendor.order_wizard_payment_method_required')]]);
+        }
+
+        if (! empty($validated['security_deposit_payment_amount']) && trim((string) ($validated['security_deposit_payment_method'] ?? '')) === '') {
+            throw ValidationException::withMessages(['security_deposit_payment_method' => [__('vendor.order_wizard_payment_method_required')]]);
+        }
+
+        $secType = $validated['security_deposit_type'];
+        $secValue = null;
+        if ($secType !== 'none') {
+            $num = round((float) ($validated['security_deposit_value'] ?? 0), 2);
+            if ($num <= 0.009) {
+                throw ValidationException::withMessages(['security_deposit_value' => [__('vendor.order_wizard_security_deposit_value_required')]]);
+            }
+            if (in_array($secType, ['order_amount', 'product_security_deposit'], true) && $num > 100) {
+                throw ValidationException::withMessages(['security_deposit_value' => [__('vendor.order_wizard_security_deposit_pct_max')]]);
+            }
+            $secValue = $num;
+        }
+
+        $orderNumber = 'ORD-'.strtoupper(uniqid());
+
+        $order = DB::transaction(function () use ($vendor, $payload, $orderNumber, $wizard, $validated, $secType, $secValue) {
+            $attrs = $payload->toDirectOrderAttributes();
+            $type = $wizard['fulfillment_type'];
+            if ($type === 'delivery') {
+                $attrs['fulfillment_type'] = 'delivery';
+                $attrs['delivery_address'] = trim((string) ($wizard['delivery_address'] ?? ''));
+                $attrs['pickup_at'] = null;
+                $attrs['delivery_at'] = ! empty($wizard['delivery_at'])
+                    ? Carbon::parse($wizard['delivery_at'])
+                    : null;
+                $attrs['delivery_charge'] = round((float) ($wizard['delivery_charge'] ?? 0), 2);
+            } else {
+                $attrs['fulfillment_type'] = 'pickup';
+                $addr = trim((string) ($wizard['delivery_address'] ?? ''));
+                $attrs['delivery_address'] = $addr !== '' ? $addr : null;
+                $attrs['pickup_at'] = ! empty($wizard['pickup_at'])
+                    ? Carbon::parse($wizard['pickup_at'])
+                    : null;
+                $attrs['delivery_at'] = null;
+                $attrs['delivery_charge'] = 0;
+            }
+
+            $created = Order::create(array_merge($attrs, [
+                'order_number' => $orderNumber,
+                'vendor_id' => $vendor->id,
+                'security_deposit_type' => $secType,
+                'security_deposit_value' => $secValue,
+            ]));
+
+            $this->persistWizardLinesOnOrder($vendor, $created, $wizard['lines']);
+            $this->recalculateOrderFinancials($created);
+            $created->refresh();
+
+            $detail = is_array($created->payment_detail) ? $created->payment_detail : [];
+            $paidDelta = 0.0;
+
+            $payAmt = round((float) ($validated['initial_payment_amount'] ?? 0), 2);
+            if ($payAmt > 0.009) {
+                $method = trim((string) ($validated['initial_payment_method'] ?? 'Cash'));
+                $detail[] = [
+                    'payment_for' => 'order_amount',
+                    'method' => $method !== '' ? $method : 'Cash',
+                    'amount' => $payAmt,
+                    'paid_on' => now()->toDateString(),
+                    'recorded_at' => now()->toIso8601String(),
+                    'entry_kind' => 'payment',
+                ];
+                $paidDelta += $payAmt;
+            }
+
+            $sdPayAmt = round((float) ($validated['security_deposit_payment_amount'] ?? 0), 2);
+            if ($sdPayAmt > 0.009) {
+                $secDue = round((float) ($created->security_deposit ?? 0), 2);
+                if ($secDue <= 0.009) {
+                    throw ValidationException::withMessages([
+                        'security_deposit_payment_amount' => [__('vendor.order_wizard_sd_payment_requires_deposit')],
+                    ]);
+                }
+                if ($sdPayAmt > $secDue + 0.009) {
+                    throw ValidationException::withMessages([
+                        'security_deposit_payment_amount' => [__('vendor.order_wizard_sd_payment_exceeds_deposit')],
+                    ]);
+                }
+                $sdMethod = trim((string) ($validated['security_deposit_payment_method'] ?? 'Cash'));
+                $detail[] = [
+                    'payment_for' => 'security_deposit',
+                    'method' => $sdMethod !== '' ? $sdMethod : 'Cash',
+                    'amount' => $sdPayAmt,
+                    'paid_on' => now()->toDateString(),
+                    'recorded_at' => now()->toIso8601String(),
+                    'entry_kind' => 'payment',
+                ];
+                $paidDelta += $sdPayAmt;
+            }
+
+            if ($paidDelta > 0.009) {
+                $created->payment_detail = array_values($detail);
+                $created->paid_amount = round((float) ($created->paid_amount ?? 0) + $paidDelta, 2);
+                $created->save();
+            }
+
+            return $created;
+        });
+
+        $this->orderCreateWizardClear();
+
+        return $order;
+    }
+
+    /**
+     * Step 3: read-only summary before fulfillment.
+     */
+    public function createWizardSummary()
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+        }
+
+        $wizard = $this->orderCreateWizardGet();
+        if (! $this->orderCreateWizardHasStep1($wizard) || empty($wizard['lines'])) {
+            return redirect()
+                ->route('vendor.orders.create.items')
+                ->withErrors(['error' => __('vendor.order_wizard_add_items_before_checkout')]);
+        }
+
+        return view('vendor.orders.create-summary', $this->wizardSummaryViewData());
+    }
+
+    /**
+     * Update a single wizard line from the summary step (quantity / billing units).
+     */
+    public function updateWizardSummaryLine(Request $request)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+        }
+
+        try {
+            $this->wizardUpdateSummaryLine($request->all());
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('vendor.orders.create.summary')
+                ->withErrors($e->errors())
+                ->withInput();
+        }
+
+        return redirect()
+            ->route('vendor.orders.create.summary')
+            ->with('success', __('vendor.order_wizard_summary_line_updated'));
+    }
+
+    /**
+     * Remove a line from the wizard draft on the summary step.
+     */
+    public function removeWizardSummaryLine(Request $request)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+        }
+
+        try {
+            $this->wizardRemoveSummaryLine($request->all());
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+            if (isset($errors['error'])) {
+                return redirect()
+                    ->route('vendor.orders.create.items')
+                    ->withErrors($e);
+            }
+
+            return redirect()
+                ->route('vendor.orders.create.summary')
+                ->withErrors($e);
+        }
+
+        return redirect()
+            ->route('vendor.orders.create.summary')
+            ->with('success', __('vendor.order_wizard_summary_line_removed'));
+    }
+
+    /**
+     * Step 4: pickup or delivery details.
+     */
+    public function createWizardFulfillment()
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+        }
+
+        $wizard = $this->orderCreateWizardGet();
+        if (! $this->orderCreateWizardHasStep1($wizard) || empty($wizard['lines'])) {
+            return redirect()
+                ->route('vendor.orders.create.items')
+                ->withErrors(['error' => __('vendor.order_wizard_add_items_before_checkout')]);
+        }
+
+        return view('vendor.orders.create-fulfillment', $this->wizardFulfillmentViewData());
+    }
+
+    public function storeWizardFulfillment(Request $request)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+        }
+
+        try {
+            $this->wizardSaveFulfillment($request->all());
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('vendor.orders.create.fulfillment')
+                ->withErrors($e->errors())
+                ->withInput();
+        }
 
         return redirect()
             ->route('vendor.orders.create.payment')
@@ -642,33 +1005,11 @@ class VendorOrderController extends Controller
                 ->withErrors(['error' => __('vendor.order_wizard_complete_fulfillment_first')]);
         }
 
-        $customer = VendorCustomer::where('vendor_id', $vendor->id)
-            ->where('id', $wizard['customer_id'])
-            ->first();
+        $data = $this->wizardPaymentViewData();
+        $data['paymentPreview']['old_type'] = old('security_deposit_type', 'none');
+        $data['paymentPreview']['old_value'] = old('security_deposit_value');
 
-        $lineSummaries = $this->orderCreateWizardLineSummaries($vendor, $wizard['lines']);
-
-        $paymentPreview = $this->orderCreateWizardFinancialPreview($vendor, $wizard);
-        $paymentPreview['old_type'] = old('security_deposit_type', 'none');
-        $paymentPreview['old_value'] = old('security_deposit_value');
-        $paymentPreview['sd_labels'] = [
-            'modal_title' => __('vendor.order_wizard_security_deposit_modal_title'),
-            'modal_subtitle' => __('vendor.order_wizard_security_deposit_modal_subtitle'),
-            'configure' => __('vendor.order_wizard_security_deposit_configure'),
-        ];
-        $paymentPreview['deposit_names'] = [
-            'none' => __('vendor.order_wizard_sd_type_none'),
-            'order_amount' => __('vendor.order_wizard_sd_type_order_pct'),
-            'product_security_deposit' => __('vendor.order_wizard_sd_type_product_pct'),
-            'fixed_amount' => __('vendor.order_wizard_sd_type_fixed'),
-        ];
-
-        return view('vendor.orders.create-payment', [
-            'wizard' => $wizard,
-            'customer' => $customer,
-            'lineSummaries' => $lineSummaries,
-            'paymentPreview' => $paymentPreview,
-        ]);
+        return view('vendor.orders.create-payment', $data);
     }
 
     public function storeWizardComplete(Request $request)
@@ -679,164 +1020,8 @@ class VendorOrderController extends Controller
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
 
-        $wizard = $this->orderCreateWizardGet();
-        if (! $this->orderCreateWizardHasStep1($wizard) || empty($wizard['lines'])) {
-            return redirect()
-                ->route('vendor.orders.create')
-                ->withErrors(['error' => __('vendor.order_wizard_session_expired')]);
-        }
-
-        if (! $this->orderCreateWizardHasFulfillment($wizard)) {
-            return redirect()
-                ->route('vendor.orders.create.fulfillment')
-                ->withErrors(['error' => __('vendor.order_wizard_complete_fulfillment_first')]);
-        }
-
-        $fake = Request::create('/', 'POST', [
-            'customer_id' => $wizard['customer_id'],
-            'event_name' => $wizard['event_name'],
-            'start_time' => $wizard['start_time'],
-            'end_time' => $wizard['end_time'],
-        ]);
-
         try {
-            $payload = CreateOrder::validateForDirectOrder($fake, $vendor->id);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            $this->orderCreateWizardClear();
-
-            return redirect()
-                ->route('vendor.orders.create')
-                ->withErrors($e->errors());
-        }
-
-        $validated = $request->validate([
-            'initial_payment_amount' => ['nullable', 'numeric', 'min:0.01'],
-            'initial_payment_method' => ['nullable', 'string', 'max:50'],
-            'security_deposit_payment_amount' => ['nullable', 'numeric', 'min:0.01'],
-            'security_deposit_payment_method' => ['nullable', 'string', 'max:50'],
-            'security_deposit_type' => ['required', Rule::in(['none', 'order_amount', 'product_security_deposit', 'fixed_amount'])],
-            'security_deposit_value' => ['nullable', 'numeric', 'min:0'],
-        ]);
-
-        if (! empty($validated['initial_payment_amount']) && trim((string) ($validated['initial_payment_method'] ?? '')) === '') {
-            return redirect()
-                ->route('vendor.orders.create.payment')
-                ->withErrors(['initial_payment_method' => __('vendor.order_wizard_payment_method_required')])
-                ->withInput();
-        }
-
-        if (! empty($validated['security_deposit_payment_amount']) && trim((string) ($validated['security_deposit_payment_method'] ?? '')) === '') {
-            return redirect()
-                ->route('vendor.orders.create.payment')
-                ->withErrors(['security_deposit_payment_method' => __('vendor.order_wizard_payment_method_required')])
-                ->withInput();
-        }
-
-        $secType = $validated['security_deposit_type'];
-        $secValue = null;
-        if ($secType !== 'none') {
-            $num = round((float) ($validated['security_deposit_value'] ?? 0), 2);
-            if ($num <= 0.009) {
-                return redirect()
-                    ->route('vendor.orders.create.payment')
-                    ->withErrors(['security_deposit_value' => __('vendor.order_wizard_security_deposit_value_required')])
-                    ->withInput();
-            }
-            if (in_array($secType, ['order_amount', 'product_security_deposit'], true) && $num > 100) {
-                return redirect()
-                    ->route('vendor.orders.create.payment')
-                    ->withErrors(['security_deposit_value' => __('vendor.order_wizard_security_deposit_pct_max')])
-                    ->withInput();
-            }
-            $secValue = $num;
-        }
-
-        $orderNumber = 'ORD-'.strtoupper(uniqid());
-
-        try {
-            $order = DB::transaction(function () use ($vendor, $payload, $orderNumber, $wizard, $validated, $secType, $secValue) {
-                $attrs = $payload->toDirectOrderAttributes();
-                $type = $wizard['fulfillment_type'];
-                if ($type === 'delivery') {
-                    $attrs['fulfillment_type'] = 'delivery';
-                    $attrs['delivery_address'] = trim((string) ($wizard['delivery_address'] ?? ''));
-                    $attrs['pickup_at'] = null;
-                    $attrs['delivery_at'] = ! empty($wizard['delivery_at'])
-                        ? Carbon::parse($wizard['delivery_at'])
-                        : null;
-                    $attrs['delivery_charge'] = round((float) ($wizard['delivery_charge'] ?? 0), 2);
-                } else {
-                    $attrs['fulfillment_type'] = 'pickup';
-                    $addr = trim((string) ($wizard['delivery_address'] ?? ''));
-                    $attrs['delivery_address'] = $addr !== '' ? $addr : null;
-                    $attrs['pickup_at'] = ! empty($wizard['pickup_at'])
-                        ? Carbon::parse($wizard['pickup_at'])
-                        : null;
-                    $attrs['delivery_at'] = null;
-                    $attrs['delivery_charge'] = 0;
-                }
-
-                $created = Order::create(array_merge($attrs, [
-                    'order_number' => $orderNumber,
-                    'vendor_id' => $vendor->id,
-                    'security_deposit_type' => $secType,
-                    'security_deposit_value' => $secValue,
-                ]));
-
-                $this->persistWizardLinesOnOrder($vendor, $created, $wizard['lines']);
-                $this->recalculateOrderFinancials($created);
-                $created->refresh();
-
-                $detail = is_array($created->payment_detail) ? $created->payment_detail : [];
-                $paidDelta = 0.0;
-
-                $payAmt = round((float) ($validated['initial_payment_amount'] ?? 0), 2);
-                if ($payAmt > 0.009) {
-                    $method = trim((string) ($validated['initial_payment_method'] ?? 'Cash'));
-                    $detail[] = [
-                        'payment_for' => 'order_amount',
-                        'method' => $method !== '' ? $method : 'Cash',
-                        'amount' => $payAmt,
-                        'paid_on' => now()->toDateString(),
-                        'recorded_at' => now()->toIso8601String(),
-                        'entry_kind' => 'payment',
-                    ];
-                    $paidDelta += $payAmt;
-                }
-
-                $sdPayAmt = round((float) ($validated['security_deposit_payment_amount'] ?? 0), 2);
-                if ($sdPayAmt > 0.009) {
-                    $secDue = round((float) ($created->security_deposit ?? 0), 2);
-                    if ($secDue <= 0.009) {
-                        throw ValidationException::withMessages([
-                            'security_deposit_payment_amount' => __('vendor.order_wizard_sd_payment_requires_deposit'),
-                        ]);
-                    }
-                    if ($sdPayAmt > $secDue + 0.009) {
-                        throw ValidationException::withMessages([
-                            'security_deposit_payment_amount' => __('vendor.order_wizard_sd_payment_exceeds_deposit'),
-                        ]);
-                    }
-                    $sdMethod = trim((string) ($validated['security_deposit_payment_method'] ?? 'Cash'));
-                    $detail[] = [
-                        'payment_for' => 'security_deposit',
-                        'method' => $sdMethod !== '' ? $sdMethod : 'Cash',
-                        'amount' => $sdPayAmt,
-                        'paid_on' => now()->toDateString(),
-                        'recorded_at' => now()->toIso8601String(),
-                        'entry_kind' => 'payment',
-                    ];
-                    $paidDelta += $sdPayAmt;
-                }
-
-                if ($paidDelta > 0.009) {
-                    $created->payment_detail = array_values($detail);
-                    $created->paid_amount = round((float) ($created->paid_amount ?? 0) + $paidDelta, 2);
-                    $created->save();
-                }
-
-                return $created;
-            });
+            $order = $this->wizardPlaceOrder($request->all());
         } catch (ValidationException $e) {
             return redirect()
                 ->route('vendor.orders.create.payment')
@@ -850,8 +1035,6 @@ class VendorOrderController extends Controller
                 ->withErrors(['error' => $e->getMessage()])
                 ->withInput();
         }
-
-        $this->orderCreateWizardClear();
 
         return redirect()
             ->route('vendor.orders.show', $order)
@@ -980,7 +1163,7 @@ class VendorOrderController extends Controller
     }
 
     /**
-     * @return list<array{item_id: int, quantity: int, billing_units?: float|null}>
+     * @return list<array{line_key: string, item_id: int, item_variant_id?: int|null, quantity: int, billing_units?: float|null, rental_period?: string, price?: float}>
      */
     private function orderCreateWizardNormalizeLinesFromRequest(Request $request, $vendor): array
     {
@@ -989,7 +1172,7 @@ class VendorOrderController extends Controller
             return [];
         }
 
-        $out = [];
+        $merged = [];
         foreach ($raw as $key => $row) {
             if (! is_array($row)) {
                 continue;
@@ -1007,58 +1190,91 @@ class VendorOrderController extends Controller
             if (! $item) {
                 continue;
             }
-            $type = $item->rental_period ?? 'per_day';
+
+            $variantId = isset($row['item_variant_id']) && $row['item_variant_id'] !== '' && $row['item_variant_id'] !== null
+                ? (int) $row['item_variant_id']
+                : null;
+            $lineKey = $this->orderWizardLineKey($itemId, $variantId);
+            $type = $row['rental_period'] ?? $item->rental_period ?? 'per_day';
+            if (! in_array($type, Items::rentalPeriodKeys(), true)) {
+                $type = $item->rental_period ?? 'per_day';
+            }
+            if (! in_array($type, Items::rentalPeriodKeys(), true)) {
+                $type = 'per_day';
+            }
             $entry = [
+                'line_key' => $lineKey,
                 'item_id' => $itemId,
                 'quantity' => $qty,
+                'rental_period' => $type,
             ];
+            if ($variantId) {
+                $entry['item_variant_id'] = $variantId;
+            }
+            if (isset($row['price']) && $row['price'] !== '' && $row['price'] !== null) {
+                $entry['price'] = max(0, (float) $row['price']);
+            }
             if (Items::rentalPeriodUsesBillingUnits($type)) {
                 $bu = $row['billing_units'] ?? null;
                 $entry['billing_units'] = $bu !== null && $bu !== '' ? (float) $bu : null;
             }
 
-            $out[] = $entry;
+            if (isset($merged[$lineKey])) {
+                $merged[$lineKey]['quantity'] += $qty;
+            } else {
+                $merged[$lineKey] = $entry;
+            }
         }
 
-        return $out;
+        return array_values($merged);
     }
 
     /**
-     * @param  list<array{item_id: int, quantity: int, billing_units?: float|null}>  $lines
-     * @return list<array{item_id: int, name: string, quantity: int, rental_period: string, billing_units: float|null, unit_price: float, line_total: float}>
+     * @param  list<array{line_key?: string, item_id: int, item_variant_id?: int|null, quantity: int, billing_units?: float|null}>  $lines
+     * @return list<array{line_key: string, item_id: int, item_variant_id?: int|null, name: string, variant_label?: string|null, quantity: int, rental_period: string, billing_units: float|null, unit_price: float, line_total: float, photo_url?: string|null}>
      */
     private function orderCreateWizardLineSummaries($vendor, array $lines): array
     {
         $summaries = [];
         foreach ($lines as $row) {
-            $item = Items::where('id', $row['item_id'])->where('vendor_id', $vendor->id)->first();
+            $item = Items::where('id', $row['item_id'])
+                ->where('vendor_id', $vendor->id)
+                ->with(['variantAttributes', 'variants'])
+                ->first();
             if (! $item) {
                 continue;
             }
-            $lineRentalPeriod = $item->rental_period ?? 'per_day';
-            if (! in_array($lineRentalPeriod, Items::rentalPeriodKeys(), true)) {
-                $lineRentalPeriod = 'per_day';
-            }
-            $billingUnits = $this->normalizedBillingUnits(
-                isset($row['billing_units']) ? (float) $row['billing_units'] : null,
-                $lineRentalPeriod
-            );
+            $variantId = isset($row['item_variant_id']) ? (int) $row['item_variant_id'] : null;
+            $variant = $variantId ? $item->variants->firstWhere('id', $variantId) : null;
+            $ctx = $this->resolveWizardLineContext($item, $variant, $row);
+            $lineRentalPeriod = $ctx['rental_period'];
+            $billingUnits = $ctx['billing_units'];
             $qty = (int) $row['quantity'];
+            $unitPrice = $ctx['unit_price'];
+            $variantLabel = $variant ? $variant->displayLabel($item->variantAttributes) : null;
+            $displayName = $item->name;
+            if ($variantLabel) {
+                $displayName .= ' ('.$variantLabel.')';
+            }
+            $lineKey = (string) ($row['line_key'] ?? $this->orderWizardLineKey((int) $row['item_id'], $variantId));
             $temp = new OrderItem([
-                'price' => $item->price,
+                'price' => $unitPrice,
                 'quantity' => $qty,
                 'rental_period' => $lineRentalPeriod,
                 'billing_units' => Items::rentalPeriodUsesBillingUnits($lineRentalPeriod) ? $billingUnits : null,
             ]);
             $lineTotal = $temp->lineSubtotal();
             $summaries[] = [
+                'line_key' => $lineKey,
                 'item_id' => (int) $row['item_id'],
-                'name' => $item->name,
-                'photo_url' => $item->photo_url,
+                'item_variant_id' => $variantId,
+                'name' => $displayName,
+                'variant_label' => $variantLabel,
+                'photo_url' => $variant?->photo_url ?? $item->photo_url,
                 'quantity' => $qty,
                 'rental_period' => $lineRentalPeriod,
                 'billing_units' => $row['billing_units'] ?? null,
-                'unit_price' => (float) $item->price,
+                'unit_price' => $unitPrice,
                 'line_total' => $lineTotal,
             ];
         }
@@ -1085,20 +1301,19 @@ class VendorOrderController extends Controller
             if ($itemId < 1 || $qty < 1) {
                 continue;
             }
-            $item = Items::where('id', $itemId)->where('vendor_id', $vendor->id)->first();
+            $item = Items::where('id', $itemId)->where('vendor_id', $vendor->id)->with('variants')->first();
             if (! $item) {
                 continue;
             }
-            $lineRentalPeriod = $item->rental_period ?? 'per_day';
-            if (! in_array($lineRentalPeriod, Items::rentalPeriodKeys(), true)) {
-                $lineRentalPeriod = 'per_day';
-            }
-            $billingUnits = $this->normalizedBillingUnits(
-                isset($row['billing_units']) ? (float) $row['billing_units'] : null,
-                $lineRentalPeriod
-            );
+            $variantId = isset($row['item_variant_id']) ? (int) $row['item_variant_id'] : null;
+            $variant = $variantId ? $item->variants->firstWhere('id', $variantId) : null;
+            $ctx = $this->resolveWizardLineContext($item, $variant, $row);
+            $lineRentalPeriod = $ctx['rental_period'];
+            $billingUnits = $ctx['billing_units'];
+            $qty = (int) ($row['quantity'] ?? 0);
+            $unitPrice = $ctx['unit_price'];
             $temp = new OrderItem([
-                'price' => $item->price,
+                'price' => $unitPrice,
                 'quantity' => $qty,
                 'rental_period' => $lineRentalPeriod,
                 'billing_units' => Items::rentalPeriodUsesBillingUnits($lineRentalPeriod) ? $billingUnits : null,
@@ -1135,27 +1350,37 @@ class VendorOrderController extends Controller
                 ->where('vendor_id', $vendor->id)
                 ->where('is_active', true)
                 ->where('is_available', true)
+                ->with(['variantAttributes', 'variants'])
                 ->first();
 
             if (! $item) {
                 continue;
             }
 
-            $lineRentalPeriod = $item->rental_period;
-            if (! in_array($lineRentalPeriod, Items::rentalPeriodKeys(), true)) {
-                $lineRentalPeriod = 'per_day';
+            $variantId = isset($itemData['item_variant_id']) ? (int) $itemData['item_variant_id'] : null;
+            $variant = $variantId ? $item->variants->firstWhere('id', $variantId) : null;
+            $ctx = $this->resolveWizardLineContext($item, $variant, $itemData);
+            $lineRentalPeriod = $ctx['rental_period'];
+            $billingUnits = $ctx['billing_units'];
+            $unitPrice = $ctx['unit_price'];
+            $variantLabel = $variant ? $variant->displayLabel($item->variantAttributes) : null;
+            $itemName = $item->name;
+            if ($variantLabel) {
+                $itemName .= ' ('.$variantLabel.')';
             }
 
-            $billingUnits = $this->normalizedBillingUnits(
-                isset($itemData['billing_units']) ? (float) $itemData['billing_units'] : null,
-                $lineRentalPeriod
-            );
-
-            $existing = OrderItem::where('order_id', $order->id)->where('item_id', $item->id)->first();
+            $existingQuery = OrderItem::where('order_id', $order->id)->where('item_id', $item->id);
+            if ($variantId) {
+                $existingQuery->where('item_variant_id', $variantId);
+            } else {
+                $existingQuery->whereNull('item_variant_id');
+            }
+            $existing = $existingQuery->first();
 
             if ($existing) {
                 $existing->update([
                     'quantity' => $existing->quantity + (int) $itemData['quantity'],
+                    'price' => $unitPrice,
                     'rental_period' => $lineRentalPeriod,
                     'billing_units' => Items::rentalPeriodUsesBillingUnits($lineRentalPeriod) ? $billingUnits : null,
                     'start_at' => $order->start_at,
@@ -1168,8 +1393,10 @@ class VendorOrderController extends Controller
                 $oi = OrderItem::create([
                     'order_id' => $order->id,
                     'item_id' => $item->id,
-                    'item_name' => $item->name,
-                    'price' => $item->price,
+                    'item_variant_id' => $variantId,
+                    'item_name' => $itemName,
+                    'variant_label' => $variantLabel,
+                    'price' => $unitPrice,
                     'quantity' => (int) $itemData['quantity'],
                     'rental_period' => $lineRentalPeriod,
                     'billing_units' => Items::rentalPeriodUsesBillingUnits($lineRentalPeriod) ? $billingUnits : null,
@@ -1594,6 +1821,95 @@ class VendorOrderController extends Controller
         }
 
         return round($v, 2);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array{rental_period: string, unit_price: float, billing_units: float|null}
+     */
+    private function resolveWizardLineContext(Items $item, ?ItemVariant $variant, array $row): array
+    {
+        $lineRentalPeriod = $row['rental_period'] ?? $item->rental_period ?? 'per_day';
+        if (! is_string($lineRentalPeriod) || ! in_array($lineRentalPeriod, Items::rentalPeriodKeys(), true)) {
+            $lineRentalPeriod = $item->rental_period ?? 'per_day';
+        }
+        if (! in_array($lineRentalPeriod, Items::rentalPeriodKeys(), true)) {
+            $lineRentalPeriod = 'per_day';
+        }
+
+        $defaultPrice = $variant ? (float) $variant->price : (float) $item->price;
+        $unitPrice = isset($row['price']) && $row['price'] !== '' && $row['price'] !== null
+            ? (float) $row['price']
+            : $defaultPrice;
+        if ($unitPrice < 0) {
+            $unitPrice = $defaultPrice;
+        }
+
+        $billingUnits = null;
+        if (Items::rentalPeriodUsesBillingUnits($lineRentalPeriod)) {
+            $billingUnits = $this->normalizedBillingUnits(
+                isset($row['billing_units']) ? (float) $row['billing_units'] : null,
+                $lineRentalPeriod
+            );
+        }
+
+        return [
+            'rental_period' => $lineRentalPeriod,
+            'unit_price' => round($unitPrice, 2),
+            'billing_units' => $billingUnits,
+        ];
+    }
+
+    private function orderWizardLineKey(int $itemId, ?int $variantId): string
+    {
+        return $variantId ? "{$itemId}_v{$variantId}" : (string) $itemId;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function catalogItemPayloadForOrderWizard(Items $i): array
+    {
+        $pt = in_array($i->rental_period ?? '', Items::rentalPeriodKeys(), true) ? $i->rental_period : 'per_day';
+        $payload = [
+            'id' => $i->id,
+            'uuid' => $i->uuid,
+            'item_code' => $i->item_code,
+            'slug' => $i->slug,
+            'name' => $i->name,
+            'price' => (float) $i->price,
+            'photo_url' => $i->photo_url,
+            'category_id' => $i->category_id,
+            'category' => $i->category ? ['id' => $i->category->id, 'name' => $i->category->name] : null,
+            'stock' => (int) ($i->usesVariants() ? $i->effectiveStock() : ($i->stock ?? 0)),
+            'manage_stock' => (bool) ($i->manage_stock ?? false),
+            'rental_period' => $pt,
+            'uses_billing_units' => Items::rentalPeriodUsesBillingUnits($pt),
+            'has_variants' => $i->usesVariants(),
+            'variants' => [],
+        ];
+
+        if ($i->usesVariants()) {
+            $attributes = $i->relationLoaded('variantAttributes') ? $i->variantAttributes : $i->variantAttributes()->ordered()->get();
+            $variants = $i->relationLoaded('variants') ? $i->variants : $i->variants()->ordered()->get();
+            $activeVariants = $variants->filter(fn (ItemVariant $v) => $v->is_active && $v->is_available);
+            $prices = $activeVariants->map(fn (ItemVariant $v) => (float) $v->price);
+
+            $payload['variants'] = $variants->map(fn (ItemVariant $v) => [
+                'id' => $v->id,
+                'label' => $v->displayLabel($attributes),
+                'price' => (float) $v->price,
+                'stock' => (int) $v->stock,
+                'manage_stock' => (bool) $v->manage_stock,
+                'is_available' => (bool) ($v->is_active && $v->is_available),
+                'variant_code' => $v->variant_code,
+            ])->values()->all();
+            $payload['price'] = $prices->isNotEmpty() ? (float) $prices->min() : (float) $i->price;
+            $payload['price_min'] = $prices->isNotEmpty() ? (float) $prices->min() : null;
+            $payload['price_max'] = $prices->isNotEmpty() ? (float) $prices->max() : null;
+        }
+
+        return $payload;
     }
 
     /**

@@ -25,26 +25,8 @@ class VendorCustomerController extends Controller
         if (!$vendor) {
             return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
         }
-        
-        $query = VendorCustomer::where('vendor_id', $vendor->id);
-        
-        if ($request->filled('search')) {
-            $term = '%' . mb_strtolower(trim($request->search)) . '%';
-            $query->where(function ($q) use ($term) {
-                $q->whereRaw('LOWER(name) LIKE ?', [$term])
-                    ->orWhereRaw('LOWER(mobile) LIKE ?', [$term])
-                    ->orWhereRaw("LOWER(COALESCE(address, '')) LIKE ?", [$term]);
-            });
-        }
-        
-        $customers = $query->orderBy('created_at', 'desc')->paginate(15);
-        
-        // Return only the partial for AJAX requests
-        if ($request->ajax() || $request->wantsJson()) {
-            return view('vendor.customers.partials.customers-list', compact('customers'))->render();
-        }
-        
-        return view('vendor.customers.index', compact('customers'));
+
+        return view('vendor.customers.index');
     }
     
     /**

@@ -66,22 +66,24 @@
 
 <div class="mx-auto max-w-6xl space-y-3 pb-4 md:space-y-4">
     {{-- Welcome + primary actions (single compact row) --}}
-    <div class="overflow-hidden rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 px-3 py-3 text-white shadow-md sm:px-4 sm:py-3.5">
-        <div class="flex flex-wrap items-center justify-between gap-2">
+    <div class="relative overflow-hidden rounded-xl border border-emerald-200/60 bg-gradient-to-br from-emerald-50/90 via-white/75 to-teal-50/50 px-3 py-3 shadow-sm ring-1 ring-emerald-100/50 backdrop-blur-sm sm:px-4 sm:py-3.5">
+        <div class="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full bg-emerald-400/15 blur-2xl" aria-hidden="true"></div>
+        <div class="pointer-events-none absolute -bottom-10 left-1/3 h-24 w-24 rounded-full bg-teal-400/10 blur-2xl" aria-hidden="true"></div>
+        <div class="relative flex flex-wrap items-center justify-between gap-2">
             <div class="min-w-0 flex-1">
-                <h1 class="truncate text-base font-bold leading-tight sm:text-lg md:text-xl">
+                <h1 class="truncate text-base font-bold leading-tight text-gray-900 sm:text-lg md:text-xl">
                     {{ __('vendor.welcome_back', ['name' => $vendorName]) }}
                 </h1>
-                <p class="mt-0.5 text-[11px] text-emerald-50/95 sm:text-xs">{{ __('vendor.today_summary') }}</p>
+                <p class="mt-0.5 text-[11px] text-gray-600 sm:text-xs">{{ __('vendor.today_summary') }}</p>
             </div>
             <div class="flex shrink-0 flex-wrap items-center gap-1.5 sm:gap-2">
                 <a href="{{ route('vendor.items.create') }}"
-                   class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-white/95 px-2.5 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-white sm:px-3 sm:text-sm">
+                   class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-emerald-200/80 bg-white/70 px-2.5 text-xs font-semibold text-emerald-800 shadow-sm backdrop-blur-sm transition hover:border-emerald-300 hover:bg-emerald-50/80 sm:px-3 sm:text-sm">
                     <i class="fas fa-plus text-[11px]" aria-hidden="true"></i>
                     {{ __('vendor.add_item') }}
                 </a>
-                <a href="{{ route('vendor.orders.create') }}"
-                   class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-900/25 px-2.5 text-xs font-semibold text-white ring-1 ring-white/30 transition hover:bg-emerald-900/35 sm:px-3 sm:text-sm">
+                <a href="{{ route('vendor.orders.new') }}"
+                   class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600/90 px-2.5 text-xs font-semibold text-white shadow-sm shadow-emerald-600/15 backdrop-blur-sm transition hover:bg-emerald-700 sm:px-3 sm:text-sm">
                     <i class="fas fa-file-circle-plus text-[11px]" aria-hidden="true"></i>
                     {{ __('vendor.create_order') }}
                 </a>
@@ -93,7 +95,7 @@
     <div class="grid grid-cols-2 gap-1.5 sm:gap-2 lg:grid-cols-4">
         <div class="rounded-lg border border-gray-200/90 bg-white px-2 py-1.5 shadow-sm ring-1 ring-gray-100/80 sm:px-2.5 sm:py-2">
             <div class="mb-0.5 flex items-center gap-1.5">
-                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-100 text-blue-600">
+                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-emerald-600">
                     <i class="fas fa-box text-[10px]" aria-hidden="true"></i>
                 </div>
                 <h3 class="min-w-0 truncate text-[10px] font-semibold uppercase leading-tight tracking-wide text-gray-500">{{ __('vendor.total_items') }}</h3>
@@ -103,7 +105,7 @@
         </div>
         <div class="rounded-lg border border-gray-200/90 bg-white px-2 py-1.5 shadow-sm ring-1 ring-gray-100/80 sm:px-2.5 sm:py-2">
             <div class="mb-0.5 flex items-center gap-1.5">
-                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-purple-100 text-purple-600">
+                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-teal-100 text-teal-600">
                     <i class="fas fa-receipt text-[10px]" aria-hidden="true"></i>
                 </div>
                 <h3 class="min-w-0 truncate text-[10px] font-semibold uppercase leading-tight tracking-wide text-gray-500">{{ __('vendor.total_orders') }}</h3>
@@ -123,7 +125,7 @@
         </div>
         <div class="rounded-lg border border-gray-200/90 bg-white px-2 py-1.5 shadow-sm ring-1 ring-gray-100/80 sm:px-2.5 sm:py-2">
             <div class="mb-0.5 flex items-center gap-1.5">
-                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-600">
+                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-green-100 text-green-600">
                     <i class="fas fa-star text-[10px]" aria-hidden="true"></i>
                 </div>
                 <h3 class="min-w-0 truncate text-[10px] font-semibold uppercase leading-tight tracking-wide text-gray-500">{{ __('vendor.rating') }}</h3>
@@ -143,7 +145,7 @@
                         $n = (int) ($ost[$st] ?? 0);
                         $chip = match ($st) {
                             'pending' => 'border-amber-200/90 bg-amber-50 text-amber-900 hover:bg-amber-100/90',
-                            'confirmed' => 'border-sky-200/90 bg-sky-50 text-sky-900 hover:bg-sky-100/90',
+                            'confirmed' => 'border-teal-200/90 bg-teal-50 text-teal-900 hover:bg-teal-100/90',
                             'completed' => 'border-emerald-200/90 bg-emerald-50 text-emerald-900 hover:bg-emerald-100/90',
                             'cancelled' => 'border-rose-200/90 bg-rose-50 text-rose-900 hover:bg-rose-100/90',
                             default => 'border-gray-200 bg-gray-50 text-gray-800',
@@ -165,17 +167,17 @@
             </div>
         </div>
         <div class="grid shrink-0 grid-cols-3 gap-1.5 border-t border-gray-100 pt-2 sm:w-[13.5rem] sm:border-l sm:border-t-0 sm:pl-2 sm:pt-0 md:w-[15rem]">
-            <a href="{{ route('vendor.items.index') }}" class="flex flex-col items-center justify-center rounded-md border border-orange-200/80 bg-orange-50/90 px-1 py-1.5 text-center shadow-sm ring-1 ring-orange-100/80 transition hover:bg-orange-100/90 sm:py-2">
-                <span class="text-[9px] font-bold uppercase leading-tight tracking-wide text-orange-800/90">{{ __('vendor.items') }}</span>
-                <span class="mt-0.5 text-lg font-bold tabular-nums leading-none text-orange-950 sm:text-xl">{{ (int) ($rc['items'] ?? 0) }}</span>
+            <a href="{{ route('vendor.items.index') }}" class="flex flex-col items-center justify-center rounded-md border border-emerald-200/80 bg-emerald-50/90 px-1 py-1.5 text-center shadow-sm ring-1 ring-emerald-100/80 transition hover:bg-emerald-100/90 sm:py-2">
+                <span class="text-[9px] font-bold uppercase leading-tight tracking-wide text-emerald-800/90">{{ __('vendor.items') }}</span>
+                <span class="mt-0.5 text-lg font-bold tabular-nums leading-none text-emerald-950 sm:text-xl">{{ (int) ($rc['items'] ?? 0) }}</span>
             </a>
-            <a href="{{ route('vendor.staff.index') }}" class="flex flex-col items-center justify-center rounded-md border border-indigo-200/80 bg-indigo-50/90 px-1 py-1.5 text-center shadow-sm ring-1 ring-indigo-100/80 transition hover:bg-indigo-100/90 sm:py-2">
-                <span class="text-[9px] font-bold uppercase leading-tight tracking-wide text-indigo-800/90">{{ __('vendor.staff') }}</span>
-                <span class="mt-0.5 text-lg font-bold tabular-nums leading-none text-indigo-950 sm:text-xl">{{ (int) ($rc['staff'] ?? 0) }}</span>
+            <a href="{{ route('vendor.staff.index') }}" class="flex flex-col items-center justify-center rounded-md border border-teal-200/80 bg-teal-50/90 px-1 py-1.5 text-center shadow-sm ring-1 ring-teal-100/80 transition hover:bg-teal-100/90 sm:py-2">
+                <span class="text-[9px] font-bold uppercase leading-tight tracking-wide text-teal-800/90">{{ __('vendor.staff') }}</span>
+                <span class="mt-0.5 text-lg font-bold tabular-nums leading-none text-teal-950 sm:text-xl">{{ (int) ($rc['staff'] ?? 0) }}</span>
             </a>
-            <a href="{{ route('vendor.customers.index') }}" class="flex flex-col items-center justify-center rounded-md border border-teal-200/80 bg-teal-50/90 px-1 py-1.5 text-center shadow-sm ring-1 ring-teal-100/80 transition hover:bg-teal-100/90 sm:py-2">
-                <span class="text-[9px] font-bold uppercase leading-tight tracking-wide text-teal-800/90">{{ __('vendor.customers') }}</span>
-                <span class="mt-0.5 text-lg font-bold tabular-nums leading-none text-teal-950 sm:text-xl">{{ (int) ($rc['customers'] ?? 0) }}</span>
+            <a href="{{ route('vendor.customers.index') }}" class="flex flex-col items-center justify-center rounded-md border border-green-200/80 bg-green-50/90 px-1 py-1.5 text-center shadow-sm ring-1 ring-green-100/80 transition hover:bg-green-100/90 sm:py-2">
+                <span class="text-[9px] font-bold uppercase leading-tight tracking-wide text-green-800/90">{{ __('vendor.customers') }}</span>
+                <span class="mt-0.5 text-lg font-bold tabular-nums leading-none text-green-950 sm:text-xl">{{ (int) ($rc['customers'] ?? 0) }}</span>
             </a>
         </div>
     </div>
@@ -184,14 +186,14 @@
     <section class="overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-sm ring-1 ring-gray-100/80">
         <div class="flex flex-col gap-2 border-b border-gray-100 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <h2 class="flex items-center gap-1.5 text-sm font-bold text-gray-900">
-                <i class="fas fa-truck-fast text-sky-600 text-xs" aria-hidden="true"></i>
+                <i class="fas fa-truck-fast text-emerald-600 text-xs" aria-hidden="true"></i>
                 {{ __('vendor.dashboard_upcoming_title') }}
             </h2>
             <div class="flex flex-wrap items-center gap-1.5">
-                <span class="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-800 ring-1 ring-sky-100">
+                <span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-100">
                     @choice('vendor.dashboard_outgoing_choice', (int) $log['outgoing_count'])
                 </span>
-                <span class="inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-800 ring-1 ring-violet-100">
+                <span class="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800 ring-1 ring-teal-100">
                     @choice('vendor.dashboard_returns_choice', (int) $log['return_count'])
                 </span>
             </div>
@@ -203,7 +205,7 @@
                     @forelse($log['outgoing_orders'] as $row)
                         @php $isDel = ($row['fulfillment_type'] ?? 'pickup') === 'delivery'; @endphp
                         <a href="{{ route('vendor.orders.show', $row['id']) }}"
-                           class="mb-1 flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 last:mb-0 hover:border-gray-100 hover:bg-gray-50/80 @if(! empty($row['is_handoff_today'])) ring-1 ring-emerald-200/80 bg-emerald-50/40 @elseif(! empty($row['is_handoff_tomorrow'])) ring-1 ring-sky-200/70 bg-sky-50/35 @endif">
+                           class="mb-1 flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 last:mb-0 hover:border-gray-100 hover:bg-gray-50/80 @if(! empty($row['is_handoff_today'])) ring-1 ring-emerald-200/80 bg-emerald-50/40 @elseif(! empty($row['is_handoff_tomorrow'])) ring-1 ring-emerald-200/60 bg-emerald-50/25 @endif">
                             <div class="min-w-0">
                                 <p class="truncate text-xs font-semibold text-gray-900">{{ $row['customer_name'] }}</p>
                                 <p class="truncate text-[10px] leading-snug text-gray-500">
@@ -216,7 +218,7 @@
                                     @endif
                                 </p>
                             </div>
-                            <span class="shrink-0 self-start rounded-md px-1.5 py-0.5 text-[10px] font-semibold {{ $isDel ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800' }}">
+                            <span class="shrink-0 self-start rounded-md px-1.5 py-0.5 text-[10px] font-semibold {{ $isDel ? 'bg-emerald-100 text-emerald-800' : 'bg-teal-100 text-teal-800' }}">
                                 {{ $isDel ? __('vendor.dashboard_fulfillment_delivery') : __('vendor.dashboard_fulfillment_pickup') }}
                             </span>
                         </a>
@@ -230,7 +232,7 @@
                 <div class="max-h-40 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
                     @forelse($log['return_orders'] as $row)
                         <a href="{{ route('vendor.orders.show', $row['id']) }}"
-                           class="mb-1 flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 last:mb-0 hover:border-gray-100 hover:bg-gray-50/80 @if(! empty($row['is_return_today'])) ring-1 ring-violet-200/80 bg-violet-50/40 @elseif(! empty($row['is_return_tomorrow'])) ring-1 ring-violet-200/50 bg-violet-50/25 @endif">
+                           class="mb-1 flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 last:mb-0 hover:border-gray-100 hover:bg-gray-50/80 @if(! empty($row['is_return_today'])) ring-1 ring-teal-200/80 bg-teal-50/40 @elseif(! empty($row['is_return_tomorrow'])) ring-1 ring-teal-200/50 bg-teal-50/25 @endif">
                             <div class="min-w-0">
                                 <p class="truncate text-xs font-semibold text-gray-900">{{ $row['customer_name'] }}</p>
                                 <p class="truncate text-[10px] leading-snug text-gray-500">
@@ -239,11 +241,11 @@
                                     <span class="font-semibold text-gray-800">{{ $row['day_line'] ?? ($row['when_label'] ?? '—') }}</span>
                                     @if(! empty($row['time_line']))
                                         <span class="mx-1 text-gray-300">·</span>
-                                        <span class="inline-block rounded px-1.5 py-0.5 text-[11px] font-bold tabular-nums tracking-tight text-violet-900 ring-1 ring-violet-300/70 bg-violet-100">{{ $row['time_line'] }}</span>
+                                        <span class="inline-block rounded px-1.5 py-0.5 text-[11px] font-bold tabular-nums tracking-tight text-teal-900 ring-1 ring-teal-300/70 bg-teal-100">{{ $row['time_line'] }}</span>
                                     @endif
                                 </p>
                             </div>
-                            <span class="shrink-0 self-start rounded-md bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-800">
+                            <span class="shrink-0 self-start rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-800">
                                 <i class="fas fa-rotate-left mr-0.5 text-[9px]" aria-hidden="true"></i>{{ __('vendor.dashboard_return_badge') }}
                             </span>
                         </a>
@@ -271,7 +273,7 @@
                         $st = $activity['status'] ?? '';
                         $badge = match ($st) {
                             'pending' => 'bg-amber-100 text-amber-800',
-                            'confirmed' => 'bg-blue-100 text-blue-800',
+                            'confirmed' => 'bg-teal-100 text-teal-800',
                             'completed' => 'bg-emerald-100 text-emerald-800',
                             'cancelled' => 'bg-red-100 text-red-800',
                             default => 'bg-gray-100 text-gray-700',
@@ -311,7 +313,7 @@
         <section class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-sm ring-1 ring-gray-100/80">
             <div class="flex items-center justify-between border-b border-gray-100 px-3 py-2">
                 <h2 class="flex items-center gap-1.5 text-sm font-bold text-gray-900">
-                    <i class="fas fa-fire text-orange-500 text-xs" aria-hidden="true"></i>
+                    <i class="fas fa-fire text-emerald-600 text-xs" aria-hidden="true"></i>
                     {{ __('vendor.popular_items') }}
                 </h2>
                 <a href="{{ route('vendor.items.index') }}" class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700">{{ __('vendor.view_all') }}</a>

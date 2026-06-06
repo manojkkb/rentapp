@@ -44,7 +44,7 @@
                             <span class="inline-block px-2 py-1 text-xs font-semibold rounded bg-emerald-100 text-emerald-700">Paid</span>
                         </td>
                         <td class="px-4 py-2 text-center">
-                            <a href="#" class="text-blue-600 hover:underline text-xs font-medium">View</a>
+                            <a href="#" class="text-emerald-600 hover:underline text-xs font-medium">View</a>
                         </td>
                     </tr>
                     <!-- More rows can be added dynamically -->

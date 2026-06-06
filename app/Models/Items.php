@@ -51,11 +51,13 @@ class Items extends Model
         'manage_stock',
         'is_available',
         'is_active',
+        'has_variants',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'is_available' => 'boolean',
+        'has_variants' => 'boolean',
         'manage_stock' => 'boolean',
         'price' => 'decimal:2',
         'security_deposit' => 'decimal:2',
@@ -100,6 +102,46 @@ class Items extends Model
     public function activities(): HasMany
     {
         return $this->hasMany(ItemActivity::class, 'item_id');
+    }
+
+    public function variantAttributes(): HasMany
+    {
+        return $this->hasMany(ItemAttribute::class, 'item_id');
+    }
+
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ItemVariant::class, 'item_id');
+    }
+
+    public function usesVariants(): bool
+    {
+        return (bool) $this->has_variants;
+    }
+
+    /**
+     * Rentable stock for catalog display and availability checks.
+     */
+    public function effectiveStock(): int
+    {
+        if ($this->usesVariants()) {
+            return (int) $this->variants()->sum('stock');
+        }
+
+        return (int) $this->stock;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function emptyAttributeValues(): array
+    {
+        $values = [];
+        foreach ($this->variantAttributes()->ordered()->pluck('slug') as $slug) {
+            $values[$slug] = '';
+        }
+
+        return $values;
     }
 
     public function scopeActive($query)

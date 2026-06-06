@@ -74,6 +74,23 @@
 
                     <!-- Active status -->
                     <td class="px-6 py-4">
+                        @if($livewireList ?? false)
+                            <div class="inline-block" wire:key="customer-toggle-{{ $customer->id }}">
+                                <button type="button"
+                                        wire:click="toggleStatus({{ $customer->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="toggleStatus({{ $customer->id }})"
+                                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 {{ $customer->is_active ? 'bg-emerald-500' : 'bg-gray-300' }}"
+                                        title="{{ $customer->is_active ? __('vendor.click_to_deactivate') : __('vendor.click_to_activate') }}">
+                                    <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $customer->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                </button>
+                                <div class="mt-1">
+                                    <span class="text-xs font-medium {{ $customer->is_active ? 'text-emerald-700' : 'text-gray-500' }}">
+                                        {{ $customer->is_active ? __('vendor.active') : __('vendor.inactive') }}
+                                    </span>
+                                </div>
+                            </div>
+                        @else
                         <div class="inline-block" x-data="{ isActive: {{ $customer->is_active ? 'true' : 'false' }} }">
                             <form action="{{ route('vendor.customers.toggle', $customer) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
                                 @csrf
@@ -89,6 +106,7 @@
                                 <span class="text-xs font-medium" :class="isActive ? 'text-emerald-700' : 'text-gray-500'" x-text="isActive ? @json(__('vendor.active')) : @json(__('vendor.inactive'))"></span>
                             </div>
                         </div>
+                        @endif
                     </td>
 
                     <!-- Actions -->
@@ -118,8 +136,9 @@
                                          $el.style.left = (rect.right - 192) + 'px';
                                      }
                                  })">
-                                <a href="{{ route('vendor.customers.edit', $customer) }}" 
-                                   class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                <a href="{{ route('vendor.customers.edit', $customer) }}"
+                                   @if($livewireList ?? false) wire:navigate @endif
+                                   class="block px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
                                     <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
                                     {{ __('vendor.edit') }}
                                 </a>
@@ -175,11 +194,22 @@
                              x-transition:leave-end="opacity-0 scale-95"
                              class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
                              style="display: none;">
-                            <a href="{{ route('vendor.customers.edit', $customer) }}" 
-                               class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors">
+                            <a href="{{ route('vendor.customers.edit', $customer) }}"
+                               @if($livewireList ?? false) wire:navigate @endif
+                               class="block px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 active:bg-gray-100">
                                 <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
                                 {{ __('vendor.edit') }}
                             </a>
+                            @if($livewireList ?? false)
+                                <button type="button"
+                                        wire:click="toggleStatus({{ $customer->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="toggleStatus({{ $customer->id }})"
+                                        class="block w-full border-t border-gray-100 px-4 py-3 text-left text-sm transition-colors {{ $customer->is_active ? 'text-orange-700 hover:bg-orange-50 active:bg-orange-100' : 'text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100' }}">
+                                    <i class="fas {{ $customer->is_active ? 'fa-ban' : 'fa-check-circle' }} mr-3 w-5" aria-hidden="true"></i>
+                                    {{ $customer->is_active ? __('vendor.deactivate') : __('vendor.activate') }}
+                                </button>
+                            @else
                             <form action="{{ route('vendor.customers.toggle', $customer) }}" method="POST" class="border-t border-gray-100">
                                 @csrf
                                 <button type="submit"
@@ -188,6 +218,7 @@
                                     {{ $customer->is_active ? __('vendor.deactivate') : __('vendor.activate') }}
                                 </button>
                             </form>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -242,8 +273,12 @@
         <h3 class="text-lg font-semibold text-gray-900 mb-2">No Customers Yet</h3>
         <p class="text-sm text-gray-500 mb-6">Start adding customers to your database</p>
         <button type="button"
-                @click="$dispatch('open-create-customer-modal')" 
-                class="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors">
+                @if($livewireList ?? false)
+                    wire:click="openCreateModal"
+                @else
+                    @click="$dispatch('open-create-customer-modal')"
+                @endif
+                class="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white transition-colors hover:bg-emerald-700">
             <i class="fas fa-plus mr-2"></i>
             Add Your First Customer
         </button>
