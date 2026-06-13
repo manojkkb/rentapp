@@ -97,17 +97,54 @@
                 getQtyForKey(lineKey) {
                     return parseInt(String(this.lineQty[lineKey]), 10) || 0;
                 },
+                availableStockLabel(count) {
+                    const n = parseInt(String(count), 10) || 0;
+                    return n + ' ' + @json(__('vendor.available_stock'));
+                },
+                cartQtyForItemVariant(itemId, variantId = null) {
+                    let total = 0;
+                    Object.keys(this.lineMeta || {}).forEach((key) => {
+                        const meta = this.lineMeta[key];
+                        if (String(meta?.item_id) !== String(itemId)) return;
+                        const vid = meta?.item_variant_id ?? null;
+                        if (variantId === null) {
+                            if (vid) return;
+                        } else if (String(vid) !== String(variantId)) return;
+                        total += this.getQtyForKey(key);
+                    });
+                    return total;
+                },
+                itemAvailableStock(item) {
+                    if (!item?.manage_stock) return 0;
+                    const base = parseInt(String(item.stock), 10) || 0;
+                    if (item.has_variants) {
+                        let inCart = 0;
+                        this.lineKeysForItem(item.id).forEach((key) => { inCart += this.getQtyForKey(key); });
+                        return Math.max(0, base - inCart);
+                    }
+                    return Math.max(0, base - this.cartQtyForItemVariant(item.id, null));
+                },
+                variantAvailableStock(item, variant) {
+                    if (!variant?.manage_stock) return parseInt(String(variant.stock), 10) || 0;
+                    const base = parseInt(String(variant.stock), 10) || 0;
+                    if (!item) return base;
+                    return Math.max(0, base - this.cartQtyForItemVariant(item.id, variant.id));
+                },
+                itemStockLabel(item) {
+                    if (!item?.manage_stock) return '';
+                    return this.availableStockLabel(this.itemAvailableStock(item));
+                },
                 variantOptionLabel(variant) {
                     let text = variant.label || variant.variant_code || '';
                     text += ' — ₹' + parseFloat(variant.price).toFixed(2);
                     if (variant.manage_stock) {
-                        text += ' (' + @json(__('vendor.stock')) + ': ' + variant.stock + ')';
+                        text += ' (' + this.availableStockLabel(this.variantAvailableStock(this.variantModalItem, variant)) + ')';
                     }
                     return text;
                 },
                 variantSelectable(variant) {
                     if (!variant.is_available) return false;
-                    if (variant.manage_stock && (parseInt(String(variant.stock), 10) || 0) < 1) return false;
+                    if (variant.manage_stock && this.variantAvailableStock(this.variantModalItem, variant) < 1) return false;
                     return true;
                 },
                 itemPriceLabel(item) {
@@ -415,6 +452,25 @@
                 },
                 isVariantModalChecked(variantId) {
                     return this.variantModalSelections.includes(String(variantId));
+                },
+                isVariantModalRowSelected(variant) {
+                    const id = String(variant.id);
+                    if (this.variantModalMode === 'change') {
+                        return String(this.variantModalPick) === id;
+                    }
+                    return this.isVariantModalChecked(id);
+                },
+                handleVariantRowClick(variant) {
+                    if (!this.variantSelectable(variant)) {
+                        return;
+                    }
+                    const id = String(variant.id);
+                    if (this.variantModalMode === 'change') {
+                        this.variantModalPick = id;
+                    } else {
+                        this.toggleVariantModalSelection(id);
+                    }
+                    this.variantModalError = '';
                 },
                 toggleVariantModalSelection(variantId) {
                     const id = String(variantId);
@@ -1023,9 +1079,7 @@
                                         <p class="truncate text-sm font-semibold leading-snug text-gray-900 sm:text-[15px]" x-text="item.name"></p>
                                         <span x-show="itemHasVariants(item)" x-cloak class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200/60">{{ __('vendor.item_has_variants_badge') }}</span>
                                     </div>
-                                    <p class="mt-0.5 text-[11px] text-gray-500 sm:text-xs" x-show="item.manage_stock && !itemHasVariants(item) && !isSimpleSelected(item.id)">
-                                        {{ __('vendor.stock') }}: <span x-text="item.stock"></span>
-                                    </p>
+                                    <p class="mt-0.5 text-[11px] font-medium text-blue-600 tabular-nums sm:text-xs" x-show="item.manage_stock && (!itemHasVariants(item) || !hasVariantLines(item.id))" x-text="itemStockLabel(item)"></p>
                                     <p class="mt-0.5 text-[11px] text-gray-500 sm:text-xs" x-show="itemHasVariants(item) && !hasVariantLines(item.id)">
                                         <span x-text="(item.variants || []).length"></span> {{ __('vendor.order_wizard_variants_available') }}
                                     </p>

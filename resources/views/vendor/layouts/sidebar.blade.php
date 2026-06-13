@@ -246,6 +246,23 @@
 
             @vendorCan('settings.view')
             <li>
+                <a wire:navigate href="{{ route('vendor.store.general') }}"
+                   @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
+                   class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors
+                          {{ request()->routeIs('vendor.store.*')
+                              ? 'bg-emerald-500 text-white shadow-sm'
+                              : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-700' }}">
+                    <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-xs leading-none
+                          {{ request()->routeIs('vendor.store.*') ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600 group-hover:bg-emerald-100 group-hover:text-emerald-700' }}">
+                        <i class="fas fa-store" aria-hidden="true"></i>
+                    </span>
+                    <span class="min-w-0 truncate">{{ __('vendor.online_store') }}</span>
+                </a>
+            </li>
+            @endvendorCan
+
+            @vendorCan('settings.view')
+            <li>
                 <a wire:navigate href="{{ route('vendor.subscription.plans') }}"
                    @click="if (window.innerWidth < 768) { sidebarOpen = false; localStorage.setItem('sidebarOpen', false); }"
                    class="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors

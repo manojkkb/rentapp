@@ -155,8 +155,9 @@
                                     </template>
                                     <input type="hidden" :name="'variants['+vi+'][damaged_stock]'" :value="variant.damaged_stock ?? 0">
                                     <input type="hidden" :name="'variants['+vi+'][maintenance_stock]'" :value="variant.maintenance_stock ?? 0">
-                                    <input type="hidden" :name="'variants['+vi+'][manage_stock]'" :value="variant.manage_stock ? 1 : 0">
-                                    <input type="hidden" :name="'variants['+vi+'][is_available]'" :value="variant.is_available ? 1 : 0">
+                                    <input type="hidden" :name="'variants['+vi+'][manage_stock]'" :value="itemManageStock ? 1 : 0">
+                                    <input type="hidden" :name="'variants['+vi+'][is_available]'" :value="itemIsAvailable ? 1 : 0">
+                                    <input type="hidden" :name="'variants['+vi+'][is_active]'" :value="itemIsActive ? 1 : 0">
                                 </td>
                             </tr>
                         </template>

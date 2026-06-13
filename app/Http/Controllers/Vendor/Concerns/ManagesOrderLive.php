@@ -6,10 +6,12 @@ use App\Models\Coupon;
 use App\Models\Items;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Support\OrderActivityLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 trait ManagesOrderLive
@@ -34,6 +36,7 @@ trait ManagesOrderLive
         }, $detail);
 
         $rental = $this->rentalStatusPayload($order);
+        $paymentSummary = $order->paymentSummary();
 
         return [
             'sub_total' => (float) $order->sub_total,
@@ -49,6 +52,7 @@ trait ManagesOrderLive
             'security_deposit_value' => $order->security_deposit_value,
             'paid_amount' => (float) ($order->paid_amount ?? 0),
             'payment_detail' => array_values($detail),
+            'payment_summary' => $paymentSummary,
             'fulfillment_type' => $order->fulfillment_type ?? 'pickup',
             'delivery_address' => $order->delivery_address,
             'pickup_at' => $order->pickup_at?->toIso8601String(),
@@ -175,12 +179,22 @@ trait ManagesOrderLive
                 'string',
                 'max:5000',
             ],
-            'pickup_at' => 'nullable|date',
+            'pickup_at' => [
+                \Illuminate\Validation\Rule::requiredIf($request->input('fulfillment_type') === 'pickup'),
+                'nullable',
+                'date',
+            ],
             'delivery_at' => 'nullable|date',
             'delivery_charge' => 'nullable|numeric|min:0|max:999999',
         ]);
 
         $type = $validated['fulfillment_type'];
+        $oldFulfillment = [
+            'fulfillment_type' => $order->fulfillment_type,
+            'pickup_at' => $order->pickup_at?->toIso8601String(),
+            'delivery_at' => $order->delivery_at?->toIso8601String(),
+            'delivery_address' => $order->delivery_address,
+        ];
 
         if ($type === 'pickup') {
             $addr = trim((string) ($validated['delivery_address'] ?? ''));
@@ -204,6 +218,7 @@ trait ManagesOrderLive
 
         $this->recalculateOrderFinancials($order);
         $order->refresh();
+        OrderActivityLogger::logFulfillmentUpdated($order, $oldFulfillment);
 
         return response()->json([
             'success' => true,
@@ -261,6 +276,11 @@ trait ManagesOrderLive
             $existing = OrderItem::where('order_id', $order->id)->where('item_id', $item->id)->first();
 
             if ($existing) {
+                $oldLine = [
+                    'quantity' => (int) $existing->quantity,
+                    'billing_units' => $existing->billing_units,
+                    'item_name' => $existing->item_name,
+                ];
                 $existing->update([
                     'quantity' => $existing->quantity + (int) $itemData['quantity'],
                     'rental_period' => $lineRentalPeriod,
@@ -271,6 +291,13 @@ trait ManagesOrderLive
                 ]);
                 $existing->refresh();
                 $existing->refreshLineTotals();
+                OrderActivityLogger::logItemUpdated($order, [
+                    'order_item_id' => $existing->id,
+                    'item_id' => $existing->item_id,
+                    'item_name' => $existing->item_name,
+                    'quantity' => (int) $existing->quantity,
+                    'billing_units' => $existing->billing_units,
+                ], $oldLine);
             } else {
                 $oi = OrderItem::create([
                     'order_id' => $order->id,
@@ -287,6 +314,12 @@ trait ManagesOrderLive
                 ]);
                 $oi->refresh();
                 $oi->refreshLineTotals();
+                OrderActivityLogger::logItemAdded($order, [
+                    'order_item_id' => $oi->id,
+                    'item_id' => $oi->item_id,
+                    'item_name' => $oi->item_name,
+                    'quantity' => (int) $oi->quantity,
+                ]);
             }
 
             $addedCount++;
@@ -318,6 +351,8 @@ trait ManagesOrderLive
 
         $request->validate([
             'quantity' => 'required|integer|min:1',
+            'price' => 'required|numeric|min:0',
+            'rental_period' => ['required', 'string', Rule::in(Items::rentalPeriodKeys())],
             'billing_units' => 'nullable|numeric|min:0.01|max:999999',
         ]);
 
@@ -330,19 +365,36 @@ trait ManagesOrderLive
         }
 
         $orderItem->load('item');
-        $nextRentalPeriod = $orderItem->item?->rental_period ?? $orderItem->rental_period;
+
+        $nextRentalPeriod = (string) $request->input('rental_period');
         if (! in_array($nextRentalPeriod, Items::rentalPeriodKeys(), true)) {
-            $nextRentalPeriod = 'per_day';
+            $nextRentalPeriod = $orderItem->rental_period ?? 'per_day';
         }
+
+        $price = round(max(0, (float) $request->input('price')), 2);
+
+        $oldLine = [
+            'quantity' => (int) $orderItem->quantity,
+            'billing_units' => $orderItem->billing_units,
+            'price' => (float) $orderItem->price,
+            'rental_period' => $orderItem->rental_period,
+            'item_name' => $orderItem->item_name,
+        ];
 
         $updates = [
             'quantity' => $request->quantity,
             'rental_period' => $nextRentalPeriod,
+            'price' => $price,
         ];
 
-        if ($nextRentalPeriod === 'fixed') {
+        if (! Items::rentalPeriodUsesBillingUnits($nextRentalPeriod)) {
             $updates['billing_units'] = null;
-        } elseif ($request->exists('billing_units') && $request->input('billing_units') !== null && $request->input('billing_units') !== '') {
+        } else {
+            if ($request->input('billing_units') === null || $request->input('billing_units') === '') {
+                throw ValidationException::withMessages([
+                    'billing_units' => [__('vendor.order_wizard_billing_units_required')],
+                ]);
+            }
             $updates['billing_units'] = $this->normalizedBillingUnits((float) $request->billing_units, $nextRentalPeriod);
         }
 
@@ -353,18 +405,173 @@ trait ManagesOrderLive
         $this->recalculateOrderFinancials($order);
         $order->refresh();
         $orderItem->load('item');
+        OrderActivityLogger::logItemUpdated($order, [
+            'order_item_id' => $orderItem->id,
+            'item_id' => $orderItem->item_id,
+            'item_name' => $orderItem->item_name,
+            'quantity' => (int) $orderItem->quantity,
+            'billing_units' => $orderItem->billing_units,
+            'price' => (float) $orderItem->price,
+            'rental_period' => $orderItem->rental_period,
+        ], $oldLine);
 
         return response()->json([
             'success' => true,
-            'message' => 'Item quantity updated successfully!',
+            'message' => __('vendor.item_updated'),
             'item' => [
                 'item_id' => $orderItem->item_id,
                 'quantity' => $orderItem->quantity,
-                'price' => $orderItem->item?->price ?? $orderItem->price,
-                'rental_period' => $nextRentalPeriod,
+                'price' => (float) $orderItem->price,
+                'rental_period' => $orderItem->rental_period,
                 'billing_units' => (float) ($orderItem->billing_units ?? 1),
                 'line_total' => $orderItem->lineSubtotal(),
             ],
+            'order' => $this->orderJsonPayload($order),
+        ]);
+    }
+
+    public function changeOrderLineVariant(Request $request, Order $order, OrderItem $orderItem)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor || $order->vendor_id !== $vendor->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized access'], 403);
+        }
+
+        if ($orderItem->order_id !== $order->id) {
+            return response()->json(['success' => false, 'message' => 'Item not found on this order'], 404);
+        }
+
+        $this->ensureOrderEditable($order);
+
+        $request->validate([
+            'item_variant_id' => ['required', 'integer'],
+        ]);
+
+        $newVariantId = (int) $request->input('item_variant_id');
+
+        $orderItem->load([
+            'item' => fn ($q) => $q->with(['variantAttributes', 'variants']),
+        ]);
+
+        $item = $orderItem->item;
+        if (! $item || ! $item->usesVariants()) {
+            throw ValidationException::withMessages([
+                'item_variant_id' => [__('vendor.order_wizard_variant_invalid')],
+            ]);
+        }
+
+        if ((int) $orderItem->item_variant_id === $newVariantId) {
+            return response()->json([
+                'success' => true,
+                'message' => __('vendor.item_updated'),
+                'order' => $this->orderJsonPayload($order),
+            ]);
+        }
+
+        $variant = $item->variants->firstWhere('id', $newVariantId);
+        if (! $variant || ! $variant->is_active || ! $variant->is_available) {
+            throw ValidationException::withMessages([
+                'item_variant_id' => [__('vendor.order_wizard_variant_invalid')],
+            ]);
+        }
+
+        $qtyNeeded = (int) $orderItem->quantity;
+
+        if ($variant->manage_stock) {
+            $committedElsewhere = (int) OrderItem::query()
+                ->where('order_id', $order->id)
+                ->where('item_id', $item->id)
+                ->where('item_variant_id', $newVariantId)
+                ->where('id', '!=', $orderItem->id)
+                ->sum('quantity');
+
+            $available = max(0, (int) $variant->stock - $committedElsewhere);
+            if ($available < $qtyNeeded) {
+                throw ValidationException::withMessages([
+                    'item_variant_id' => [__('vendor.order_wizard_variant_insufficient_stock', [
+                        'label' => $variant->displayLabel($item->variantAttributes),
+                    ])],
+                ]);
+            }
+        }
+
+        $oldLine = [
+            'order_item_id' => $orderItem->id,
+            'item_id' => $orderItem->item_id,
+            'item_name' => $orderItem->item_name,
+            'item_variant_id' => $orderItem->item_variant_id,
+            'variant_label' => $orderItem->variant_label,
+            'price' => (float) $orderItem->price,
+            'quantity' => (int) $orderItem->quantity,
+        ];
+
+        $variantLabel = $variant->displayLabel($item->variantAttributes);
+        $itemName = $item->name;
+        if ($variantLabel) {
+            $itemName .= ' ('.$variantLabel.')';
+        }
+        $unitPrice = round((float) $variant->price, 2);
+
+        $duplicate = OrderItem::query()
+            ->where('order_id', $order->id)
+            ->where('item_id', $item->id)
+            ->where('item_variant_id', $newVariantId)
+            ->where('id', '!=', $orderItem->id)
+            ->first();
+
+        if ($duplicate) {
+            $prevQty = (int) $duplicate->quantity;
+            $duplicate->update([
+                'quantity' => $prevQty + $qtyNeeded,
+                'price' => $unitPrice,
+            ]);
+            $duplicate->refresh();
+            $duplicate->refreshLineTotals();
+            OrderActivityLogger::logItemUpdated($order, [
+                'order_item_id' => $duplicate->id,
+                'item_id' => $duplicate->item_id,
+                'item_name' => $duplicate->item_name,
+                'quantity' => (int) $duplicate->quantity,
+                'item_variant_id' => $duplicate->item_variant_id,
+                'variant_label' => $duplicate->variant_label,
+            ], [
+                'quantity' => $prevQty,
+                'item_name' => $duplicate->item_name,
+            ]);
+            OrderActivityLogger::logItemRemoved($order, [
+                'order_item_id' => $orderItem->id,
+                'item_id' => $orderItem->item_id,
+                'item_name' => $orderItem->item_name,
+                'quantity' => $qtyNeeded,
+            ]);
+            $orderItem->delete();
+        } else {
+            $orderItem->update([
+                'item_variant_id' => $newVariantId,
+                'variant_label' => $variantLabel,
+                'item_name' => $itemName,
+                'price' => $unitPrice,
+            ]);
+            $orderItem->refresh();
+            $orderItem->refreshLineTotals();
+            OrderActivityLogger::logItemUpdated($order, [
+                'order_item_id' => $orderItem->id,
+                'item_id' => $orderItem->item_id,
+                'item_name' => $orderItem->item_name,
+                'quantity' => (int) $orderItem->quantity,
+                'item_variant_id' => $orderItem->item_variant_id,
+                'variant_label' => $orderItem->variant_label,
+                'price' => (float) $orderItem->price,
+            ], $oldLine);
+        }
+
+        $this->recalculateOrderFinancials($order);
+        $order->refresh();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('vendor.item_updated'),
             'order' => $this->orderJsonPayload($order),
         ]);
     }
@@ -387,6 +594,12 @@ trait ManagesOrderLive
             return response()->json(['success' => false, 'message' => 'Item not found on this order'], 404);
         }
 
+        OrderActivityLogger::logItemRemoved($order, [
+            'order_item_id' => $orderItem->id,
+            'item_id' => $orderItem->item_id,
+            'item_name' => $orderItem->item_name,
+            'quantity' => (int) $orderItem->quantity,
+        ]);
         $orderItem->delete();
 
         if ($order->items()->count() === 0) {
@@ -434,6 +647,12 @@ trait ManagesOrderLive
             }
         }
 
+        $oldDiscount = [
+            'discount_type' => $order->discount_type,
+            'discount_value' => $order->discount_value,
+            'discount_amount' => $order->discount_amount,
+        ];
+
         $order->update([
             'discount_type' => $discountType,
             'discount_value' => $discountValue,
@@ -442,6 +661,7 @@ trait ManagesOrderLive
 
         $this->recalculateOrderFinancials($order);
         $order->refresh();
+        OrderActivityLogger::logDiscountApplied($order, $oldDiscount);
 
         return response()->json([
             'success' => true,
@@ -473,6 +693,7 @@ trait ManagesOrderLive
 
         $this->recalculateOrderFinancials($order);
         $order->refresh();
+        OrderActivityLogger::logDiscountRemoved($order);
 
         return response()->json([
             'success' => true,
@@ -517,6 +738,10 @@ trait ManagesOrderLive
         }
 
         $discountAmount = $coupon->calculateDiscount((float) $order->sub_total);
+        $oldCoupon = [
+            'coupon_code' => $order->coupon_code,
+            'coupon_discount' => $order->coupon_discount,
+        ];
 
         $order->update([
             'coupon_id' => $coupon->id,
@@ -526,6 +751,7 @@ trait ManagesOrderLive
 
         $this->recalculateOrderFinancials($order);
         $order->refresh();
+        OrderActivityLogger::logCouponApplied($order, $oldCoupon);
 
         return response()->json([
             'success' => true,
@@ -551,6 +777,8 @@ trait ManagesOrderLive
 
         $this->ensureOrderEditable($order);
 
+        $removedCode = $order->coupon_code;
+
         $order->update([
             'coupon_id' => null,
             'coupon_code' => null,
@@ -559,6 +787,7 @@ trait ManagesOrderLive
 
         $this->recalculateOrderFinancials($order);
         $order->refresh();
+        OrderActivityLogger::logCouponRemoved($order, $removedCode);
 
         return response()->json([
             'success' => true,
@@ -660,6 +889,10 @@ trait ManagesOrderLive
                     $order->paid_amount = round((float) $order->paid_amount + $amount, 2);
                 }
                 $order->save();
+                $paymentRow = $detail[array_key_last($detail)] ?? null;
+                if (is_array($paymentRow)) {
+                    OrderActivityLogger::logPayment($order, $paymentRow);
+                }
             });
 
             $order->refresh();
@@ -712,6 +945,7 @@ trait ManagesOrderLive
                 $removed = $detail[$paymentIndex];
                 $amount = round((float) ($removed['amount'] ?? 0), 2);
                 $entryKind = $removed['entry_kind'] ?? 'payment';
+                OrderActivityLogger::logPaymentRemoved($order, $removed);
 
                 array_splice($detail, $paymentIndex, 1);
                 $order->payment_detail = array_values($detail);
@@ -768,6 +1002,10 @@ trait ManagesOrderLive
             )), 2);
             $order->save();
             $this->recalculateOrderFinancials($order);
+            $chargeRow = $lines[array_key_last($lines)] ?? null;
+            if (is_array($chargeRow)) {
+                OrderActivityLogger::logExtraChargeAdded($order, $chargeRow);
+            }
         });
 
         $order->refresh();
@@ -796,6 +1034,11 @@ trait ManagesOrderLive
                 }
                 if (! array_key_exists($lineIndex, $lines)) {
                     throw new \RuntimeException('Extra charge not found.');
+                }
+
+                $removedCharge = $lines[$lineIndex];
+                if (is_array($removedCharge)) {
+                    OrderActivityLogger::logExtraChargeRemoved($order, $removedCharge);
                 }
 
                 array_splice($lines, $lineIndex, 1);
@@ -845,26 +1088,34 @@ trait ManagesOrderLive
             return response()->json(['success' => false, 'message' => 'No action specified.'], 422);
         }
 
-        DB::transaction(function () use ($order, $validated, $request) {
+        DB::transaction(function () use ($order, $validated) {
             $order->refresh();
 
             if (($validated['delivered'] ?? null) === 'clear') {
                 $this->clearOrderItemsDeliveredAndReturned($order);
+                OrderActivityLogger::logRentalCleared($order, 'both');
             } elseif (($validated['delivered'] ?? null) === 'mark') {
                 $itemIds = $validated['order_item_ids'] ?? null;
                 if (is_array($itemIds) && $itemIds !== []) {
                     $this->markSelectedOrderItemsDelivered($order, $itemIds);
                 } else {
+                    $now = now();
                     if (! $order->delivered_at) {
-                        $order->delivered_at = now();
+                        $order->delivered_at = $now;
                     }
                     $order->save();
                     $this->syncOrderItemsRentalFromOrder($order);
+                    $order->refresh()->load('items');
+                    $unitCount = $this->orderRentalUnitsStats($order)['delivered_units'];
+                    OrderActivityLogger::logAllDelivered($order, $unitCount, $now);
                 }
             }
 
             if (($validated['returned'] ?? null) === 'clear') {
                 $this->clearOrderItemsReturned($order);
+                if (($validated['delivered'] ?? null) !== 'clear') {
+                    OrderActivityLogger::logRentalCleared($order, 'return');
+                }
             } elseif (($validated['returned'] ?? null) === 'mark') {
                 $returnLines = $validated['return_lines'] ?? null;
                 if (is_array($returnLines) && $returnLines !== []) {
@@ -900,6 +1151,10 @@ trait ManagesOrderLive
         ]);
 
         $type = $validated['security_deposit_type'];
+        $oldDeposit = [
+            'security_deposit_type' => $order->security_deposit_type,
+            'security_deposit_value' => $order->security_deposit_value,
+        ];
 
         if ($type === 'none') {
             $order->update([
@@ -931,6 +1186,7 @@ trait ManagesOrderLive
 
         $this->recalculateOrderFinancials($order);
         $order->refresh();
+        OrderActivityLogger::logSecurityDepositUpdated($order, $oldDeposit);
 
         return response()->json([
             'success' => true,
@@ -956,6 +1212,10 @@ trait ManagesOrderLive
 
         $start = $request->start_at ? Carbon::parse($request->start_at) : null;
         $end = $request->end_at ? Carbon::parse($request->end_at) : null;
+        $oldBooking = [
+            'start_at' => $order->start_at?->toIso8601String(),
+            'end_at' => $order->end_at?->toIso8601String(),
+        ];
 
         $order->update([
             'start_at' => $start,
@@ -976,6 +1236,7 @@ trait ManagesOrderLive
 
         $this->recalculateOrderFinancials($order);
         $order->refresh();
+        OrderActivityLogger::logBookingUpdated($order, $oldBooking);
 
         return response()->json([
             'success' => true,
@@ -1021,6 +1282,7 @@ trait ManagesOrderLive
             if (! $line->delivered_at) {
                 $line->delivered_at = $now;
                 $line->save();
+                OrderActivityLogger::logItemDelivered($line, $now);
             }
         }
 
@@ -1105,6 +1367,7 @@ trait ManagesOrderLive
             }
 
             $line->save();
+            OrderActivityLogger::logItemReturned($line, $now);
             $touched = true;
         }
 
@@ -1139,6 +1402,9 @@ trait ManagesOrderLive
         }
         $order->returned_at = $now;
         $order->save();
+
+        $unitCount = $this->orderRentalUnitsStats($order)['returned_units'];
+        OrderActivityLogger::logAllReturned($order, $unitCount, $now);
     }
 
     private function clearOrderItemsReturned(Order $order): void
@@ -1221,5 +1487,79 @@ trait ManagesOrderLive
             $line->rental_duration_minutes = $duration;
             $line->save();
         }
+    }
+
+    /**
+     * When completing with settlement confirmed: deliver/return all lines and record pending payments/refunds.
+     */
+    protected function applyCompletionSettlement(Order $order): void
+    {
+        $order->refresh()->load('items');
+        $checklist = $order->completionChecklist();
+
+        $this->markAllOrderItemsReturned($order);
+
+        $order->refresh();
+        $detail = is_array($order->payment_detail) ? $order->payment_detail : [];
+        $paidDelta = 0.0;
+
+        if ($checklist['order_due'] > 0.009) {
+            $amount = round($checklist['order_due'], 2);
+            $row = $this->appendSettlementPaymentEntry($detail, 'order_amount', 'payment', $amount);
+            OrderActivityLogger::logPayment($order, $row);
+            $paidDelta += $amount;
+        }
+
+        if ($checklist['deposit_due'] > 0.009) {
+            $amount = round($checklist['deposit_due'], 2);
+            $row = $this->appendSettlementPaymentEntry($detail, 'security_deposit', 'payment', $amount);
+            OrderActivityLogger::logPayment($order, $row);
+            $paidDelta += $amount;
+        }
+
+        if ($checklist['order_refund_pending'] > 0.009) {
+            $amount = round($checklist['order_refund_pending'], 2);
+            $row = $this->appendSettlementPaymentEntry($detail, 'order_amount', 'refund', $amount);
+            OrderActivityLogger::logPayment($order, $row);
+            $paidDelta -= $amount;
+        }
+
+        if ($checklist['deposit_refund_pending'] > 0.009) {
+            $amount = round($checklist['deposit_refund_pending'], 2);
+            $row = $this->appendSettlementPaymentEntry($detail, 'security_deposit', 'refund', $amount);
+            OrderActivityLogger::logPayment($order, $row);
+            $paidDelta -= $amount;
+        }
+
+        $order->payment_detail = $detail;
+        $order->paid_amount = max(0.0, round((float) $order->paid_amount + $paidDelta, 2));
+        $order->save();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $detail
+     */
+    /**
+     * @param  list<array<string, mixed>>  $detail
+     * @return array<string, mixed>
+     */
+    private function appendSettlementPaymentEntry(array &$detail, string $paymentFor, string $entryKind, float $amount): array
+    {
+        if ($amount < 0.01) {
+            return [];
+        }
+
+        $row = [
+            'payment_for' => $paymentFor,
+            'method' => 'settlement',
+            'amount' => round($amount, 2),
+            'paid_on' => now()->toDateString(),
+            'recorded_at' => now()->toIso8601String(),
+            'entry_kind' => $entryKind,
+            'settlement' => true,
+        ];
+        $detail[] = $row;
+
+        return $row;
     }
 }

@@ -1,5 +1,5 @@
 document.addEventListener('alpine:init', () => {
-    Alpine.data('orderWizardItems', (raw) => {
+    window.Alpine.data('orderWizardItems', (raw) => {
         const p = raw || {};
         p.i18n = p.i18n || {};
         return {
@@ -56,6 +56,63 @@ document.addEventListener('alpine:init', () => {
                     if (!item || !Array.isArray(item.variants)) return null;
                     return item.variants.find((v) => String(v.id) === String(variantId)) || null;
                 },
+                availableStockLabel(count) {
+                    const n = parseInt(String(count), 10) || 0;
+                    return `${n} ${p.i18n.available_stock || 'Available'}`;
+                },
+                cartQtyForItemVariant(itemId, variantId = null) {
+                    let total = 0;
+                    Object.keys(this.lineMeta || {}).forEach((key) => {
+                        const meta = this.lineMeta[key];
+                        if (String(meta?.item_id) !== String(itemId)) {
+                            return;
+                        }
+                        const vid = meta?.item_variant_id ?? null;
+                        if (variantId === null) {
+                            if (vid) {
+                                return;
+                            }
+                        } else if (String(vid) !== String(variantId)) {
+                            return;
+                        }
+                        total += this.getQtyForKey(key);
+                    });
+                    return total;
+                },
+                itemAvailableStock(item) {
+                    if (!item?.manage_stock) {
+                        return 0;
+                    }
+                    const base = parseInt(String(item.stock), 10) || 0;
+                    if (item.has_variants) {
+                        let inCart = 0;
+                        this.lineKeysForItem(item.id).forEach((key) => {
+                            inCart += this.getQtyForKey(key);
+                        });
+                        return Math.max(0, base - inCart);
+                    }
+                    return Math.max(0, base - this.cartQtyForItemVariant(item.id, null));
+                },
+                variantAvailableStock(item, variant) {
+                    if (!variant?.manage_stock) {
+                        return parseInt(String(variant.stock), 10) || 0;
+                    }
+                    const base = parseInt(String(variant.stock), 10) || 0;
+                    if (!item) {
+                        return base;
+                    }
+                    return Math.max(0, base - this.cartQtyForItemVariant(item.id, variant.id));
+                },
+                itemStockLabel(item) {
+                    if (!item?.manage_stock) return '';
+                    return this.availableStockLabel(this.itemAvailableStock(item));
+                },
+                variantLineStockLabel(item, lineKey) {
+                    const meta = this.lineMeta[lineKey];
+                    const variant = this.findVariant(item, meta?.item_variant_id);
+                    if (!variant?.manage_stock) return '';
+                    return this.availableStockLabel(this.variantAvailableStock(item, variant));
+                },
                 lineKeysForItem(itemId) {
                     return Object.keys(this.lineMeta).filter((key) => String(this.lineMeta[key]?.item_id) === String(itemId));
                 },
@@ -73,13 +130,14 @@ document.addEventListener('alpine:init', () => {
                     let text = variant.label || variant.variant_code || '';
                     text += ' — ₹' + parseFloat(variant.price).toFixed(2);
                     if (variant.manage_stock) {
-                        text += ' (' + p.i18n.stock + ': ' + variant.stock + ')';
+                        const avail = this.variantAvailableStock(this.variantModalItem, variant);
+                        text += ' (' + this.availableStockLabel(avail) + ')';
                     }
                     return text;
                 },
                 variantSelectable(variant) {
                     if (!variant.is_available) return false;
-                    if (variant.manage_stock && (parseInt(String(variant.stock), 10) || 0) < 1) return false;
+                    if (variant.manage_stock && this.variantAvailableStock(this.variantModalItem, variant) < 1) return false;
                     return true;
                 },
                 itemPriceLabel(item) {
@@ -415,6 +473,25 @@ document.addEventListener('alpine:init', () => {
                 },
                 isVariantModalChecked(variantId) {
                     return this.variantModalSelections.includes(String(variantId));
+                },
+                isVariantModalRowSelected(variant) {
+                    const id = String(variant.id);
+                    if (this.variantModalMode === 'change') {
+                        return String(this.variantModalPick) === id;
+                    }
+                    return this.isVariantModalChecked(id);
+                },
+                handleVariantRowClick(variant) {
+                    if (!this.variantSelectable(variant)) {
+                        return;
+                    }
+                    const id = String(variant.id);
+                    if (this.variantModalMode === 'change') {
+                        this.variantModalPick = id;
+                    } else {
+                        this.toggleVariantModalSelection(id);
+                    }
+                    this.variantModalError = '';
                 },
                 toggleVariantModalSelection(variantId) {
                     const id = String(variantId);

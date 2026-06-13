@@ -1,13 +1,32 @@
 document.addEventListener('alpine:init', () => {
-    Alpine.data('itemVariantForm', (initial) => ({
+    window.Alpine.data('itemVariantForm', (initial) => ({
         hasVariants: Boolean(initial?.hasVariants),
         attributes: Array.isArray(initial?.attributes) ? initial.attributes : [],
         variants: Array.isArray(initial?.variants) ? initial.variants : [],
+        itemManageStock: Boolean(initial?.itemManageStock ?? true),
+        itemIsAvailable: Boolean(initial?.itemIsAvailable ?? true),
+        itemIsActive: Boolean(initial?.itemIsActive ?? true),
         newAttributeName: '',
         presetAttributes: ['Size', 'Color', 'Capacity', 'Material'],
 
         init() {
             this.normalizeVariantAttributeKeys();
+            this.syncVariantVisibility();
+            this.$watch('itemManageStock', () => this.syncVariantVisibility());
+            this.$watch('itemIsAvailable', () => this.syncVariantVisibility());
+            this.$watch('itemIsActive', () => this.syncVariantVisibility());
+        },
+
+        syncVariantVisibility() {
+            const manageStock = Boolean(this.itemManageStock);
+            const isAvailable = Boolean(this.itemIsAvailable);
+            const isActive = Boolean(this.itemIsActive);
+
+            this.variants.forEach((variant) => {
+                variant.manage_stock = manageStock;
+                variant.is_available = isAvailable;
+                variant.is_active = isActive;
+            });
         },
 
         setHasVariants(enabled) {
@@ -101,8 +120,9 @@ document.addEventListener('alpine:init', () => {
                 stock: 1,
                 damaged_stock: 0,
                 maintenance_stock: 0,
-                manage_stock: true,
-                is_available: true,
+                manage_stock: Boolean(this.itemManageStock),
+                is_available: Boolean(this.itemIsAvailable),
+                is_active: Boolean(this.itemIsActive),
             });
         },
 

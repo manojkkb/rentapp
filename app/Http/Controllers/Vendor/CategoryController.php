@@ -147,6 +147,44 @@ class CategoryController extends Controller
     }
 
     /**
+     * Display category details
+     */
+    public function show(Request $request, Category $category)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+        }
+
+        if ($category->vendor_id != $vendor->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if ($redirect = $this->redirectIfNumericRouteKey($request, $category, 'vendor.categories.show')) {
+            return $redirect;
+        }
+
+        $category->load([
+            'parent',
+            'subcategories' => fn ($q) => $q->orderBy('name')->withCount('items'),
+        ]);
+
+        $stats = [
+            'items' => $category->items()->count(),
+            'active_items' => $category->items()->where('is_active', true)->count(),
+            'subcategories' => $category->subcategories->count(),
+        ];
+
+        $recentItems = $category->items()
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        return view('vendor.categories.show', compact('category', 'stats', 'recentItems'));
+    }
+
+    /**
      * Show the form for editing a category
      */
     public function edit(Request $request, Category $category)

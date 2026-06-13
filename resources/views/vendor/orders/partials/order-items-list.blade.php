@@ -20,17 +20,31 @@
                     'per_year' => __('vendor.order_wizard_summary_unit_year'),
                     default => '',
                 };
-                $unitPrice = (float) ($cartItem->item?->price ?? $cartItem->price);
+                $unitPrice = (float) $cartItem->price;
                 $lineTotal = $cartItem->lineSubtotal();
                 $photoUrl = $cartItem->item?->photo_url;
                 $lineName = $cartItem->item?->name ?? $cartItem->item_name;
+                $hasVariants = (bool) ($cartItem->item?->usesVariants());
+                if ($cartItem->variant_label && ! str_contains($lineName, $cartItem->variant_label)) {
+                    $lineName .= ' — '.$cartItem->variant_label;
+                }
                 $lineEditPayload = base64_encode(json_encode([
                     'item_id' => (int) $cartItem->item_id,
                     'name' => $lineName,
                     'quantity' => (int) $cartItem->quantity,
                     'billing_units' => $cartItem->billing_units,
                     'uses_billing' => $usesBilling,
+                    'unit_price' => $unitPrice,
+                    'rental_period' => $linePt,
                 ]));
+                $lineVariantChangePayload = base64_encode(json_encode([
+                    'order_item_id' => (int) $cartItem->id,
+                    'item_id' => (int) $cartItem->item_id,
+                    'item_variant_id' => $cartItem->item_variant_id ? (int) $cartItem->item_variant_id : null,
+                    'name' => $lineName,
+                    'quantity' => (int) $cartItem->quantity,
+                ]));
+                $lineMenuItemCount = $hasVariants ? 3 : 2;
                 $lineQty = max(1, (int) $cartItem->quantity);
                 $lineDeliveredQty = $cartItem->delivered_at ? $lineQty : 0;
                 $lineReturnedQty = min($lineQty, max(0, (int) ($cartItem->returned_qty ?? 0)));
@@ -96,51 +110,90 @@
                         </div>
                     @endif
                     @if(! $orderReadOnlyList)
-                        <div class="relative flex shrink-0 items-center border-l border-gray-200 pl-1 sm:pl-2" x-data="{ menu: false }" @keydown.escape.window="menu = false">
+                        <div class="relative z-0 flex shrink-0 items-center border-l border-gray-200 pl-1 sm:pl-2"
+                             x-data="{
+                                menu: false,
+                                menuTop: 0,
+                                menuLeft: 0,
+                                openMenu(event) {
+                                    if (this.menu) {
+                                        this.menu = false;
+                                        return;
+                                    }
+                                    const rect = event.currentTarget.getBoundingClientRect();
+                                    const width = 144;
+                                    const itemCount = {{ $lineMenuItemCount }};
+                                    let left = rect.right - width;
+                                    left = Math.max(8, Math.min(left, window.innerWidth - width - 8));
+                                    let top = rect.bottom + 6;
+                                    const menuHeight = itemCount * 44 + 8;
+                                    if (top + menuHeight > window.innerHeight - 8) {
+                                        top = Math.max(8, rect.top - menuHeight - 6);
+                                    }
+                                    this.menuLeft = left;
+                                    this.menuTop = top;
+                                    this.menu = true;
+                                },
+                                closeMenu() { this.menu = false; },
+                             }"
+                             :class="menu && 'z-[70]'">
                             <button type="button"
                                     data-cart-remove="1"
                                     class="sr-only"
                                     tabindex="-1"
                                     aria-hidden="true"></button>
                             <button type="button"
-                                    x-ref="menuButton"
                                     class="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 [touch-action:manipulation]"
-                                    @click.stop="menu = !menu"
+                                    @click.stop="openMenu($event)"
                                     :aria-expanded="menu"
                                     aria-haspopup="true"
                                     aria-label="{{ __('vendor.order_wizard_summary_more_actions') }}">
                                 <i class="fas fa-ellipsis-v text-sm" aria-hidden="true"></i>
                             </button>
-                            <div x-show="menu"
-                                 x-cloak
-                                 x-transition:enter="transition ease-out duration-100"
-                                 x-transition:enter-start="opacity-0 scale-95"
-                                 x-transition:enter-end="opacity-100 scale-100"
-                                 @click.outside="menu = false"
-                                 class="fixed w-36 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg ring-1 ring-black/5"
-                                 style="display: none; z-index: 9999;"
-                                 x-init="$watch('menu', value => {
-                                     if (value && $refs.menuButton) {
-                                         const rect = $refs.menuButton.getBoundingClientRect();
-                                         const menuW = $el.offsetWidth || 144;
-                                         $el.style.top = (rect.bottom + 4) + 'px';
-                                         $el.style.left = Math.max(8, rect.right - menuW) + 'px';
-                                     }
-                                 })">
-                                <button type="button"
-                                        class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-800 hover:bg-gray-50"
-                                        data-edit-b64="{{ $lineEditPayload }}"
-                                        @click="menu = false; $dispatch('order-line-edit', JSON.parse(atob($event.currentTarget.dataset.editB64)))">
-                                    <i class="fas fa-pen w-4 text-center text-xs text-gray-400" aria-hidden="true"></i>
-                                    {{ __('vendor.edit') }}
-                                </button>
-                                <button type="button"
-                                        class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-50"
-                                        @click="menu = false; removeCartItem(@js($order->uuid), {{ $cartItem->item_id }}, $event.currentTarget)">
-                                    <i class="fas fa-trash-alt w-4 text-center text-xs" aria-hidden="true"></i>
-                                    {{ __('vendor.remove') }}
-                                </button>
-                            </div>
+                            <template x-teleport="body">
+                                <div x-show="menu"
+                                     x-cloak
+                                     class="fixed inset-0 z-[75]"
+                                     @keydown.escape.window="closeMenu()">
+                                    <div class="absolute inset-0 bg-transparent"
+                                         aria-hidden="true"
+                                         @click="closeMenu()"></div>
+                                    <div x-show="menu"
+                                         x-transition:enter="transition ease-out duration-100"
+                                         x-transition:enter-start="opacity-0 scale-95"
+                                         x-transition:enter-end="opacity-100 scale-100"
+                                         class="fixed w-36 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-xl ring-1 ring-black/10"
+                                         :style="'top:' + menuTop + 'px;left:' + menuLeft + 'px'"
+                                         role="menu"
+                                         @click.stop>
+                                        <button type="button"
+                                                role="menuitem"
+                                                class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-800 hover:bg-gray-50"
+                                                data-edit-b64="{{ $lineEditPayload }}"
+                                                @click="closeMenu(); $dispatch('order-line-edit', JSON.parse(atob($event.currentTarget.dataset.editB64)))">
+                                            <i class="fas fa-pen w-4 text-center text-xs text-gray-400" aria-hidden="true"></i>
+                                            {{ __('vendor.order_wizard_summary_edit_line') }}
+                                        </button>
+                                        @if($hasVariants)
+                                        <button type="button"
+                                                role="menuitem"
+                                                class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-gray-800 hover:bg-gray-50"
+                                                data-variant-b64="{{ $lineVariantChangePayload }}"
+                                                @click="closeMenu(); $dispatch('order-line-change-variant', JSON.parse(atob($event.currentTarget.dataset.variantB64)))">
+                                            <i class="fas fa-exchange-alt w-4 text-center text-xs text-gray-400" aria-hidden="true"></i>
+                                            {{ __('vendor.order_wizard_edit_variant') }}
+                                        </button>
+                                        @endif
+                                        <button type="button"
+                                                role="menuitem"
+                                                class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-red-700 hover:bg-red-50"
+                                                @click="closeMenu(); removeCartItem(@js($order->uuid), {{ $cartItem->item_id }}, $event.currentTarget)">
+                                            <i class="fas fa-trash-alt w-4 text-center text-xs" aria-hidden="true"></i>
+                                            {{ __('vendor.remove') }}
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     @endif
                 </div>

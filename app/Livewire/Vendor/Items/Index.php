@@ -20,6 +20,13 @@ class Index extends VendorComponent
 
     public ?string $flashMessage = null;
 
+    public function mount(): void
+    {
+        if (session()->has('success')) {
+            $this->flashMessage = session('success');
+        }
+    }
+
     public function updatingSearch(): void
     {
         $this->resetPage();
@@ -54,7 +61,11 @@ class Index extends VendorComponent
     {
         $query = Items::query()
             ->where('vendor_id', $this->vendorId())
-            ->with('category');
+            ->with([
+                'category',
+                'variants' => fn ($q) => $q->withOrderStockBreakdown(),
+            ])
+            ->withOrderStockBreakdown();
 
         if ($this->categoryId !== '') {
             $categoryId = (int) $this->categoryId;

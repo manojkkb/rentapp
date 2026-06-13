@@ -6,15 +6,16 @@
 
 @section('content')
 @php
-    $ifc = 'block w-full min-h-[40px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 transition placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:bg-gray-50 disabled:text-gray-500';
-    $ilabel = 'mb-0.5 block text-sm font-medium text-gray-800';
-    $ihint = 'mt-0.5 text-[11px] leading-snug text-gray-500 max-sm:hidden';
-    $ierror = 'mt-0.5 text-xs text-red-600';
-    $icard = 'scroll-mt-20 overflow-hidden rounded-xl border border-gray-200/90 bg-white shadow-sm';
-    $ihead = 'flex items-center gap-2.5 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-emerald-50/20 px-3 py-2.5 sm:px-4 sm:py-3';
-    $inum = 'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-xs font-bold text-white';
-    $ibody = 'space-y-3 p-3 sm:space-y-4 sm:p-4';
-    $igrid2 = 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4';
+    $ifc = 'block w-full min-h-[44px] rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-base sm:text-sm text-gray-900 transition placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 disabled:bg-gray-50 disabled:text-gray-500';
+    $ilabel = 'mb-1 block text-sm font-medium text-gray-800';
+    $ihint = 'mt-1 text-xs leading-snug text-gray-500';
+    $ierror = 'mt-1 text-xs font-medium text-red-600';
+    $ireq = '<span class="text-red-500" aria-hidden="true">*</span>';
+    $icard = 'scroll-mt-24 overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-sm ring-1 ring-gray-100/80';
+    $ihead = 'flex items-start gap-3 border-b border-gray-100 bg-gradient-to-r from-slate-50 via-white to-emerald-50/30 px-4 py-3.5 sm:px-5 sm:py-4';
+    $inum = 'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-sm font-bold text-white shadow-sm shadow-emerald-600/20';
+    $ibody = 'space-y-4 p-4 sm:p-5';
+    $igrid2 = 'grid grid-cols-1 gap-4 sm:grid-cols-2';
 
     $sections = [
         ['id' => 'item-section-general', 'num' => 1, 'label' => __('vendor.item_form_section_general')],
@@ -56,18 +57,23 @@
         </div>
     </header>
 
-    <nav class="sticky top-0 z-20 mb-3 overflow-x-auto rounded-lg border border-gray-200 bg-white/95 py-1.5 shadow-sm backdrop-blur-md sm:hidden"
+    <nav class="sticky top-0 z-20 mb-3 overflow-x-auto rounded-xl border border-gray-200 bg-white/95 py-2 shadow-sm backdrop-blur-md sm:hidden"
          aria-label="{{ __('vendor.item_form_section_nav') }}">
-        <div class="flex min-w-max gap-1 px-1.5">
+        <div class="flex min-w-max gap-1.5 px-2">
             @foreach ($sections as $section)
                 <a href="#{{ $section['id'] }}"
-                   class="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium text-gray-600 hover:bg-emerald-50 hover:text-emerald-800">
-                    <span class="flex h-4 w-4 items-center justify-center rounded bg-emerald-100 text-[9px] font-bold text-emerald-800">{{ $section['num'] }}</span>
+                   class="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-gray-600 hover:bg-emerald-50 hover:text-emerald-800">
+                    <span class="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-100 text-[10px] font-bold text-emerald-800">{{ $section['num'] }}</span>
                     {{ $section['label'] }}
                 </a>
             @endforeach
         </div>
     </nav>
+
+    <div class="mb-3 rounded-xl border border-amber-100 bg-amber-50/80 px-3.5 py-2.5 text-xs text-amber-900 sm:text-sm">
+        <i class="fas fa-asterisk mr-1.5 text-[10px] text-red-500" aria-hidden="true"></i>
+        {{ __('vendor.required_fields_note') }}
+    </div>
 
     <div x-data="itemVariantForm(@js($variantFormState))">
         <form id="item-edit-form" action="{{ route('vendor.items.update', $item) }}" method="POST" enctype="multipart/form-data" class="space-y-3 sm:space-y-4">
@@ -139,11 +145,11 @@
 
                     <div class="border-t border-gray-100 pt-3">
                         <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.item_form_section_visibility') }}</p>
-                        <div class="{{ $igrid2 }}">
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5 hover:border-emerald-200">
                                 <input type="checkbox" name="is_available" value="1"
-                                       class="h-4 w-4 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                                       {{ old('is_available', $item->is_available) ? 'checked' : '' }}>
+                                       x-model="itemIsAvailable"
+                                       class="h-4 w-4 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
                                 <span class="min-w-0">
                                     <span class="block text-sm font-medium text-gray-800">{{ __('vendor.available_for_rent') }}</span>
                                     <span class="{{ $ihint }}">{{ __('vendor.field_hint_is_available') }}</span>
@@ -151,14 +157,26 @@
                             </label>
                             <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5 hover:border-emerald-200">
                                 <input type="checkbox" name="is_active" value="1"
-                                       class="h-4 w-4 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                                       {{ old('is_active', $item->is_active) ? 'checked' : '' }}>
+                                       x-model="itemIsActive"
+                                       class="h-4 w-4 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
                                 <span class="min-w-0">
                                     <span class="block text-sm font-medium text-gray-800">{{ __('vendor.active') }}</span>
                                     <span class="{{ $ihint }}">{{ __('vendor.field_hint_is_active') }}</span>
                                 </span>
                             </label>
+                            <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5 hover:border-emerald-200 sm:col-span-2 lg:col-span-1">
+                                <input type="checkbox" name="manage_stock" value="1"
+                                       x-model="itemManageStock"
+                                       class="h-4 w-4 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+                                <span class="min-w-0">
+                                    <span class="block text-sm font-medium text-gray-800">{{ __('vendor.track_stock_quantity') }}</span>
+                                    <span class="{{ $ihint }}">{{ __('vendor.field_hint_manage_stock') }}</span>
+                                </span>
+                            </label>
                         </div>
+                        <p x-show="hasVariants" x-cloak class="mt-2 text-xs leading-snug text-gray-500">
+                            {{ __('vendor.item_visibility_applies_variants') }}
+                        </p>
                     </div>
                 </div>
             </section>

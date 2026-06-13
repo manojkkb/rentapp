@@ -3,7 +3,7 @@
 @endphp
 
 
-<div class="w-full" x-data="orderWizardPaymentPage(@js($paymentPreview))" data-wizard-alpine-root>
+<div class="w-full" x-data="orderWizardPayment(@js($paymentPreview))" data-wizard-alpine-root>
     <div class="mb-3 rounded-xl border border-gray-200/90 bg-white p-3 text-sm text-gray-700 shadow-sm sm:mb-4 sm:p-4">
         <div class="flex items-center justify-between gap-2 border-b border-gray-100 pb-2">
             <p class="text-sm font-bold text-gray-900">{{ __('vendor.order_wizard_step_payment') }}</p>

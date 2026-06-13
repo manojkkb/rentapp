@@ -754,5 +754,7 @@
             }
         }
     </script>
+
+    @livewireScriptConfig
 </body>
 </html>

@@ -13,6 +13,8 @@ use App\Models\ItemVariant;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\VendorCustomer;
+use App\Services\RentalStockAvailability;
+use App\Support\OrderActivityLogger;
 use App\Support\PdfIndicFonts;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -200,10 +202,11 @@ class VendorOrderController extends Controller
             ->where('vendor_id', $vendor->id)
             ->where('is_active', true)
             ->where('is_available', true)
+            ->withOrderStockBreakdown()
             ->with([
                 'category',
                 'variantAttributes' => fn ($q) => $q->ordered(),
-                'variants' => fn ($q) => $q->ordered(),
+                'variants' => fn ($q) => $q->ordered()->withOrderStockBreakdown(),
             ])
             ->orderBy('name')
             ->get();
@@ -291,7 +294,11 @@ class VendorOrderController extends Controller
             }
         }
 
-        $catalogItemsForJs = $catalogItems->map(fn (Items $i) => $this->catalogItemPayloadForOrderWizard($i))->values();
+        $stockAvailability = RentalStockAvailability::forWizard($vendor->id, $wizard);
+
+        $catalogItemsForJs = $catalogItems
+            ->map(fn (Items $i) => $this->catalogItemPayloadForOrderWizard($i, $stockAvailability))
+            ->values();
 
         $billingUnitsLabels = collect(Items::rentalPeriodKeys())
             ->filter(fn ($k) => Items::rentalPeriodUsesBillingUnits($k))
@@ -355,12 +362,19 @@ class VendorOrderController extends Controller
             throw ValidationException::withMessages($validator->errors()->toArray());
         }
 
+        $stockAvailability = RentalStockAvailability::forWizard($vendor->id, $wizard);
+        $wizardWithLines = array_merge($wizard, ['lines' => $lines]);
+
         foreach ($lines as $row) {
             $item = Items::where('id', $row['item_id'])
                 ->where('vendor_id', $vendor->id)
                 ->where('is_active', true)
                 ->where('is_available', true)
-                ->with(['variants', 'variantAttributes'])
+                ->withOrderStockBreakdown()
+                ->with([
+                    'variants' => fn ($q) => $q->withOrderStockBreakdown(),
+                    'variantAttributes',
+                ])
                 ->first();
             if (! $item) {
                 throw ValidationException::withMessages(['lines' => [__('vendor.order_wizard_invalid_item')]]);
@@ -375,11 +389,31 @@ class VendorOrderController extends Controller
                 if (! $variant || ! $variant->is_active || ! $variant->is_available) {
                     throw ValidationException::withMessages(['lines' => [__('vendor.order_wizard_variant_invalid')]]);
                 }
-                if ($variant->manage_stock && (int) $variant->stock < (int) $row['quantity']) {
+                $lineKey = (string) ($row['line_key'] ?? $this->orderWizardLineKey((int) $item->id, $variantId));
+                $available = $stockAvailability->availableForWizardLine(
+                    (int) $variant->stock,
+                    (int) $item->id,
+                    $variantId,
+                    $wizardWithLines,
+                    $lineKey,
+                );
+                if ($variant->manage_stock && $available < (int) $row['quantity']) {
                     throw ValidationException::withMessages(['lines' => [__('vendor.order_wizard_variant_insufficient_stock', ['label' => $variant->displayLabel($item->variantAttributes)])]]);
                 }
             } elseif (! empty($row['item_variant_id'])) {
                 throw ValidationException::withMessages(['lines' => [__('vendor.order_wizard_invalid_item')]]);
+            } else {
+                $lineKey = (string) ($row['line_key'] ?? $this->orderWizardLineKey((int) $item->id, null));
+                $available = $stockAvailability->availableForWizardLine(
+                    (int) $item->stock,
+                    (int) $item->id,
+                    null,
+                    $wizardWithLines,
+                    $lineKey,
+                );
+                if ($item->manage_stock && $available < (int) $row['quantity']) {
+                    throw ValidationException::withMessages(['lines' => [__('vendor.order_wizard_insufficient_stock', ['name' => $item->name])]]);
+                }
             }
 
             $type = $row['rental_period'] ?? $item->rental_period ?? 'per_day';
@@ -857,6 +891,19 @@ class VendorOrderController extends Controller
         });
 
         $this->orderCreateWizardClear();
+
+        OrderActivityLogger::logCreated($order);
+        if ($order->pickup_at) {
+            OrderActivityLogger::logPickupScheduled($order);
+        }
+        if ($order->delivery_at) {
+            OrderActivityLogger::logDeliveryScheduled($order);
+        }
+        foreach (is_array($order->payment_detail) ? $order->payment_detail : [] as $paymentRow) {
+            if (is_array($paymentRow)) {
+                OrderActivityLogger::logPayment($order, $paymentRow);
+            }
+        }
 
         return $order;
     }
@@ -1437,7 +1484,7 @@ class VendorOrderController extends Controller
 
         $order->load([
             'customer' => fn ($q) => $q->withTrashed(),
-            'items.item',
+            'items.item.variants',
             'coupon',
         ]);
 
@@ -1445,7 +1492,7 @@ class VendorOrderController extends Controller
             ->where('vendor_id', $vendor->id)
             ->where('is_active', true)
             ->where('is_available', true)
-            ->with('category')
+            ->with(['category', 'variantAttributes', 'variants'])
             ->orderBy('name')
             ->get();
 
@@ -1455,6 +1502,10 @@ class VendorOrderController extends Controller
             ->all();
 
         $availableItems = $catalogItems;
+        $availableItemsJson = $catalogItems
+            ->map(fn (Items $i) => $this->catalogItemPayloadForOrderWizard($i))
+            ->values()
+            ->all();
         $cartBillingUnitsLabels = $orderBillingLabels;
 
         $categories = Category::query()
@@ -1464,7 +1515,7 @@ class VendorOrderController extends Controller
 
         $orderCartJson = $this->orderJsonPayload($order);
 
-        return view('vendor.orders.show', compact('order', 'catalogItems', 'orderBillingLabels', 'availableItems', 'cartBillingUnitsLabels', 'categories', 'orderCartJson'));
+        return view('vendor.orders.show', compact('order', 'catalogItems', 'orderBillingLabels', 'availableItems', 'availableItemsJson', 'cartBillingUnitsLabels', 'categories', 'orderCartJson'));
     }
 
     /**
@@ -1625,6 +1676,8 @@ class VendorOrderController extends Controller
             return back()->withErrors(['items' => __('vendor.order_needs_one_line')])->withInput();
         }
 
+        $activitySnapshot = OrderActivityLogger::captureSnapshot($order);
+
         try {
             DB::transaction(function () use ($validated, $order, $vendor, $paymentDetail, $removeIds, $lineRows) {
                 $startAt = ! empty($validated['start_at']) ? Carbon::parse($validated['start_at']) : null;
@@ -1737,6 +1790,8 @@ class VendorOrderController extends Controller
 
             return back()->withErrors(['error' => $e->getMessage()])->withInput();
         }
+
+        OrderActivityLogger::logDiffFromSnapshot($order, $activitySnapshot);
 
         return redirect()
             ->route('vendor.orders.show', $order)
@@ -1868,7 +1923,7 @@ class VendorOrderController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function catalogItemPayloadForOrderWizard(Items $i): array
+    private function catalogItemPayloadForOrderWizard(Items $i, ?RentalStockAvailability $stockAvailability = null): array
     {
         $pt = in_array($i->rental_period ?? '', Items::rentalPeriodKeys(), true) ? $i->rental_period : 'per_day';
         $payload = [
@@ -1881,7 +1936,7 @@ class VendorOrderController extends Controller
             'photo_url' => $i->photo_url,
             'category_id' => $i->category_id,
             'category' => $i->category ? ['id' => $i->category->id, 'name' => $i->category->name] : null,
-            'stock' => (int) ($i->usesVariants() ? $i->effectiveStock() : ($i->stock ?? 0)),
+            'stock' => $stockAvailability?->availableForItem($i) ?? $i->rentableAvailableStock(),
             'manage_stock' => (bool) ($i->manage_stock ?? false),
             'rental_period' => $pt,
             'uses_billing_units' => Items::rentalPeriodUsesBillingUnits($pt),
@@ -1899,7 +1954,7 @@ class VendorOrderController extends Controller
                 'id' => $v->id,
                 'label' => $v->displayLabel($attributes),
                 'price' => (float) $v->price,
-                'stock' => (int) $v->stock,
+                'stock' => $stockAvailability?->availableForVariant($i, $v) ?? $v->rentableAvailableStock(),
                 'manage_stock' => (bool) $v->manage_stock,
                 'is_available' => (bool) ($v->is_active && $v->is_available),
                 'variant_code' => $v->variant_code,
@@ -1925,20 +1980,50 @@ class VendorOrderController extends Controller
 
         $request->validate([
             'status' => 'required|in:'.implode(',', Order::STATUSES),
+            'settlement_acknowledged' => 'nullable|boolean',
         ]);
 
         if ($order->isLockedForEditing()) {
             return back()->withErrors(['status' => __('vendor.order_edit_not_allowed_locked')]);
         }
 
-        if (! $order->canTransitionTo((string) $request->input('status'))) {
+        $newStatus = (string) $request->input('status');
+
+        if (! $order->canTransitionTo($newStatus)) {
             return back()->withErrors(['status' => __('vendor.order_invalid_status_transition')]);
         }
 
-        $order->update([
-            'status' => $request->input('status'),
-        ]);
+        $settlementApplied = false;
+        $oldStatus = (string) $order->status;
 
-        return back()->with('success', __('vendor.status_updated'));
+        if ($newStatus === 'completed') {
+            $checklist = $order->completionChecklist();
+            if ($checklist['has_pending'] && ! $request->boolean('settlement_acknowledged')) {
+                return back()->withErrors(['status' => __('vendor.order_complete_settlement_required')]);
+            }
+            $settlementApplied = $checklist['has_pending'] && $request->boolean('settlement_acknowledged');
+        }
+
+        DB::transaction(function () use ($order, $newStatus, $settlementApplied) {
+            if ($settlementApplied) {
+                $this->applyCompletionSettlement($order);
+            }
+
+            $order->update([
+                'status' => $newStatus,
+            ]);
+        });
+
+        $order->refresh();
+        if ($oldStatus !== $newStatus) {
+            OrderActivityLogger::logStatusChanged($order, $oldStatus, $newStatus);
+        }
+
+        OrderItem::syncAllStatusesForOrder($order->fresh());
+
+        return back()->with(
+            'success',
+            $settlementApplied ? __('vendor.order_complete_settlement_applied') : __('vendor.status_updated'),
+        );
     }
 }

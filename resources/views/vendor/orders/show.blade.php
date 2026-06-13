@@ -10,6 +10,14 @@
 @section('content')
 @php
     $orderReadOnly = $order->isLockedForEditing();
+    $billingUnitShorts = [
+        'per_minute' => __('vendor.order_wizard_summary_unit_minute'),
+        'per_hour' => __('vendor.order_wizard_summary_unit_hour'),
+        'per_day' => __('vendor.order_wizard_summary_unit_day'),
+        'per_week' => __('vendor.order_wizard_summary_unit_week'),
+        'per_month' => __('vendor.order_wizard_summary_unit_month'),
+        'per_year' => __('vendor.order_wizard_summary_unit_year'),
+    ];
 @endphp
 {{-- Alpine state must not live inside x-data="..." — JSON quotes break the HTML attribute and leak JS as visible text. --}}
 <script>
@@ -20,16 +28,43 @@ function isoToDatetimeLocalValue(iso) {
     const pad = (n) => String(n).padStart(2, '0');
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
 }
+function isoToFulfillmentValue(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+function formatFulfillmentDisplay(val) {
+    if (!val) return '';
+    let d;
+    if (String(val).includes('T')) {
+        d = new Date(val);
+    } else {
+        const m = String(val).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+        d = m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : new Date(val);
+    }
+    if (isNaN(d.getTime())) return val;
+    return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
 function orderPageData() {
     const p = {
         addedItems: @json($order->items->pluck('quantity', 'item_id')),
         addedItemBillingUnits: @json($order->items->mapWithKeys(fn ($row) => [$row->item_id => (float) ($row->billing_units ?? 1)])->all()),
         billingUnitsLabels: @json($cartBillingUnitsLabels),
-        items: @json($availableItems),
+        rentalPeriods: @json(\App\Models\Items::rentalPeriodSelectOptions()),
+        billingUnitShorts: @json($billingUnitShorts),
+        items: @json($availableItemsJson ?? $availableItems),
+        orderLineVariantQty: @json($order->items->mapWithKeys(fn ($row) => [
+            (int) $row->item_id.'_v'.(int) ($row->item_variant_id ?? 0) => (int) $row->quantity,
+        ])->all()),
         fulfillmentType: @json($order->fulfillment_type ?: 'pickup'),
         deliveryAddress: @json($order->delivery_address ?? ''),
-        pickupAt: @json($order->pickup_at ? $order->pickup_at->copy()->timezone(config('app.timezone'))->format('Y-m-d\TH:i') : ''),
+        pickupAt: @json($order->pickup_at ? $order->pickup_at->copy()->timezone(config('app.timezone'))->format('Y-m-d H:i') : ''),
+        deliveryAt: @json($order->delivery_at ? $order->delivery_at->copy()->timezone(config('app.timezone'))->format('Y-m-d H:i') : ''),
         deliveryCharge: @json(round((float) ($order->delivery_charge ?? 0), 2)),
+        fulfillmentPickupHiddenId: 'fulfillment_modal_pickup_at',
+        fulfillmentDeliveryHiddenId: 'fulfillment_modal_delivery_at',
         saveFulfillmentUrl: @json(route('vendor.orders.fulfillment', $order)),
         readOnly: @json($orderReadOnly),
     };
@@ -38,19 +73,26 @@ function orderPageData() {
         addedItems: p.addedItems,
         addedItemBillingUnits: p.addedItemBillingUnits,
         billingUnitsLabels: p.billingUnitsLabels,
+        rentalPeriods: p.rentalPeriods,
+        billingUnitShorts: p.billingUnitShorts,
         addingItem: null,
         updatingItem: null,
         searchQuery: '',
         selectedCategory: '',
         items: p.items,
+        orderLineVariantQty: p.orderLineVariantQty,
         fulfillmentType: p.fulfillmentType,
         deliveryAddress: p.deliveryAddress,
         pickupAt: p.pickupAt,
+        deliveryAt: p.deliveryAt,
         deliveryCharge: p.deliveryCharge,
+        fulfillmentPickupHiddenId: p.fulfillmentPickupHiddenId,
+        fulfillmentDeliveryHiddenId: p.fulfillmentDeliveryHiddenId,
         savingFulfillment: false,
         fulfillmentFieldError: '',
         saveFulfillmentUrl: p.saveFulfillmentUrl,
         readOnly: p.readOnly,
+        headerMoreOpen: false,
         showFulfillmentModal: false,
         _fulfillmentSnapshot: null,
         pickupLabel: @json(__('vendor.pickup')),
@@ -62,6 +104,7 @@ function orderPageData() {
                 fulfillmentType: this.fulfillmentType,
                 deliveryAddress: this.deliveryAddress,
                 pickupAt: this.pickupAt,
+                deliveryAt: this.deliveryAt,
                 deliveryCharge: this.deliveryCharge,
             };
             this.fulfillmentFieldError = '';
@@ -74,6 +117,7 @@ function orderPageData() {
                 this.fulfillmentType = s.fulfillmentType;
                 this.deliveryAddress = s.deliveryAddress;
                 this.pickupAt = s.pickupAt;
+                this.deliveryAt = s.deliveryAt;
                 this.deliveryCharge = s.deliveryCharge;
             }
             this.fulfillmentFieldError = '';
@@ -86,13 +130,12 @@ function orderPageData() {
         fulfillmentSummarySecondary() {
             if (this.fulfillmentType === 'pickup') {
                 if (!this.pickupAt) return this.notSpecifiedLabel;
-                const d = new Date(this.pickupAt);
-                if (isNaN(d.getTime())) return this.pickupAt;
-                return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+                return formatFulfillmentDisplay(this.pickupAt);
             }
             const addr = (this.deliveryAddress || '').trim();
             const ch = parseFloat(this.deliveryCharge) || 0;
             const bits = [];
+            if (this.deliveryAt) bits.push(formatFulfillmentDisplay(this.deliveryAt));
             if (ch > 0) bits.push('₹' + ch.toFixed(2));
             if (addr) bits.push(addr.length > 72 ? addr.slice(0, 69) + '…' : addr);
             return bits.length ? bits.join(' · ') : this.notSpecifiedLabel;
@@ -102,6 +145,19 @@ function orderPageData() {
                 return;
             }
             this.fulfillmentFieldError = '';
+            document.dispatchEvent(new CustomEvent('sync-fulfillment-datetimes'));
+            const pickupVal = document.getElementById(this.fulfillmentPickupHiddenId)?.value?.trim() || '';
+            const deliveryVal = document.getElementById(this.fulfillmentDeliveryHiddenId)?.value?.trim() || '';
+            if (this.fulfillmentType === 'pickup' && !pickupVal) {
+                this.fulfillmentFieldError = @json(__('vendor.pickup_datetime_required'));
+                showToast(this.fulfillmentFieldError, 'error');
+                return;
+            }
+            if (this.fulfillmentType === 'delivery' && !(this.deliveryAddress || '').trim()) {
+                this.fulfillmentFieldError = @json(__('vendor.delivery_address_required'));
+                showToast(this.fulfillmentFieldError, 'error');
+                return;
+            }
             this.savingFulfillment = true;
             const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             try {
@@ -116,23 +172,18 @@ function orderPageData() {
                     body: JSON.stringify({
                         fulfillment_type: this.fulfillmentType,
                         delivery_address: (this.deliveryAddress || '').trim(),
-                        pickup_at: this.fulfillmentType === 'pickup' && this.pickupAt ? this.pickupAt : null,
+                        pickup_at: this.fulfillmentType === 'pickup' ? pickupVal : null,
+                        delivery_at: this.fulfillmentType === 'delivery' ? (deliveryVal || null) : null,
                         delivery_charge: this.fulfillmentType === 'delivery' ? (parseFloat(this.deliveryCharge) || 0) : 0,
                     }),
                 });
                 const data = await res.json();
                 if (res.ok && data.success) {
-                    if (this.fulfillmentType === 'delivery') {
-                        this.pickupAt = '';
-                    }
                     if (data.delivery_address !== undefined) {
                         this.deliveryAddress = data.delivery_address ?? '';
                     }
-                    if (data.pickup_at) {
-                        this.pickupAt = isoToDatetimeLocalValue(data.pickup_at);
-                    } else if (this.fulfillmentType === 'pickup') {
-                        this.pickupAt = '';
-                    }
+                    this.pickupAt = data.pickup_at ? isoToFulfillmentValue(data.pickup_at) : '';
+                    this.deliveryAt = data.delivery_at ? isoToFulfillmentValue(data.delivery_at) : '';
                     if (data.delivery_charge !== undefined && data.delivery_charge !== null) {
                         this.deliveryCharge = parseFloat(data.delivery_charge) || 0;
                     }
@@ -269,34 +320,133 @@ function orderPageData() {
         lineEditQty: 1,
         lineEditBilling: '',
         lineEditUsesBilling: false,
+        lineEditPrice: '',
+        lineEditRentalPeriod: 'per_day',
+        lineEditError: '',
         lineEditSaving: false,
+        showVariantModal: false,
+        variantModalItem: null,
+        variantModalPick: '',
+        variantModalSelections: [],
+        variantModalError: '',
+        variantModalMode: 'change',
+        variantModalOrderItemId: null,
+        variantModalOriginalVariantId: null,
+        variantModalLineQty: 1,
+        variantModalSaving: false,
+        formatRupeeInt(n) {
+            const x = parseFloat(n);
+            if (!Number.isFinite(x)) return '0';
+            return Math.round(x).toLocaleString('en-IN');
+        },
+        formatBillingUnitsDisplay(val) {
+            const n = parseFloat(val);
+            if (!Number.isFinite(n)) return '0';
+            const s = (Math.round(n * 100) / 100).toString();
+            return s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') || '0';
+        },
+        lineEditBillingLabel() {
+            return this.billingUnitsLabels[this.lineEditRentalPeriod] || @json(__('vendor.billing_units'));
+        },
+        lineEditRentalPeriodLabel() {
+            return this.rentalPeriods[this.lineEditRentalPeriod] || this.lineEditRentalPeriod || '';
+        },
+        lineEditBillingUnitShort() {
+            return this.billingUnitShorts[this.lineEditRentalPeriod] || '';
+        },
+        rentalPeriodUsesBilling(period) {
+            return String(period || '') !== 'fixed';
+        },
+        onLineEditRentalChange() {
+            this.lineEditUsesBilling = this.rentalPeriodUsesBilling(this.lineEditRentalPeriod);
+            if (!this.lineEditUsesBilling) {
+                this.lineEditBilling = '';
+                return;
+            }
+            if (!this.lineEditBilling || this.lineEditBilling === '') {
+                this.lineEditBilling = '1';
+            }
+        },
+        lineEditPreviewTotal() {
+            const price = parseFloat(String(this.lineEditPrice));
+            const qty = parseInt(String(this.lineEditQty), 10);
+            if (!Number.isFinite(price) || !qty || qty < 1) return 0;
+            let total = price * qty;
+            if (this.rentalPeriodUsesBilling(this.lineEditRentalPeriod)) {
+                const bu = parseFloat(String(this.lineEditBilling));
+                if (Number.isFinite(bu) && bu > 0) total *= bu;
+            }
+            return total;
+        },
+        incrementLineEditQty() {
+            this.lineEditQty = Math.max(1, (parseInt(String(this.lineEditQty), 10) || 1) + 1);
+            this.lineEditError = '';
+        },
+        decrementLineEditQty() {
+            const q = parseInt(String(this.lineEditQty), 10) || 1;
+            if (q <= 1) return;
+            this.lineEditQty = q - 1;
+            this.lineEditError = '';
+        },
+        incrementLineEditBilling() {
+            const cur = parseFloat(String(this.lineEditBilling));
+            const v = Math.round((Number.isFinite(cur) ? cur : 1) * 100 + 100) / 100;
+            this.lineEditBilling = String(v);
+            this.lineEditError = '';
+        },
+        decrementLineEditBilling() {
+            const cur = parseFloat(String(this.lineEditBilling));
+            if (!Number.isFinite(cur) || cur <= 0.011) return;
+            let v = Math.round((cur) * 100 - 100) / 100;
+            if (!Number.isFinite(v) || v < 0.01) v = 0.01;
+            this.lineEditBilling = String(v);
+            this.lineEditError = '';
+        },
         openLineEdit(d) {
             this.lineEditItemId = d.item_id;
             this.lineEditName = d.name ?? '';
             this.lineEditQty = parseInt(String(d.quantity), 10) || 1;
-            this.lineEditUsesBilling = !!d.uses_billing;
+            this.lineEditRentalPeriod = d.rental_period || 'per_day';
+            this.lineEditUsesBilling = this.rentalPeriodUsesBilling(this.lineEditRentalPeriod);
+            const unitPrice = parseFloat(d.unit_price);
+            this.lineEditPrice = Number.isFinite(unitPrice) ? String(unitPrice) : '';
+            this.lineEditError = '';
             if (d.billing_units !== null && d.billing_units !== undefined && d.billing_units !== '') {
                 const n = parseFloat(String(d.billing_units));
-                this.lineEditBilling = Number.isFinite(n) ? String(n) : '';
+                this.lineEditBilling = Number.isFinite(n) ? String(n) : '1';
             } else {
-                this.lineEditBilling = '';
+                this.lineEditBilling = this.lineEditUsesBilling ? '1' : '';
             }
             this.lineEditOpen = true;
         },
         closeLineEdit() {
             if (this.lineEditSaving) return;
             this.lineEditOpen = false;
+            this.lineEditError = '';
         },
         async saveLineEdit() {
             if (this.lineEditSaving || this.lineEditItemId == null) return;
+            this.lineEditError = '';
             const qty = parseInt(String(this.lineEditQty), 10);
             if (!qty || qty < 1) {
-                if (typeof showToast === 'function') showToast('Quantity must be at least 1', 'error');
+                this.lineEditError = @json(__('vendor.enter_quantity'));
+                if (typeof showToast === 'function') showToast(this.lineEditError, 'error');
                 return;
             }
+            const price = parseFloat(String(this.lineEditPrice));
+            if (!Number.isFinite(price) || price < 0) {
+                this.lineEditError = @json(__('vendor.order_wizard_quick_item_price_invalid'));
+                if (typeof showToast === 'function') showToast(this.lineEditError, 'error');
+                return;
+            }
+            const rentalPeriod = String(this.lineEditRentalPeriod || 'per_day');
             let billing = parseFloat(String(this.lineEditBilling));
-            if (this.lineEditUsesBilling) {
-                if (!Number.isFinite(billing) || billing < 0.01) billing = 1;
+            if (this.rentalPeriodUsesBilling(rentalPeriod)) {
+                if (!Number.isFinite(billing) || billing < 0.01) {
+                    this.lineEditError = @json(__('vendor.order_wizard_billing_units_required'));
+                    if (typeof showToast === 'function') showToast(this.lineEditError, 'error');
+                    return;
+                }
             } else {
                 billing = 1;
             }
@@ -313,7 +463,9 @@ function orderPageData() {
                     },
                     body: JSON.stringify({
                         quantity: qty,
-                        billing_units: this.lineEditUsesBilling ? billing : 1,
+                        price: price,
+                        rental_period: rentalPeriod,
+                        billing_units: this.rentalPeriodUsesBilling(rentalPeriod) ? billing : null,
                     }),
                 });
                 const data = await res.json();
@@ -338,75 +490,253 @@ function orderPageData() {
                 this.lineEditSaving = false;
             }
         },
+        findCatalogItem(itemId) {
+            return this.items.find((i) => String(i.id) === String(itemId)) || null;
+        },
+        findVariant(item, variantId) {
+            if (!item || !Array.isArray(item.variants)) return null;
+            return item.variants.find((v) => String(v.id) === String(variantId)) || null;
+        },
+        variantQtyOnOrder(itemId, variantId) {
+            const key = String(itemId) + '_v' + String(variantId ?? 0);
+            return parseInt(String(this.orderLineVariantQty[key] || 0), 10) || 0;
+        },
+        variantAvailableStock(item, variant) {
+            if (!variant?.manage_stock) {
+                return parseInt(String(variant?.stock), 10) || 0;
+            }
+            const base = parseInt(String(variant.stock), 10) || 0;
+            let onOrder = this.variantQtyOnOrder(item?.id, variant.id);
+            if (String(this.variantModalOriginalVariantId) === String(variant.id)) {
+                onOrder -= parseInt(String(this.variantModalLineQty), 10) || 0;
+            }
+            return Math.max(0, base - Math.max(0, onOrder));
+        },
+        availableStockLabel(count) {
+            const n = parseInt(String(count), 10) || 0;
+            return n + ' ' + @json(__('vendor.available_stock'));
+        },
+        variantQtyInOrder() {
+            return 0;
+        },
+        variantInCartLabel() {
+            return '';
+        },
+        variantModalSelectionCount() {
+            return this.variantModalSelections.length;
+        },
+        variantSelectable(variant) {
+            if (!variant?.is_available) return false;
+            const item = this.variantModalItem;
+            const qty = parseInt(String(this.variantModalLineQty), 10) || 1;
+            if (variant.manage_stock && this.variantAvailableStock(item, variant) < qty) return false;
+            return true;
+        },
+        isVariantModalRowSelected(variant) {
+            return String(this.variantModalPick) === String(variant.id);
+        },
+        handleVariantRowClick(variant) {
+            if (!this.variantSelectable(variant)) return;
+            this.variantModalPick = String(variant.id);
+            this.variantModalError = '';
+        },
+        openLineVariantChange(d) {
+            if (this.readOnly) return;
+            const item = this.findCatalogItem(d.item_id);
+            if (!item?.has_variants) return;
+            this.variantModalError = '';
+            this.variantModalItem = item;
+            this.variantModalOrderItemId = d.order_item_id;
+            this.variantModalOriginalVariantId = d.item_variant_id ?? null;
+            this.variantModalLineQty = parseInt(String(d.quantity), 10) || 1;
+            this.variantModalMode = 'change';
+            this.variantModalPick = d.item_variant_id ? String(d.item_variant_id) : '';
+            this.variantModalSelections = [];
+            this.showVariantModal = true;
+            document.documentElement.classList.add('overflow-hidden');
+        },
+        closeVariantModal() {
+            if (this.variantModalSaving) return;
+            this.showVariantModal = false;
+            this.variantModalItem = null;
+            this.variantModalPick = '';
+            this.variantModalSelections = [];
+            this.variantModalOrderItemId = null;
+            this.variantModalOriginalVariantId = null;
+            this.variantModalLineQty = 1;
+            this.variantModalError = '';
+            document.documentElement.classList.remove('overflow-hidden');
+        },
+        async confirmVariantModal() {
+            if (this.variantModalSaving || this.variantModalMode !== 'change') return;
+            const item = this.variantModalItem;
+            const orderItemId = this.variantModalOrderItemId;
+            if (!item || orderItemId == null) return;
+            const variantId = parseInt(String(this.variantModalPick || ''), 10);
+            if (!variantId) {
+                this.variantModalError = @json(__('vendor.order_wizard_select_variant'));
+                return;
+            }
+            const variant = this.findVariant(item, variantId);
+            if (!variant || !this.variantSelectable(variant)) {
+                this.variantModalError = @json(__('vendor.order_wizard_variant_invalid'));
+                return;
+            }
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            this.variantModalSaving = true;
+            try {
+                const res = await fetch(`{{ url('vendor/orders') }}/${this.orderId}/lines/${orderItemId}/variant`, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf || '',
+                    },
+                    body: JSON.stringify({ item_variant_id: variantId }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success) {
+                    if (typeof refreshOrderItems === 'function') refreshOrderItems();
+                    if (typeof updateSummary === 'function' && data.order) updateSummary(data.order);
+                    if (typeof showToast === 'function') showToast(data.message, 'success');
+                    this.variantModalSaving = false;
+                    this.showVariantModal = false;
+                    this.variantModalItem = null;
+                    this.variantModalPick = '';
+                    this.variantModalSelections = [];
+                    this.variantModalOrderItemId = null;
+                    this.variantModalOriginalVariantId = null;
+                    this.variantModalLineQty = 1;
+                    this.variantModalError = '';
+                    document.documentElement.classList.remove('overflow-hidden');
+                } else if (data.errors?.item_variant_id?.[0]) {
+                    this.variantModalError = data.errors.item_variant_id[0];
+                } else if (typeof showToast === 'function') {
+                    showToast(data.message || 'Could not change variant', 'error');
+                }
+            } catch (e) {
+                if (typeof showToast === 'function') showToast('Network error', 'error');
+            } finally {
+                this.variantModalSaving = false;
+            }
+        },
     };
 }
 </script>
-<div id="orderApp" x-data="orderPageData()"
+<div id="orderApp"
+     x-data="orderPageData()"
+     @fulfillment-pickup-at-changed.window="pickupAt = $event.detail || ''"
+     @fulfillment-delivery-at-changed.window="deliveryAt = $event.detail || ''"
 @order-item-removed.window="syncItemRemoved($event.detail.itemId)"
 @order-item-updated.window="syncItemUpdated($event.detail.itemId, $event.detail.quantity, $event.detail.billing_units)"
 @order-emptied.window="syncAllRemoved()"
 @order-line-edit.window="openLineEdit($event.detail)"
+@order-line-change-variant.window="openLineVariantChange($event.detail)"
 @keydown.escape.window="if (lineEditOpen) closeLineEdit()"
 >
     
-    <div class="mb-3 flex w-full min-w-0 flex-col gap-3 sm:mb-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4 md:mb-6">
-        <div class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-            <a href="{{ route('vendor.orders.index') }}"
-               class="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-gray-600 transition hover:text-emerald-700 [touch-action:manipulation]">
-                <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>
-                {{ __('vendor.back') }}
-            </a>
-            <div class="min-w-0 flex-1">
-                <p class="truncate text-base font-bold leading-tight text-gray-900 sm:text-lg">
-                    {{ $order->event_name ?: '—' }}
-                </p>
-                <p class="mt-1 break-all font-mono text-xs font-medium text-gray-600 sm:text-sm" title="{{ $order->uuid }}">
-                    {{ $order->uuid }}
-                </p>
-                @if($order->order_number)
-                    <p class="mt-0.5 text-xs text-gray-500">{{ $order->order_number }}</p>
+    <header class="mb-3 sm:mb-4 md:mb-5">
+        <div class="mx-auto flex w-full max-w-6xl flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div class="flex min-w-0 flex-1 items-center gap-3">
+                <a href="{{ route('vendor.orders.index') }}"
+                   class="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-gray-600 transition hover:text-emerald-700 [touch-action:manipulation]">
+                    <i class="fas fa-arrow-left text-xs" aria-hidden="true"></i>
+                    <span class="hidden sm:inline">{{ __('vendor.back') }}</span>
+                </a>
+                <div class="min-w-0 flex-1 border-l border-gray-200 pl-3 sm:pl-4">
+                    <p class="truncate font-mono text-sm font-semibold leading-tight text-gray-700">
+                        {{ $order->order_number ?: '—' }}
+                    </p>
+                    <p class="truncate text-sm font-bold leading-tight text-gray-900 sm:text-base">
+                        {{ $order->event_name ?: '—' }}
+                    </p>
+                </div>
+            </div>
+            <div class="flex shrink-0 items-center gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:justify-end sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden">
+                @if(! $orderReadOnly && in_array($order->status, ['pending', 'confirmed'], true))
+                    <span id="rs-header-delivered-wrap" class="inline-flex shrink-0">
+                        @if($order->delivered_at)
+                            <button type="button"
+                                    class="rs-btn-deliver-clear inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg border border-teal-200 bg-white px-3 py-2 text-xs font-semibold text-teal-900 transition hover:bg-teal-50 sm:min-h-[44px] sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm"
+                                    onclick="openRentalClearConfirm('delivered', this)">
+                                <i class="fas fa-undo text-xs" aria-hidden="true"></i><span class="hidden sm:inline">{{ __('vendor.clear_delivered') }}</span>
+                            </button>
+                        @else
+                            <button type="button"
+                                    class="rs-btn-deliver-mark inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-700 sm:min-h-[44px] sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm"
+                                    onclick="openMarkDeliveredModal(this)">
+                                <i class="fas fa-truck text-xs" aria-hidden="true"></i>{{ __('vendor.mark_delivered') }}
+                            </button>
+                        @endif
+                    </span>
+                    <span id="rs-header-returned-wrap" class="inline-flex shrink-0">
+                        @if($order->returned_at)
+                            <button type="button"
+                                    class="rs-btn-return-clear inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg border border-teal-200 bg-white px-3 py-2 text-xs font-semibold text-teal-900 transition hover:bg-teal-50 sm:min-h-[44px] sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm"
+                                    onclick="openRentalClearConfirm('returned', this)">
+                                <i class="fas fa-undo text-xs" aria-hidden="true"></i><span class="hidden sm:inline">{{ __('vendor.clear_returned') }}</span><span class="sm:hidden">{{ __('vendor.returned_status') }}</span>
+                            </button>
+                        @else
+                            <button type="button"
+                                    class="rs-btn-return-mark inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-700 sm:min-h-[44px] sm:gap-2 sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm"
+                                    onclick="openMarkReturnedModal(this)">
+                                <i class="fas fa-rotate-left text-xs" aria-hidden="true"></i>{{ __('vendor.mark_returned') }}
+                            </button>
+                        @endif
+                    </span>
                 @endif
+                @if(! $orderReadOnly)
+                    <button type="button" onclick="openAddPaymentModal()"
+                            class="inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm">
+                        <i class="fas fa-wallet text-xs" aria-hidden="true"></i>{{ __('vendor.order_show_action_pay') }}
+                    </button>
+                    <button type="button" @click="showAddItem = true"
+                            class="inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm">
+                        <i class="fas fa-plus text-xs" aria-hidden="true"></i>{{ __('vendor.add_item') }}
+                    </button>
+                @endif
+                <a href="{{ route('vendor.orders.invoice.download', $order) }}"
+                   class="inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-800 transition hover:bg-gray-50 sm:min-h-[44px] sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm">
+                    <i class="fas fa-download text-xs text-emerald-700" aria-hidden="true"></i>{{ __('vendor.download_invoice') }}
+                </a>
+                <div class="relative shrink-0">
+                    <button type="button"
+                            @click="headerMoreOpen = !headerMoreOpen"
+                            class="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50 sm:min-h-[44px] sm:min-w-[44px] sm:rounded-xl"
+                            :aria-expanded="headerMoreOpen"
+                            aria-label="{{ __('vendor.order_show_more_actions') }}">
+                        <i class="fas fa-ellipsis-vertical text-sm" aria-hidden="true"></i>
+                    </button>
+                    <div x-show="headerMoreOpen"
+                         x-cloak
+                         @click.outside="headerMoreOpen = false"
+                         x-transition
+                         class="absolute right-0 top-full z-40 mt-1.5 w-52 overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg ring-1 ring-black/5">
+                        <a href="{{ route('vendor.orders.print', ['order' => $order, 'autoprint' => 1]) }}"
+                           target="_blank" rel="noopener noreferrer"
+                           class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm font-medium text-gray-800 transition hover:bg-gray-50">
+                            <i class="fas fa-file-invoice w-4 text-center text-gray-500" aria-hidden="true"></i>{{ __('vendor.print_quote') }}
+                        </a>
+                        @if(! $orderReadOnly)
+                            <button type="button" @click="headerMoreOpen = false; openExtraChargeModal()"
+                                    class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm font-medium text-gray-800 transition hover:bg-gray-50">
+                                <i class="fas fa-plus-circle w-4 text-center text-amber-600" aria-hidden="true"></i>{{ __('vendor.add_extra_charge') }}
+                            </button>
+                            <button type="button" @click="headerMoreOpen = false; openDiscountModal()"
+                                    class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm font-medium text-gray-800 transition hover:bg-gray-50">
+                                <i class="fas fa-tag w-4 text-center text-emerald-600" aria-hidden="true"></i>{{ __('vendor.add_discount') }}
+                            </button>
+                            <button type="button" @click="headerMoreOpen = false; openCouponModal()"
+                                    class="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left text-sm font-medium text-gray-800 transition hover:bg-gray-50">
+                                <i class="fas fa-ticket-alt w-4 text-center text-emerald-600" aria-hidden="true"></i>{{ __('vendor.add_coupon') }}
+                            </button>
+                        @endif
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="flex shrink-0 flex-wrap items-center justify-stretch gap-2 sm:justify-end">
-            @if(! $orderReadOnly && in_array($order->status, ['pending', 'confirmed'], true))
-                <span id="rs-header-delivered-wrap" class="inline-flex w-full sm:w-auto">
-                    @if($order->delivered_at)
-                        <button type="button"
-                                class="rs-btn-deliver-clear inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50 sm:w-auto"
-                                onclick="openRentalClearConfirm('delivered', this)">
-                            <i class="fas fa-undo" aria-hidden="true"></i>{{ __('vendor.clear_delivered') }}
-                        </button>
-                    @else
-                        <button type="button"
-                                class="rs-btn-deliver-mark inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 sm:w-auto"
-                                onclick="openMarkDeliveredModal(this)">
-                            <i class="fas fa-truck" aria-hidden="true"></i>{{ __('vendor.mark_delivered') }}
-                        </button>
-                    @endif
-                </span>
-                <span id="rs-header-returned-wrap" class="inline-flex w-full sm:w-auto">
-                    @if($order->returned_at)
-                        <button type="button"
-                                class="rs-btn-return-clear inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50 sm:w-auto"
-                                onclick="openRentalClearConfirm('returned', this)">
-                            <i class="fas fa-undo" aria-hidden="true"></i>{{ __('vendor.clear_returned') }}
-                        </button>
-                    @else
-                        <button type="button"
-                                class="rs-btn-return-mark inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 sm:w-auto"
-                                onclick="openMarkReturnedModal(this)">
-                            <i class="fas fa-rotate-left" aria-hidden="true"></i>{{ __('vendor.mark_returned') }}
-                        </button>
-                    @endif
-                </span>
-            @endif
-            <a href="{{ route('vendor.orders.invoice.download', $order) }}"
-               class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100 sm:w-auto">
-                <i class="fas fa-download text-emerald-700"></i>{{ __('vendor.download_invoice') }}
-            </a>
-        </div>
-    </div>
+    </header>
 
     <!-- Success/Error Messages -->
     @if(session('success'))
@@ -443,291 +773,71 @@ function orderPageData() {
         </div>
     @endif
 
-    <div class="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3 lg:gap-8 lg:pb-0">
+    @php
+        $stPanel = $order->status;
+        $orderNextStatusesPanel = $order->allowedNextStatuses();
+        $tzRental = config('app.timezone');
+        $fmtRental = fn ($dt) => $dt ? $dt->copy()->timezone($tzRental)->format('M j, Y g:i A') : null;
+        $showRentalHandoff = in_array($stPanel, ['pending', 'confirmed', 'completed'], true);
+        $deliveredUnitsTotal = 0;
+        $returnedUnitsTotal = 0;
+        $orderUnitsTotal = 0;
+        foreach ($order->items as $rentalLine) {
+            $lineQty = max(1, (int) $rentalLine->quantity);
+            $orderUnitsTotal += $lineQty;
+            if ($rentalLine->delivered_at) {
+                $deliveredUnitsTotal += $lineQty;
+            }
+            $returnedUnitsTotal += min($lineQty, max(0, (int) ($rentalLine->returned_qty ?? 0)));
+        }
+        $deliveredUnitsCountLabel = $deliveredUnitsTotal > 0
+            ? __('vendor.delivered_units_count', ['delivered' => $deliveredUnitsTotal, 'total' => $orderUnitsTotal])
+            : null;
+        $returnedUnitsCountLabel = $returnedUnitsTotal > 0
+            ? __('vendor.returned_units_count', ['returned' => $returnedUnitsTotal, 'total' => $orderUnitsTotal])
+            : null;
+        $statusStepIcons = [
+            'pending' => 'fa-clock',
+            'confirmed' => 'fa-check-circle',
+            'completed' => 'fa-circle-check',
+            'cancelled' => 'fa-ban',
+        ];
+        $statusAccentBorder = [
+            'pending' => 'border-l-amber-400',
+            'confirmed' => 'border-l-teal-500',
+            'completed' => 'border-l-emerald-500',
+            'cancelled' => 'border-l-red-500',
+        ];
+        $statusIconBg = [
+            'pending' => 'bg-amber-100 text-amber-700',
+            'confirmed' => 'bg-teal-100 text-teal-700',
+            'completed' => 'bg-emerald-100 text-emerald-700',
+            'cancelled' => 'bg-red-100 text-red-700',
+        ];
+        $statusHints = [
+            'pending' => __('vendor.order_status_pending_hint'),
+            'confirmed' => __('vendor.order_status_confirmed_hint'),
+            'completed' => __('vendor.order_status_completed_hint'),
+            'cancelled' => __('vendor.order_status_cancelled_hint'),
+        ];
+        $statusFlow = ['pending', 'confirmed', 'completed'];
+        $currentFlowIndex = in_array($stPanel, $statusFlow, true)
+            ? array_search($stPanel, $statusFlow, true)
+            : false;
+        $completionChecklist = $order->completionChecklist();
+    @endphp
 
-        <div class="order-2 space-y-3 sm:space-y-4 lg:order-1 lg:col-span-2 lg:space-y-5">
+    <div class="mx-auto max-w-6xl">
+    <div class="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-3 lg:gap-6 lg:pb-0">
+
+        <div class="order-1 space-y-3 sm:space-y-4 lg:col-span-2 lg:space-y-4">
             @if($orderReadOnly)
-                <div inert class="select-none opacity-[0.94] space-y-3 sm:space-y-4 lg:space-y-5">
+                <div inert class="select-none space-y-3 opacity-[0.94] sm:space-y-4 lg:space-y-4">
             @endif
 
-            <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
-                <div class="p-3 sm:p-4">
-                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-                        <div class="flex min-w-0 gap-2 rounded-lg border border-gray-100 bg-gray-50/90 p-2.5 sm:p-3">
-                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200/50">
-                                <i class="fas fa-user text-xs" aria-hidden="true"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.customer') }}</p>
-                                <p class="truncate text-sm font-semibold leading-tight text-gray-900">{{ $order->customer?->name ?? __('vendor.order_customer_unavailable') }}</p>
-                                <p class="truncate text-xs text-gray-600">{{ $order->customer?->mobile ?? '—' }}</p>
-                            </div>
-                        </div>
-                        <div class="flex min-w-0 gap-2 rounded-lg border border-gray-100 bg-gray-50/90 p-2.5 sm:p-3">
-                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-teal-100 text-teal-700 ring-1 ring-teal-200/50">
-                                <i class="fas fa-calendar text-xs" aria-hidden="true"></i>
-                            </div>
-                            <div class="flex min-w-0 flex-1 items-start justify-between gap-2">
-                                <div class="min-w-0 flex-1" data-booking-dates>
-                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.booking_period') }}</p>
-                                    @if($order->start_at && $order->end_at)
-                                        <p class="mt-0.5 text-xs font-semibold leading-snug text-gray-900 sm:text-sm">
-                                            {{ $order->start_at->format('M j, g:i A') }}
-                                            <span class="mx-0.5 font-normal text-gray-400">→</span>
-                                            {{ $order->end_at->format('M j, Y g:i A') }}
-                                        </p>
-                                    @else
-                                        <p class="mt-0.5 text-xs italic text-gray-500 sm:text-sm">{{ __('vendor.not_specified') }}</p>
-                                    @endif
-                                </div>
-                                @if(!$orderReadOnly)
-                                    <button type="button"
-                                            onclick="openEditCartModal()"
-                                            class="inline-flex shrink-0 items-center gap-1 rounded-md border border-emerald-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 sm:gap-1.5 sm:px-2.5 sm:text-xs"
-                                            aria-label="{{ __('vendor.edit') }} {{ __('vendor.booking_period') }}">
-                                        <i class="fas fa-edit text-xs" aria-hidden="true"></i>
-                                        <span class="hidden sm:inline">{{ __('vendor.edit') }}</span>
-                                    </button>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
-                <div class="flex items-start gap-3 p-3 sm:items-center sm:gap-4 sm:p-4">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-700 ring-1 ring-orange-200/60">
-                        <i class="fas fa-truck text-sm" aria-hidden="true"></i>
-                    </div>
-                    <div class="min-w-0 flex-1">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.fulfillment_method') }}</p>
-                        <p class="truncate text-sm font-bold text-gray-900" x-text="fulfillmentSummaryPrimary()"></p>
-                        <p class="mt-0.5 line-clamp-2 text-xs leading-snug text-gray-600" x-text="fulfillmentSummarySecondary()"></p>
-                    </div>
-                    <button type="button"
-                            x-show="!readOnly"
-                            x-cloak
-                            @click="openFulfillmentModal()"
-                            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs font-semibold text-orange-800 shadow-sm transition hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-500/30 sm:text-sm">
-                        <i class="fas fa-pen" aria-hidden="true"></i>
-                        {{ __('vendor.edit') }}
-                    </button>
-                </div>
-            </section>
-
-            {{-- Fulfillment edit modal --}}
-            <div x-show="showFulfillmentModal"
-                 x-cloak
-                 class="fixed inset-0 z-[60] flex items-end justify-center sm:items-center"
-                 role="dialog"
-                 aria-modal="true"
-                 @keydown.escape.window="showFulfillmentModal && !savingFulfillment && cancelFulfillmentModal()">
-                <div class="absolute inset-0 bg-black/40" @click="!savingFulfillment && cancelFulfillmentModal()" aria-hidden="true"></div>
-                <div class="relative z-10 flex max-h-[min(90dvh,32rem)] w-full max-w-lg flex-col rounded-t-2xl border border-gray-200 bg-white shadow-2xl sm:max-h-[85vh] sm:rounded-2xl"
-                     @click.stop>
-                    <div class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 sm:px-5">
-                        <h3 class="text-base font-bold text-gray-900">{{ __('vendor.fulfillment_method') }}</h3>
-                        <button type="button"
-                                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-800"
-                                @click="!savingFulfillment && cancelFulfillmentModal()"
-                                aria-label="{{ __('vendor.modal_close_aria') }}">
-                            <i class="fas fa-times" aria-hidden="true"></i>
-                        </button>
-                    </div>
-                    <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
-                        <p class="mb-4 text-xs text-gray-600 sm:text-sm">{{ __('vendor.fulfillment_method_help') }}</p>
-                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-                            <label class="relative flex min-h-[48px] cursor-pointer rounded-xl border-2 p-3 transition-all"
-                                   :class="fulfillmentType === 'pickup' ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/30' : 'border-gray-200 hover:border-gray-300 bg-white'">
-                                <input type="radio" name="fulfillment_type_modal" value="pickup" x-model="fulfillmentType" @change="fulfillmentFieldError = ''" class="sr-only">
-                                <div class="flex w-full items-start gap-2">
-                                    <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2"
-                                          :class="fulfillmentType === 'pickup' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300 bg-white'">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-white" x-show="fulfillmentType === 'pickup'"></span>
-                                    </span>
-                                    <div>
-                                        <span class="block text-sm font-bold text-gray-900">{{ __('vendor.pickup') }}</span>
-                                        <span class="block text-xs text-gray-600">{{ __('vendor.pickup_short_help') }}</span>
-                                    </div>
-                                </div>
-                            </label>
-                            <label class="relative flex min-h-[48px] cursor-pointer rounded-xl border-2 p-3 transition-all"
-                                   :class="fulfillmentType === 'delivery' ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/30' : 'border-gray-200 hover:border-gray-300 bg-white'">
-                                <input type="radio" name="fulfillment_type_modal" value="delivery" x-model="fulfillmentType" @change="fulfillmentFieldError = ''" class="sr-only">
-                                <div class="flex w-full items-start gap-2">
-                                    <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2"
-                                          :class="fulfillmentType === 'delivery' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300 bg-white'">
-                                        <span class="h-1.5 w-1.5 rounded-full bg-white" x-show="fulfillmentType === 'delivery'"></span>
-                                    </span>
-                                    <div>
-                                        <span class="block text-sm font-bold text-gray-900">{{ __('vendor.delivery') }}</span>
-                                        <span class="block text-xs text-gray-600">{{ __('vendor.delivery_short_help') }}</span>
-                                    </div>
-                                </div>
-                            </label>
-                        </div>
-
-                        <div x-show="fulfillmentType === 'pickup'" class="mt-4 space-y-3" x-cloak>
-                            <div class="space-y-1.5">
-                                <label for="pickup_at_input" class="block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.pickup_datetime') }}</label>
-                                <input type="datetime-local"
-                                       id="pickup_at_input"
-                                       x-model="pickupAt"
-                                       class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25" />
-                                <p class="text-xs text-gray-500">{{ __('vendor.pickup_datetime_help') }}</p>
-                            </div>
-                            <div class="space-y-1.5">
-                                <label for="delivery_address_pickup_input" class="block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.delivery_address') }}</label>
-                                <textarea id="delivery_address_pickup_input"
-                                          x-model="deliveryAddress"
-                                          rows="3"
-                                          class="w-full resize-y rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-inner placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25"
-                                          :class="fulfillmentFieldError ? 'border-red-400' : ''"
-                                          placeholder="{{ __('vendor.delivery_address_help') }}"></textarea>
-                                <p class="text-xs text-gray-500">{{ __('vendor.delivery_address_optional_pickup') }}</p>
-                            </div>
-                        </div>
-
-                        <div x-show="fulfillmentType === 'delivery'" class="mt-4 space-y-3" x-cloak>
-                            <div class="space-y-1.5">
-                                <label for="delivery_charge_input" class="block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.delivery_charge') }}</label>
-                                <div class="relative">
-                                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">₹</span>
-                                    <input type="number"
-                                           id="delivery_charge_input"
-                                           x-model.number="deliveryCharge"
-                                           min="0"
-                                           step="0.01"
-                                           class="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-8 pr-3 text-sm text-gray-900 shadow-inner focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/25"
-                                           placeholder="0.00" />
-                                </div>
-                                <p class="text-xs text-gray-500">{{ __('vendor.delivery_charge_help') }}</p>
-                            </div>
-                            <div class="space-y-1.5">
-                                <label for="delivery_address_input" class="block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.delivery_address') }}</label>
-                                <textarea id="delivery_address_input"
-                                          x-model="deliveryAddress"
-                                          rows="3"
-                                          class="w-full resize-y rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-inner placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/25"
-                                          :class="fulfillmentFieldError ? 'border-red-400' : ''"
-                                          placeholder="{{ __('vendor.delivery_address_help') }}"></textarea>
-                                <p class="text-xs text-gray-500">{{ __('vendor.delivery_address_help') }}</p>
-                            </div>
-                        </div>
-                        <p x-show="fulfillmentFieldError" class="mt-3 text-sm text-red-600" x-text="fulfillmentFieldError"></p>
-                    </div>
-                    <div class="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50/80 px-4 py-3 sm:flex-row sm:justify-end sm:px-5">
-                        <button type="button"
-                                @click="cancelFulfillmentModal()"
-                                :disabled="savingFulfillment"
-                                class="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
-                            {{ __('vendor.cancel') }}
-                        </button>
-                        <button type="button"
-                                @click="saveFulfillment()"
-                                :disabled="savingFulfillment"
-                                class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
-                            <i class="fas fa-spinner fa-spin" x-show="savingFulfillment"></i>
-                            <i class="fas fa-save" x-show="!savingFulfillment"></i>
-                            {{ __('vendor.save') }}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <section class="overflow-visible rounded-2xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
-                <div class="overflow-hidden rounded-t-2xl border-b border-gray-100 bg-gradient-to-r from-slate-50 via-white to-emerald-50/60 px-4 py-4 sm:px-6 sm:py-5">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div class="min-w-0">
-                            <h3 class="text-lg font-bold tracking-tight text-gray-900 tabular-nums"
-                                data-items-count>{{ __('vendor.order_items_heading', ['count' => $order->items->count()]) }}</h3>
-                        </div>
-                        <div class="flex w-full flex-shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
-                            <button type="button" @click="showAddItem = true"
-                                    class="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.99] sm:flex-none sm:min-h-[44px] sm:py-2.5">
-                                <i class="fas fa-plus"></i>
-                                {{ __('vendor.add_item') }}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div data-items-list class="p-3 sm:p-4 md:p-5">
-                    @include('vendor.orders.partials.order-items-list', ['order' => $order, 'orderReadOnly' => $orderReadOnly])
-                </div>
-            </section>
-            @if($orderReadOnly)
-                </div>
-            @endif
-        </div>
-
-        <div class="order-1 flex flex-col gap-4 lg:order-2 lg:col-span-1">
-            @php
-                $stPanel = $order->status;
-                $orderNextStatusesPanel = $order->allowedNextStatuses();
-                $tzRental = config('app.timezone');
-                $fmtRental = fn ($dt) => $dt ? $dt->copy()->timezone($tzRental)->format('M j, Y g:i A') : null;
-                $showRentalHandoff = in_array($stPanel, ['pending', 'confirmed', 'completed'], true);
-                $deliveredUnitsTotal = 0;
-                $returnedUnitsTotal = 0;
-                $orderUnitsTotal = 0;
-                foreach ($order->items as $rentalLine) {
-                    $lineQty = max(1, (int) $rentalLine->quantity);
-                    $orderUnitsTotal += $lineQty;
-                    if ($rentalLine->delivered_at) {
-                        $deliveredUnitsTotal += $lineQty;
-                    }
-                    $returnedUnitsTotal += min($lineQty, max(0, (int) ($rentalLine->returned_qty ?? 0)));
-                }
-                $deliveredUnitsCountLabel = $deliveredUnitsTotal > 0
-                    ? __('vendor.delivered_units_count', ['delivered' => $deliveredUnitsTotal, 'total' => $orderUnitsTotal])
-                    : null;
-                $returnedUnitsCountLabel = $returnedUnitsTotal > 0
-                    ? __('vendor.returned_units_count', ['returned' => $returnedUnitsTotal, 'total' => $orderUnitsTotal])
-                    : null;
-                $statusStepIcons = [
-                    'pending' => 'fa-clock',
-                    'confirmed' => 'fa-check-circle',
-                    'completed' => 'fa-circle-check',
-                    'cancelled' => 'fa-ban',
-                ];
-                $statusAccentBorder = [
-                    'pending' => 'border-l-amber-400',
-                    'confirmed' => 'border-l-teal-500',
-                    'completed' => 'border-l-emerald-500',
-                    'cancelled' => 'border-l-red-500',
-                ];
-                $statusIconBg = [
-                    'pending' => 'bg-amber-100 text-amber-700',
-                    'confirmed' => 'bg-teal-100 text-teal-700',
-                    'completed' => 'bg-emerald-100 text-emerald-700',
-                    'cancelled' => 'bg-red-100 text-red-700',
-                ];
-                $statusHints = [
-                    'pending' => __('vendor.order_status_pending_hint'),
-                    'confirmed' => __('vendor.order_status_confirmed_hint'),
-                    'completed' => __('vendor.order_status_completed_hint'),
-                    'cancelled' => __('vendor.order_status_cancelled_hint'),
-                ];
-                $statusFlow = ['pending', 'confirmed', 'completed'];
-                $currentFlowIndex = in_array($stPanel, $statusFlow, true)
-                    ? array_search($stPanel, $statusFlow, true)
-                    : false;
-            @endphp
-            <section class="rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100" aria-labelledby="order-status-section-title">
-                <div class="border-b border-gray-100 bg-slate-50/90 px-3 py-2 sm:px-3.5">
-                    <div class="flex items-center gap-2.5">
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-700 text-white shadow-sm ring-1 ring-slate-600/30">
-                            <i class="fas fa-tasks text-sm" aria-hidden="true"></i>
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <h2 id="order-status-section-title" class="text-base font-bold tracking-tight text-gray-900">{{ __('vendor.order_status_section') }}</h2>
-                        </div>
-                    </div>
-                </div>
-                <div class="space-y-3 p-3 sm:space-y-4 sm:p-3.5" id="order-rental-status-panel">
-                    {{-- Progress: Pending → Confirmed → Completed --}}
+            {{-- 1. Order & rental status --}}
+            <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100" aria-labelledby="order-status-section-title">
+                <div class="space-y-3 p-3 sm:space-y-4 sm:p-4" id="order-rental-status-panel">
                     @if($stPanel !== 'cancelled')
                         <div class="rounded-lg border border-gray-100 bg-gray-50/60 px-2 py-3 sm:px-3">
                             <div class="flex items-start">
@@ -764,7 +874,6 @@ function orderPageData() {
                         </div>
                     @endif
 
-                    {{-- Current status (read-only — not a button) --}}
                     <div class="rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm border-l-4 {{ $statusAccentBorder[$stPanel] ?? 'border-l-gray-300' }} sm:p-4">
                         <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">{{ __('vendor.order_status_current') }}</p>
                         <div class="mt-2 flex items-start gap-3">
@@ -772,13 +881,12 @@ function orderPageData() {
                                 <i class="fas {{ $statusStepIcons[$stPanel] ?? 'fa-circle-info' }} text-lg" aria-hidden="true"></i>
                             </div>
                             <div class="min-w-0 flex-1 pt-0.5">
-                                <p class="text-lg font-bold leading-tight text-gray-900">{{ __('vendor.'.$stPanel) }}</p>
+                                <p id="order-status-section-title" class="text-lg font-bold leading-tight text-gray-900">{{ __('vendor.'.$stPanel) }}</p>
                                 <p class="mt-1 text-xs leading-relaxed text-gray-500">{{ $statusHints[$stPanel] ?? '' }}</p>
                             </div>
                         </div>
                     </div>
 
-                    {{-- Action buttons (only when changes allowed) --}}
                     @if(count($orderNextStatusesPanel) > 0 && ! $orderReadOnly)
                         @php
                             $primaryStatusAction = match ($stPanel) {
@@ -792,23 +900,32 @@ function orderPageData() {
                                 <i class="fas fa-hand-pointer mr-1.5 text-emerald-600" aria-hidden="true"></i>
                                 {{ __('vendor.order_status_next_steps') }}
                             </p>
-                            <div class="flex flex-col gap-2">
+                            <div class="flex flex-col gap-2 sm:flex-row">
                                 @if($primaryStatusAction && in_array($primaryStatusAction, $orderNextStatusesPanel, true))
-                                    <form method="POST" action="{{ route('vendor.orders.update-status', $order) }}" class="w-full">
-                                        @csrf
-                                        @method('PUT')
-                                        <input type="hidden" name="status" value="{{ $primaryStatusAction }}">
-                                        <button type="submit"
-                                                class="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.99]">
+                                    @if($primaryStatusAction === 'completed')
+                                        <button type="button"
+                                                onclick="openCompleteOrderModal()"
+                                                class="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.99] sm:flex-1">
                                             <i class="fas fa-check-circle" aria-hidden="true"></i>
-                                            {{ $stPanel === 'pending' ? __('vendor.order_status_confirm_order') : __('vendor.order_status_complete_order') }}
+                                            {{ __('vendor.order_status_complete_order') }}
                                         </button>
-                                    </form>
+                                    @else
+                                        <form method="POST" action="{{ route('vendor.orders.update-status', $order) }}" class="w-full sm:flex-1">
+                                            @csrf
+                                            @method('PUT')
+                                            <input type="hidden" name="status" value="{{ $primaryStatusAction }}">
+                                            <button type="submit"
+                                                    class="flex w-full min-h-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.99]">
+                                                <i class="fas fa-check-circle" aria-hidden="true"></i>
+                                                {{ __('vendor.order_status_confirm_order') }}
+                                            </button>
+                                        </form>
+                                    @endif
                                 @endif
                                 @if(in_array('cancelled', $orderNextStatusesPanel, true))
                                     <form method="POST"
                                           action="{{ route('vendor.orders.update-status', $order) }}"
-                                          class="w-full"
+                                          class="w-full sm:flex-1"
                                           onsubmit="return confirm(@json(__('vendor.order_status_cancel_confirm')));">
                                         @csrf
                                         @method('PUT')
@@ -845,19 +962,7 @@ function orderPageData() {
                                 @endif
                             </p>
                             <p id="rs-delivered-units" class="mt-0.5 text-[11px] font-medium leading-snug text-teal-900/80 {{ ($order->delivered_at && $deliveredUnitsCountLabel) ? '' : 'hidden' }}">{{ ($order->delivered_at && $deliveredUnitsCountLabel) ? $deliveredUnitsCountLabel : '' }}</p>
-                            @if(! $orderReadOnly)
-                                <div class="mt-2 flex flex-wrap gap-2" id="rs-delivered-actions">
-                                    @if($order->delivered_at)
-                                        <button type="button"
-                                                class="rs-btn-deliver-clear inline-flex items-center justify-center rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50"
-                                                onclick="openRentalClearConfirm('delivered', this)">{{ __('vendor.clear_delivered') }}</button>
-                                    @else
-                                        <button type="button"
-                                                class="rs-btn-deliver-mark inline-flex items-center justify-center rounded-lg bg-teal-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-teal-700"
-                                                onclick="openMarkDeliveredModal(this)">{{ __('vendor.mark_delivered') }}</button>
-                                    @endif
-                                </div>
-                            @endif
+                            <div class="mt-2 hidden flex-wrap gap-2" id="rs-delivered-actions" aria-hidden="true"></div>
                         </div>
                         <div class="rounded-lg border border-teal-100/90 bg-teal-50/40 p-3 ring-1 ring-teal-100/60">
                             <p class="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-teal-900/85">{{ __('vendor.returned_status') }}</p>
@@ -871,39 +976,159 @@ function orderPageData() {
                                 @endif
                             </p>
                             <p id="rs-returned-units" class="mt-0.5 text-[11px] font-medium leading-snug text-teal-900/80 {{ ($order->returned_at && $returnedUnitsCountLabel) ? '' : 'hidden' }}">{{ ($order->returned_at && $returnedUnitsCountLabel) ? $returnedUnitsCountLabel : '' }}</p>
-                            @if(! $orderReadOnly)
-                                <div class="mt-2 flex flex-wrap gap-2" id="rs-returned-actions">
-                                    @if($order->returned_at)
-                                        <button type="button"
-                                                class="rs-btn-return-clear inline-flex items-center justify-center rounded-lg border border-teal-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-teal-900 shadow-sm transition hover:bg-teal-50"
-                                                onclick="openRentalClearConfirm('returned', this)">{{ __('vendor.clear_returned') }}</button>
-                                    @else
-                                        <button type="button"
-                                                class="rs-btn-return-mark inline-flex items-center justify-center rounded-lg bg-teal-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition hover:bg-teal-700"
-                                                onclick="openMarkReturnedModal(this)">{{ __('vendor.mark_returned') }}</button>
-                                    @endif
-                                </div>
-                            @endif
+                            <div class="mt-2 hidden flex-wrap gap-2" id="rs-returned-actions" aria-hidden="true"></div>
                         </div>
                     </div>
                     @endif
                 </div>
             </section>
 
-            <div class="rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100 lg:sticky lg:top-4 lg:z-[5]">
-                <div class="border-b border-gray-100 bg-gray-50/90 px-3 py-2 sm:px-3.5">
-                    <div class="flex items-center gap-2.5">
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-500/30">
-                            <i class="fas fa-receipt text-sm" aria-hidden="true"></i>
+            {{-- Customer, booking & fulfillment --}}
+            <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
+                <div class="p-3 sm:p-4">
+                    <div class="flex min-w-0 gap-3 rounded-lg border border-gray-100 bg-gray-50/90 p-3">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200/50">
+                            <i class="fas fa-user text-sm" aria-hidden="true"></i>
                         </div>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-base font-bold tracking-tight text-gray-900">{{ __('vendor.summary') }}</h3>
-                            <p class="mt-0.5 hidden text-[11px] leading-snug text-gray-600 sm:block">{{ __('vendor.summary_help') }}</p>
+                            <p class="truncate text-sm font-semibold leading-tight text-gray-900">{{ $order->customer?->name ?? __('vendor.order_customer_unavailable') }}</p>
+                            <p class="truncate text-xs text-gray-600">{{ $order->customer?->mobile ?? '—' }}</p>
+                            @if($order->customer?->email)
+                                <p class="truncate text-xs text-gray-500">{{ $order->customer->email }}</p>
+                            @endif
                         </div>
                     </div>
                 </div>
 
-                <div class="space-y-3 p-3 sm:p-3.5">
+                <div class="flex items-start gap-3 border-t border-gray-100 p-3 sm:items-center sm:p-4">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-100 text-teal-700 ring-1 ring-teal-200/50">
+                        <i class="fas fa-calendar text-sm" aria-hidden="true"></i>
+                    </div>
+                    <div class="min-w-0 flex-1" data-booking-dates>
+                        @if($order->start_at && $order->end_at)
+                            <p class="text-sm font-semibold leading-snug text-gray-900">
+                                {{ $order->start_at->format('M j, g:i A') }}
+                                <span class="mx-0.5 font-normal text-gray-400">→</span>
+                                {{ $order->end_at->format('M j, Y g:i A') }}
+                            </p>
+                        @else
+                            <p class="text-sm italic text-gray-500">{{ __('vendor.not_specified') }}</p>
+                        @endif
+                    </div>
+                    @if(!$orderReadOnly)
+                        <button type="button"
+                                onclick="openEditCartModal()"
+                                class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/30">
+                            <i class="fas fa-edit text-xs" aria-hidden="true"></i>{{ __('vendor.edit') }}
+                        </button>
+                    @endif
+                </div>
+
+                <div class="flex items-start gap-3 border-t border-gray-100 p-3 sm:items-center sm:gap-4 sm:p-4">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-700 ring-1 ring-orange-200/60">
+                        <i class="fas fa-truck text-sm" aria-hidden="true"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="truncate text-sm font-bold text-gray-900" x-text="fulfillmentSummaryPrimary()"></p>
+                        <p class="mt-0.5 line-clamp-2 text-xs leading-snug text-gray-600" x-text="fulfillmentSummarySecondary()"></p>
+                    </div>
+                    <button type="button"
+                            x-show="!readOnly"
+                            x-cloak
+                            @click="openFulfillmentModal()"
+                            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs font-semibold text-orange-800 transition hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-500/30 sm:text-sm">
+                        <i class="fas fa-pen" aria-hidden="true"></i>
+                        {{ __('vendor.edit') }}
+                    </button>
+                </div>
+            </section>
+
+            {{-- Fulfillment edit modal --}}
+            <div x-show="showFulfillmentModal"
+                 x-cloak
+                 class="fixed inset-0 z-[60] flex items-end justify-center sm:items-center"
+                 role="dialog"
+                 aria-modal="true"
+                 @keydown.escape.window="showFulfillmentModal && !savingFulfillment && cancelFulfillmentModal()">
+                <div class="absolute inset-0 bg-black/40" @click="!savingFulfillment && cancelFulfillmentModal()" aria-hidden="true"></div>
+                <div class="relative z-10 flex max-h-[min(92dvh,40rem)] w-full max-w-2xl flex-col rounded-t-2xl border border-gray-200 bg-white shadow-2xl sm:rounded-2xl"
+                     @click.stop>
+                    <div class="shrink-0 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-amber-50 px-4 py-4 sm:px-5">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex min-w-0 items-start gap-3">
+                                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-600 text-white shadow-sm">
+                                    <i class="fas fa-truck" aria-hidden="true"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <h3 class="text-base font-bold text-gray-900 sm:text-lg">{{ __('vendor.fulfillment_method') }}</h3>
+                                    <p class="mt-0.5 text-xs text-gray-600 sm:text-sm">{{ __('vendor.fulfillment_method_help') }}</p>
+                                </div>
+                            </div>
+                            <button type="button"
+                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500 transition hover:bg-white hover:text-gray-800"
+                                    @click="!savingFulfillment && cancelFulfillmentModal()"
+                                    aria-label="{{ __('vendor.modal_close_aria') }}">
+                                <i class="fas fa-times" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5">
+                        @include('vendor.orders.partials.order-fulfillment-form-body', [
+                            'order' => $order,
+                            'prefix' => 'fulfillment_modal',
+                        ])
+                    </div>
+                    <div class="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 bg-gray-50/80 px-4 py-3 sm:flex-row sm:justify-end sm:px-5">
+                        <button type="button"
+                                @click="cancelFulfillmentModal()"
+                                :disabled="savingFulfillment"
+                                class="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                            {{ __('vendor.cancel') }}
+                        </button>
+                        <button type="button"
+                                @click="saveFulfillment()"
+                                :disabled="savingFulfillment"
+                                class="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                            <i class="fas fa-spinner fa-spin" x-show="savingFulfillment"></i>
+                            <i class="fas fa-save" x-show="!savingFulfillment"></i>
+                            {{ __('vendor.save') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- 5. Items --}}
+            <section class="overflow-visible rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100">
+                <div data-items-list class="p-3 sm:p-4">
+                    <p class="mb-3 text-xs font-medium text-gray-600"
+                       data-items-count>{{ __('vendor.order_items_heading', ['count' => $order->items->count()]) }}</p>
+                    @include('vendor.orders.partials.order-items-list', ['order' => $order, 'orderReadOnly' => $orderReadOnly])
+                </div>
+            </section>
+
+            {{-- 6. Order activity --}}
+            @php
+                $orderActivities = \App\Support\OrderActivityTimeline::for($order);
+            @endphp
+            <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100" aria-labelledby="order-activity-title">
+                <div class="border-b border-gray-100 bg-gradient-to-r from-slate-50 to-emerald-50/30 px-3 py-3 sm:px-4">
+                    <h2 id="order-activity-title" class="text-sm font-bold text-gray-900 sm:text-base">{{ __('vendor.order_activity_title') }}</h2>
+                    <p class="mt-0.5 text-xs text-gray-500">{{ __('vendor.order_activity_subtitle') }}</p>
+                </div>
+                <div class="p-3 sm:p-4">
+                    @include('vendor.orders.partials.order-activity', ['activities' => $orderActivities])
+                </div>
+            </section>
+            @if($orderReadOnly)
+                </div>
+            @endif
+        </div>
+
+        <div class="order-2 min-w-0 lg:col-span-1">
+            <section class="overflow-visible rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-100 lg:sticky lg:top-4 lg:z-[5] lg:self-start">
+
+            {{-- Price summary --}}
+                <div class="space-y-3 p-3 sm:p-4">
                     @if($orderReadOnly)
                         <div inert class="select-none space-y-3 opacity-[0.94]">
                     @endif
@@ -913,7 +1138,7 @@ function orderPageData() {
                         <div class="space-y-0 rounded-lg border border-gray-100 bg-gray-50/70 p-0.5">
                             <div class="flex items-center justify-between gap-2 rounded-md px-2.5 py-2">
                                 <span class="text-xs text-gray-600">{{ __('vendor.sub_total') }}</span>
-                                <span data-sub-total class="text-xs font-semibold tabular-nums text-gray-900">₹{{ number_format($order->sub_total, 2) }}</span>
+                                <span data-sub-total class="shrink-0 whitespace-nowrap text-xs font-semibold tabular-nums text-gray-900">₹{{ number_format($order->sub_total, 2) }}</span>
                             </div>
                         </div>
                     </div>
@@ -1027,17 +1252,25 @@ function orderPageData() {
                         </div>
                     </div>
 
-                    {{-- 3. Order total (before deposit) --}}
+                    {{-- Order total (before deposit) --}}
                     <div class="flex items-start justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2.5">
                         <div class="min-w-0">
                             <span class="text-xs font-bold text-slate-800">{{ __('vendor.summary_order_total') }}</span>
                             <span class="mt-0.5 block text-[10px] leading-snug text-slate-500">{{ __('vendor.summary_order_total_hint') }}</span>
                         </div>
-                        <span data-order-total class="shrink-0 text-sm font-bold tabular-nums text-slate-900">₹{{ number_format($order->grand_total, 2) }}</span>
+                        <span data-order-total class="shrink-0 whitespace-nowrap text-sm font-bold tabular-nums text-slate-900">₹{{ number_format($order->grand_total, 2) }}</span>
                     </div>
+                    @if($orderReadOnly)
+                        </div>
+                    @endif
+                </div>
 
-                    {{-- 4. Security deposit --}}
-                    <div class="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-white px-2.5 py-2 shadow-sm">
+            {{-- Deposit & total due --}}
+                <div class="space-y-3 border-t border-gray-100 p-3 sm:p-4">
+                    @if($orderReadOnly)
+                        <div inert class="select-none space-y-3 opacity-[0.94]">
+                    @endif
+                    <div class="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-white px-2.5 py-2.5">
                         <button type="button"
                                 onclick="openSecurityDepositModal()"
                                 class="inline-flex min-w-0 flex-1 items-center gap-2 text-left text-xs font-semibold text-emerald-700 transition hover:text-emerald-900">
@@ -1046,44 +1279,101 @@ function orderPageData() {
                             </span>
                             <span id="securityDepositLabel" class="truncate">{{ __('vendor.quote_security_deposit') }}</span>
                         </button>
-                        <span data-security-deposit-total class="shrink-0 text-xs font-bold tabular-nums text-gray-900">₹{{ number_format($order->security_deposit ?? 0, 2) }}</span>
+                        <span data-security-deposit-total class="shrink-0 whitespace-nowrap text-xs font-bold tabular-nums text-gray-900">₹{{ number_format($order->security_deposit ?? 0, 2) }}</span>
                     </div>
 
-                    {{-- 5. Total due (order + deposit) --}}
-                    <div class="rounded-lg border border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/60 p-3 shadow-sm ring-1 ring-emerald-100/50">
+                    <div class="rounded-lg border border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/60 p-3 ring-1 ring-emerald-100/50">
                         <div class="flex items-start justify-between gap-2">
                             <div class="min-w-0">
                                 <span class="text-xs font-bold text-gray-900">{{ __('vendor.summary_total_due') }}</span>
                                 <span class="mt-0.5 block text-[10px] font-medium leading-snug text-emerald-800/80">{{ __('vendor.summary_total_due_hint') }}</span>
                             </div>
-                            <span data-grand-total class="shrink-0 text-lg font-bold tabular-nums tracking-tight text-emerald-700">₹{{ number_format((float) $order->grand_total + (float) ($order->security_deposit ?? 0), 2) }}</span>
+                            <span data-grand-total class="shrink-0 whitespace-nowrap text-lg font-bold tabular-nums tracking-tight text-emerald-700">₹{{ number_format((float) $order->grand_total + (float) ($order->security_deposit ?? 0), 2) }}</span>
                         </div>
                     </div>
                     @if($orderReadOnly)
                         </div>
                     @endif
+                </div>
 
-                    {{-- 6. Payment status --}}
-                    <div class="space-y-1.5 border-t border-gray-200 pt-3">
-                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{{ __('vendor.summary_section_payment') }}</p>
-                        <div class="flex items-center justify-between rounded-lg bg-gray-50/80 px-3 py-2 text-xs ring-1 ring-gray-100">
-                            <span class="text-gray-600">{{ __('vendor.paid_amount') }}</span>
-                            <span data-paid-amount class="font-semibold tabular-nums text-emerald-600">₹{{ number_format($order->paid_amount, 2) }}</span>
+            {{-- Payments --}}
+                @php
+                    $paymentSummary = $order->paymentSummary();
+                    $showPaymentRefunds = $order->status === 'completed';
+                @endphp
+                <div class="space-y-3 border-t border-gray-100 p-3 sm:p-4">
+                    <div class="space-y-2">
+                        <div class="rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2.5 ring-1 ring-emerald-100/80">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-800">{{ __('vendor.order_payment_dues') }}</p>
+                            <div class="mt-1.5 space-y-1 text-xs">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-gray-600">{{ __('vendor.summary_order_total') }}</span>
+                                    <span data-order-payment-total class="shrink-0 font-semibold tabular-nums text-gray-900">₹{{ number_format($order->grand_total, 2) }}</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-gray-600">{{ __('vendor.paid') }}</span>
+                                    <span data-order-payment-paid class="shrink-0 font-semibold tabular-nums text-emerald-700">₹{{ number_format($paymentSummary['order_paid'], 2) }}</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-2 border-t border-emerald-100/80 pt-1">
+                                    <span class="font-bold text-gray-900">{{ __('vendor.balance_due') }}</span>
+                                    <span data-order-payment-due class="shrink-0 text-sm font-bold tabular-nums {{ $paymentSummary['order_due'] > 0 ? 'text-red-600' : 'text-emerald-700' }}">₹{{ number_format($paymentSummary['order_due'], 2) }}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex items-center justify-between rounded-lg border border-amber-200/80 bg-amber-50/70 px-3 py-2">
-                            <span class="font-bold text-gray-900">{{ __('vendor.balance_due') }}</span>
-                            <span data-balance-due class="text-sm font-bold tabular-nums text-red-600">₹{{ number_format((float) $order->grand_total + (float) ($order->security_deposit ?? 0) - (float) $order->paid_amount, 2) }}</span>
+
+                        <div class="rounded-lg border border-teal-100 bg-teal-50/50 px-3 py-2.5 ring-1 ring-teal-100/80">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-teal-800">{{ __('vendor.security_deposit_dues') }}</p>
+                            <div class="mt-1.5 space-y-1 text-xs">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-gray-600">{{ __('vendor.quote_security_deposit') }}</span>
+                                    <span data-deposit-payment-total class="shrink-0 font-semibold tabular-nums text-gray-900">₹{{ number_format($order->security_deposit ?? 0, 2) }}</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-gray-600">{{ __('vendor.paid') }}</span>
+                                    <span data-deposit-payment-paid class="shrink-0 font-semibold tabular-nums text-emerald-700">₹{{ number_format($paymentSummary['deposit_paid'], 2) }}</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-2 border-t border-teal-100/80 pt-1">
+                                    <span class="font-bold text-gray-900">{{ __('vendor.balance_due') }}</span>
+                                    <span data-deposit-payment-due class="shrink-0 text-sm font-bold tabular-nums {{ $paymentSummary['deposit_due'] > 0 ? 'text-red-600' : 'text-emerald-700' }}">₹{{ number_format($paymentSummary['deposit_due'], 2) }}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="mt-0.5 flex flex-col gap-1.5 sm:flex-row">
+
+                        <div class="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2 text-xs ring-1 ring-slate-100">
+                            <span class="font-bold text-gray-900">{{ __('vendor.summary_total_due') }}</span>
+                            <span data-balance-due class="shrink-0 whitespace-nowrap text-sm font-bold tabular-nums {{ $paymentSummary['total_due'] > 0 ? 'text-red-600' : 'text-emerald-700' }}">₹{{ number_format($paymentSummary['total_due'], 2) }}</span>
+                        </div>
+                        <div class="hidden">
+                            <span data-paid-amount>₹{{ number_format($order->paid_amount, 2) }}</span>
+                        </div>
+
+                        @if($showPaymentRefunds)
+                            <div class="rounded-lg border border-rose-100 bg-rose-50/40 px-3 py-2.5 ring-1 ring-rose-100/80" data-refund-summary-section>
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-rose-800">{{ __('vendor.order_refunds_title') }}</p>
+                                <div class="mt-1.5 space-y-1 text-xs">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="text-gray-600">{{ __('vendor.refund_order_amount_label') }}</span>
+                                        <span data-refund-order-total class="shrink-0 font-semibold tabular-nums text-rose-700">₹{{ number_format($paymentSummary['refund_order'], 2) }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="text-gray-600">{{ __('vendor.refund_deposit_amount_label') }}</span>
+                                        <span data-refund-deposit-total class="shrink-0 font-semibold tabular-nums text-rose-700">₹{{ number_format($paymentSummary['refund_deposit'], 2) }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-2 border-t border-rose-100/80 pt-1">
+                                        <span class="font-bold text-gray-900">{{ __('vendor.refund_total_label') }}</span>
+                                        <span data-refund-total class="shrink-0 text-sm font-bold tabular-nums text-rose-700">₹{{ number_format($paymentSummary['refund_total'], 2) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                        @if(! $orderReadOnly)
+                        <div class="mt-0.5">
                             <button type="button" onclick="openAddPaymentModal()"
-                                    class="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-[0.99]">
+                                    class="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-emerald-700 active:scale-[0.99]">
                                 <i class="fas fa-wallet"></i>{{ __('vendor.new_payment') }}
                             </button>
-                            <button type="button" onclick="openExtraChargeModal()"
-                                    class="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-semibold text-amber-950 shadow-sm transition hover:bg-amber-100 active:scale-[0.99]">
-                                <i class="fas fa-plus-circle"></i>{{ __('vendor.add_extra_charge') }}
-                            </button>
                         </div>
+                        @endif
 
                         @php
                             $paymentRows = is_array($order->payment_detail) ? $order->payment_detail : [];
@@ -1119,7 +1409,7 @@ function orderPageData() {
                                             <p class="mt-0.5 text-[11px] text-gray-500">
                                                 @php
                                                     $m = $p['method'] ?? '';
-                                                    $methodLabels = ['card' => 'Card', 'cash' => 'Cash', 'upi' => 'UPI', 'bank_transfer' => 'Bank transfer', 'wallet' => 'Wallet', 'other' => 'Other'];
+                                                    $methodLabels = ['card' => 'Card', 'cash' => 'Cash', 'upi' => 'UPI', 'bank_transfer' => 'Bank transfer', 'wallet' => 'Wallet', 'other' => 'Other', 'settlement' => __('vendor.payment_method_settlement')];
                                                     $mLabel = $methodLabels[$m] ?? ucfirst(str_replace('_', ' ', (string) $m));
                                                     $paidOn = ! empty($p['paid_on']) ? \Carbon\Carbon::parse($p['paid_on'])->format('M j, Y') : null;
                                                 @endphp
@@ -1138,8 +1428,13 @@ function orderPageData() {
                             </ul>
                         </div>
                     </div>
+                </div>
+            </section>
+        </div>
+    </div>
+    </div>
 
-                    <!-- New Payment Modal (step 1: select payment for) -->
+    <!-- New Payment Modal (step 1: select payment for) -->
                     <div id="addPaymentModal" class="fixed inset-0 z-[80] hidden">
                         <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="closeAddPaymentModal()"></div>
                         <div class="fixed inset-0 flex items-center justify-center p-4">
@@ -1901,7 +2196,7 @@ function orderPageData() {
                         patchRentalStatus(payload, btn);
                     }
                     var lastOrderCartState = @json($orderCartJson);
-                    const npMethodLabels = { card: 'Card', cash: 'Cash', upi: 'UPI', bank_transfer: 'Bank transfer', wallet: 'Wallet', other: 'Other' };
+                    const npMethodLabels = { card: 'Card', cash: 'Cash', upi: 'UPI', bank_transfer: 'Bank transfer', wallet: 'Wallet', other: 'Other', settlement: @json(__('vendor.payment_method_settlement')) };
                     const npPayTagRefund = @json(__('vendor.label_refund'));
                     function npIsDepositKind(kind) {
                         return kind === 'security_deposit' || kind === 'refund_security_deposit';
@@ -2275,28 +2570,6 @@ function orderPageData() {
                             });
                     }
                     </script>
-                    
-                </div>
-
-                <div class="space-y-3 border-t border-gray-100 bg-gray-50/50 p-4 sm:p-5">
-                   
-                   
-                    <div class="space-y-2.5 pt-1">
-                        <a href="{{ route('vendor.orders.print', ['order' => $order, 'autoprint' => 1]) }}"
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50">
-                            <i class="fas fa-file-invoice text-gray-600"></i>{{ __('vendor.print_quote') }}
-                        </a>
-                        <a href="{{ route('vendor.orders.invoice.download', $order) }}"
-                           class="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100">
-                            <i class="fas fa-download text-emerald-700"></i>{{ __('vendor.download_invoice') }}
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Add Item Modal -->
     <div x-show="showAddItem"
@@ -2603,57 +2876,8 @@ function orderPageData() {
         </div>
     </div>
 
-    {{-- Edit order line (from cart item 3-dot menu) --}}
-    <div x-show="lineEditOpen"
-         x-cloak
-         class="fixed inset-0 z-[80] flex items-end justify-center p-2 sm:items-center sm:p-4"
-         role="dialog"
-         aria-modal="true">
-        <div class="absolute inset-0 bg-gray-900/50" @click="closeLineEdit()"></div>
-        <div class="relative z-10 w-full max-w-md overflow-hidden rounded-t-2xl bg-white shadow-xl ring-1 ring-gray-900/5 sm:rounded-2xl"
-             @click.stop>
-            <div class="border-b border-gray-100 px-4 py-3">
-                <h4 class="text-base font-bold text-gray-900">{{ __('vendor.order_wizard_summary_edit_line') }}</h4>
-                <p class="mt-0.5 truncate text-sm text-gray-600" x-text="lineEditName"></p>
-            </div>
-            <div class="space-y-3 px-4 py-4">
-                <div>
-                    <label for="order_line_edit_qty" class="mb-1 block text-xs font-semibold text-gray-800">{{ __('vendor.quantity') }}</label>
-                    <input id="order_line_edit_qty"
-                           type="number"
-                           min="1"
-                           step="1"
-                           x-model="lineEditQty"
-                           class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25">
-                </div>
-                <div x-show="lineEditUsesBilling" x-cloak>
-                    <label for="order_line_edit_billing" class="mb-1 block text-xs font-semibold text-gray-800">{{ __('vendor.billing_units') }}</label>
-                    <input id="order_line_edit_billing"
-                           type="number"
-                           step="0.01"
-                           min="0.01"
-                           lang="en"
-                           x-model="lineEditBilling"
-                           class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25">
-                </div>
-                <div class="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end sm:gap-2">
-                    <button type="button"
-                            @click="closeLineEdit()"
-                            :disabled="lineEditSaving"
-                            class="inline-flex h-10 w-full items-center justify-center rounded-lg bg-gray-100 px-4 text-sm font-semibold text-gray-800 hover:bg-gray-200 disabled:opacity-50 sm:w-auto">
-                        {{ __('vendor.cancel') }}
-                    </button>
-                    <button type="button"
-                            @click="saveLineEdit()"
-                            :disabled="lineEditSaving"
-                            class="inline-flex h-10 w-full items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 sm:w-auto">
-                        <span x-show="!lineEditSaving">{{ __('vendor.save') }}</span>
-                        <span x-show="lineEditSaving" x-cloak><i class="fas fa-spinner fa-spin" aria-hidden="true"></i></span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    @include('vendor.orders.partials.order-line-edit-modal')
+    @include('vendor.orders.partials.variant-picker-modal')
 </div>
 
 <!-- Discount Modal -->
@@ -2897,99 +3121,88 @@ function orderPageData() {
     </div>
 </div>
 
-<!-- Edit Cart Modal -->
+@php
+    $bookingTz = config('app.timezone');
+    $parseOrderBooking = function ($dt) use ($bookingTz) {
+        if (! $dt) {
+            return ['date' => '', 'time' => ''];
+        }
+        $local = $dt->copy()->timezone($bookingTz);
+
+        return ['date' => $local->format('Y-m-d'), 'time' => $local->format('H:i')];
+    };
+    $bookingStartParts = $parseOrderBooking($order->start_at);
+    $bookingEndParts = $parseOrderBooking($order->end_at);
+    $bookingStartAtValue = $order->start_at
+        ? $order->start_at->copy()->timezone($bookingTz)->format('Y-m-d H:i')
+        : '';
+    $bookingEndAtValue = $order->end_at
+        ? $order->end_at->copy()->timezone($bookingTz)->format('Y-m-d H:i')
+        : '';
+@endphp
+
+<!-- Edit Booking Dates Modal -->
 <div id="editCartModal" class="fixed inset-0 z-[70] hidden">
     <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="closeEditCartModal()"></div>
-    <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="relative bg-white rounded-xl shadow-2xl max-w-lg w-full transform transition-all" onclick="event.stopPropagation()">
-            <!-- Modal Header -->
-            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-t-xl">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 flex items-center justify-center bg-emerald-600 rounded-lg">
-                            <i class="fas fa-shopping-cart text-white"></i>
+    <div class="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4">
+        <div class="relative flex max-h-[min(92dvh,40rem)] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl" onclick="event.stopPropagation()">
+            <div class="shrink-0 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-4 sm:px-6">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex min-w-0 items-start gap-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+                            <i class="fas fa-calendar-alt" aria-hidden="true"></i>
                         </div>
-                        <div>
+                        <div class="min-w-0">
                             <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.edit') }} {{ __('vendor.booking_dates') }}</h3>
-                            <p class="text-xs text-gray-600">{{ __('vendor.order_booking_modal_help') }}</p>
+                            <p class="mt-0.5 text-xs text-gray-600 sm:text-sm">{{ __('vendor.order_booking_modal_help') }}</p>
                         </div>
                     </div>
-                    <button type="button" onclick="closeEditCartModal()" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors">
-                        <i class="fas fa-times text-xl"></i>
+                    <button type="button"
+                            onclick="closeEditCartModal()"
+                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500 transition hover:bg-white hover:text-gray-800"
+                            aria-label="{{ __('vendor.modal_close_aria') }}">
+                        <i class="fas fa-times" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Modal Body -->
-            <form id="editCartForm" onsubmit="submitEditCart(event)" class="p-6 space-y-5">
-                <!-- Customer (Read-only) -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">{{ __('vendor.customer') }}</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="fas fa-user text-gray-400"></i>
-                        </div>
-                        <input type="text" 
-                               value="{{ $order->customer ? $order->customer->name . ' - ' . $order->customer->mobile : __('vendor.order_customer_unavailable') }}"
-                               class="w-full pl-11 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
-                               disabled readonly>
+            <form id="editCartForm" onsubmit="submitEditCart(event)" class="flex min-h-0 flex-1 flex-col">
+                <div class="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
+                    <div class="rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.customer') }}</p>
+                        <p class="mt-0.5 truncate text-sm font-medium text-gray-900">
+                            {{ $order->customer ? $order->customer->name . ' — ' . $order->customer->mobile : __('vendor.order_customer_unavailable') }}
+                        </p>
                     </div>
-                    <p class="mt-1.5 text-xs text-gray-500"><i class="fas fa-info-circle mr-1"></i>{{ __('vendor.customer_cannot_change') }}</p>
-                </div>
 
-                <!-- Booking Dates -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-calendar text-emerald-600 mr-1"></i>
-                        {{ __('vendor.booking_dates') }} <span class="text-gray-500 text-xs">({{ __('vendor.optional') }})</span>
-                    </label>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label for="edit_start_at" class="block text-sm font-semibold text-gray-700 mb-1">
-                                <i class="far fa-calendar-alt text-emerald-600 mr-1"></i>{{ __('vendor.start_date_time') }}
-                            </label>
-                            <div class="date-input-wrapper">
-                                <input type="text" name="start_at" id="edit_start_at"
-                                       value="{{ $order->start_at ? $order->start_at->format('Y-m-d H:i') : '' }}"
-                                       readonly
-                                       class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white cursor-pointer"
-                                       placeholder="Select start date">
-                                <span class="date-clear-btn" onclick="clearEditDate('start')" title="Clear">
-                                    <i class="fas fa-times"></i>
-                                </span>
-                                <span class="date-icon"><i class="fas fa-chevron-down"></i></span>
-                            </div>
-                            <p id="editStartTimeError" class="mt-1 text-sm text-red-600 hidden"></p>
-                        </div>
-                        <div>
-                            <label for="edit_end_at" class="block text-sm font-semibold text-gray-700 mb-1">
-                                <i class="far fa-calendar-alt text-emerald-600 mr-1"></i>{{ __('vendor.end_date_time') }}
-                            </label>
-                            <div class="date-input-wrapper">
-                                <input type="text" name="end_at" id="edit_end_at"
-                                       value="{{ $order->end_at ? $order->end_at->format('Y-m-d H:i') : '' }}"
-                                       readonly
-                                       class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white cursor-pointer"
-                                       placeholder="Select end date">
-                                <span class="date-clear-btn" onclick="clearEditDate('end')" title="Clear">
-                                    <i class="fas fa-times"></i>
-                                </span>
-                                <span class="date-icon"><i class="fas fa-chevron-down"></i></span>
-                            </div>
-                            <p id="editEndTimeError" class="mt-1 text-sm text-red-600 hidden"></p>
-                        </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-semibold text-gray-800">
+                            <i class="fas fa-calendar mr-1 text-emerald-600" aria-hidden="true"></i>
+                            {{ __('vendor.booking_dates') }}
+                            <span class="text-xs font-normal text-gray-500">({{ __('vendor.optional') }})</span>
+                        </label>
+                        @include('vendor.orders.partials.order-booking-dates-fields', [
+                            'prefix' => 'edit',
+                            'startParts' => $bookingStartParts,
+                            'endParts' => $bookingEndParts,
+                            'startAtValue' => $bookingStartAtValue,
+                            'endAtValue' => $bookingEndAtValue,
+                            'restrictPastDates' => false,
+                        ])
                     </div>
                 </div>
 
-                <!-- Footer -->
-                <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                    <button type="button" onclick="closeEditCartModal()"
-                            class="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                <div class="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-200 bg-white px-4 py-3 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
+                    <button type="button"
+                            onclick="closeEditCartModal()"
+                            class="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-gray-300 bg-white px-5 text-sm font-semibold text-gray-700 hover:bg-gray-50 sm:min-h-[40px]">
                         {{ __('vendor.cancel') }}
                     </button>
-                    <button type="submit" id="editCartSubmitBtn"
-                            class="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all active:scale-95 shadow-sm">
-                        <i class="fas fa-save mr-2"></i>{{ __('vendor.update') }}
+                    <button type="submit"
+                            id="editCartSubmitBtn"
+                            class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-[0.98] sm:min-h-[40px]">
+                        <i class="fas fa-save text-xs" aria-hidden="true"></i>
+                        {{ __('vendor.update') }}
                     </button>
                 </div>
             </form>
@@ -3080,6 +3293,151 @@ function orderPageData() {
     </div>
 </div>
 
+<!-- Complete order checklist -->
+<div id="completeOrderModal" class="fixed inset-0 z-[74] hidden" role="dialog" aria-modal="true" aria-labelledby="completeOrderModalTitle">
+    <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="closeCompleteOrderModal()"></div>
+    <div class="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4">
+        <div class="relative flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl ring-1 ring-gray-200 sm:max-h-[90vh] sm:rounded-2xl" onclick="event.stopPropagation()">
+            <div class="border-b border-gray-100 bg-gradient-to-b from-emerald-50/70 to-white px-4 py-4 sm:px-5">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h3 id="completeOrderModalTitle" class="text-lg font-bold text-gray-900">{{ __('vendor.order_complete_modal_title') }}</h3>
+                        <p class="mt-1 text-xs leading-relaxed text-gray-600">{{ __('vendor.order_complete_modal_subtitle') }}</p>
+                    </div>
+                    <button type="button" onclick="closeCompleteOrderModal()" class="shrink-0 rounded-lg p-2 text-gray-500 hover:bg-gray-100" aria-label="{{ __('vendor.cancel') }}">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-y-contain px-4 py-4 sm:px-5">
+                @if($completionChecklist['has_pending'])
+                    @if(count($completionChecklist['undelivered']) > 0)
+                        <section class="rounded-xl border border-amber-200 bg-amber-50/60 p-3 ring-1 ring-amber-100">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-amber-900">{{ __('vendor.order_complete_undelivered_title') }}</p>
+                            <ul class="mt-2 space-y-1.5">
+                                @foreach($completionChecklist['undelivered'] as $row)
+                                    <li class="flex items-start justify-between gap-2 text-xs">
+                                        <span class="min-w-0 font-medium text-gray-900">{{ $row['name'] }}</span>
+                                        <span class="shrink-0 tabular-nums text-amber-900">{{ __('vendor.order_complete_qty_units', ['count' => $row['quantity']]) }}</span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </section>
+                    @endif
+
+                    @if(count($completionChecklist['not_returned']) > 0)
+                        <section class="rounded-xl border border-orange-200 bg-orange-50/50 p-3 ring-1 ring-orange-100">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-orange-900">{{ __('vendor.order_complete_not_returned_title') }}</p>
+                            <ul class="mt-2 space-y-1.5">
+                                @foreach($completionChecklist['not_returned'] as $row)
+                                    <li class="flex items-start justify-between gap-2 text-xs">
+                                        <span class="min-w-0 font-medium text-gray-900">{{ $row['name'] }}</span>
+                                        <span class="shrink-0 text-right tabular-nums text-orange-900">
+                                            {{ __('vendor.order_complete_return_pending', ['returned' => $row['returned'], 'total' => $row['quantity']]) }}
+                                        </span>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </section>
+                    @endif
+
+                    @if($completionChecklist['order_due'] > 0.009 || $completionChecklist['deposit_due'] > 0.009)
+                        <section class="rounded-xl border border-red-200 bg-red-50/40 p-3 ring-1 ring-red-100">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-red-900">{{ __('vendor.order_complete_dues_title') }}</p>
+                            <div class="mt-2 space-y-1 text-xs">
+                                @if($completionChecklist['order_due'] > 0.009)
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-gray-700">{{ __('vendor.order_payment_dues') }}</span>
+                                        <span class="font-bold tabular-nums text-red-700">₹{{ number_format($completionChecklist['order_due'], 2) }}</span>
+                                    </div>
+                                @endif
+                                @if($completionChecklist['deposit_due'] > 0.009)
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-gray-700">{{ __('vendor.security_deposit_dues') }}</span>
+                                        <span class="font-bold tabular-nums text-red-700">₹{{ number_format($completionChecklist['deposit_due'], 2) }}</span>
+                                    </div>
+                                @endif
+                                <div class="flex justify-between gap-2 border-t border-red-100 pt-1 font-semibold">
+                                    <span class="text-gray-900">{{ __('vendor.summary_total_due') }}</span>
+                                    <span class="tabular-nums text-red-700">₹{{ number_format($completionChecklist['total_due'], 2) }}</span>
+                                </div>
+                            </div>
+                        </section>
+                    @endif
+
+                    @if($completionChecklist['refund_pending_total'] > 0.009)
+                        <section class="rounded-xl border border-violet-200 bg-violet-50/40 p-3 ring-1 ring-violet-100">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-violet-900">{{ __('vendor.order_complete_refunds_title') }}</p>
+                            <div class="mt-2 space-y-1 text-xs">
+                                @if($completionChecklist['order_refund_pending'] > 0.009)
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-gray-700">{{ __('vendor.refund_order_amount_label') }}</span>
+                                        <span class="font-bold tabular-nums text-violet-800">₹{{ number_format($completionChecklist['order_refund_pending'], 2) }}</span>
+                                    </div>
+                                @endif
+                                @if($completionChecklist['deposit_refund_pending'] > 0.009)
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-gray-700">{{ __('vendor.refund_deposit_amount_label') }}</span>
+                                        <span class="font-bold tabular-nums text-violet-800">₹{{ number_format($completionChecklist['deposit_refund_pending'], 2) }}</span>
+                                    </div>
+                                @endif
+                                <div class="flex justify-between gap-2 border-t border-violet-100 pt-1 font-semibold">
+                                    <span class="text-gray-900">{{ __('vendor.order_complete_refund_pending_total') }}</span>
+                                    <span class="tabular-nums text-violet-800">₹{{ number_format($completionChecklist['refund_pending_total'], 2) }}</span>
+                                </div>
+                            </div>
+                        </section>
+                    @endif
+                @else
+                    <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-6 text-center ring-1 ring-emerald-100">
+                        <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                            <i class="fas fa-circle-check text-xl" aria-hidden="true"></i>
+                        </div>
+                        <p class="text-sm font-semibold text-emerald-900">{{ __('vendor.order_complete_all_clear') }}</p>
+                        <p class="mt-1 text-xs text-emerald-800/80">{{ __('vendor.order_complete_all_clear_hint') }}</p>
+                    </div>
+                @endif
+
+                @if($completionChecklist['has_pending'])
+                    <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 bg-gray-50/80 px-3 py-3 text-sm ring-1 ring-gray-100">
+                        <input type="checkbox"
+                               id="completeOrderSettlementAck"
+                               class="mt-0.5 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                               onchange="syncCompleteOrderSubmitState()">
+                        <span class="text-xs leading-relaxed text-gray-800">{{ __('vendor.order_complete_settlement_checkbox') }}</span>
+                    </label>
+                @endif
+            </div>
+
+            <div class="shrink-0 border-t border-gray-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">
+                <form id="completeOrderForm" method="POST" action="{{ route('vendor.orders.update-status', $order) }}">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="status" value="completed">
+                    @if($completionChecklist['has_pending'])
+                        <input type="hidden" name="settlement_acknowledged" id="completeOrderSettlementField" value="0">
+                    @endif
+                    <div class="flex flex-col gap-2 sm:flex-row-reverse">
+                        <button type="submit"
+                                id="completeOrderSubmitBtn"
+                                @if($completionChecklist['has_pending']) disabled @endif
+                                class="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+                            <i class="fas fa-check-circle" aria-hidden="true"></i>
+                            {{ __('vendor.order_status_complete_order') }}
+                        </button>
+                        <button type="button"
+                                onclick="closeCompleteOrderModal()"
+                                class="flex min-h-[48px] flex-1 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                            {{ __('vendor.cancel') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Clear delivered / returned confirmation -->
 <div id="rentalClearConfirmModal" class="fixed inset-0 z-[72] hidden" role="dialog" aria-modal="true" aria-labelledby="rentalClearConfirmTitle">
     <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="closeRentalClearConfirmModal()"></div>
@@ -3106,29 +3464,57 @@ function orderPageData() {
     </div>
 </div>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
 <style>
     [x-cloak] { display: none !important; }
     .flatpickr-calendar { border-radius: 12px !important; box-shadow: 0 10px 40px rgba(0,0,0,.15) !important; border: 1px solid #e5e7eb !important; font-family: 'Inter', sans-serif !important; }
     .flatpickr-day.selected, .flatpickr-day.selected:hover { background: #059669 !important; border-color: #059669 !important; }
+    .flatpickr-day.booking-in-range {
+        background: #d1fae5 !important;
+        border-color: #a7f3d0 !important;
+        color: #065f46 !important;
+        box-shadow: none !important;
+    }
+    .flatpickr-day.booking-range-start,
+    .flatpickr-day.booking-range-end,
+    .flatpickr-day.booking-range-preview-end {
+        background: #059669 !important;
+        border-color: #059669 !important;
+        color: #fff !important;
+    }
+    .flatpickr-day.booking-range-start.booking-in-range,
+    .flatpickr-day.booking-range-end.booking-in-range { border-radius: 0 !important; }
+    .flatpickr-day.booking-range-start { border-radius: 50% 0 0 50% !important; }
+    .flatpickr-day.booking-range-end,
+    .flatpickr-day.booking-range-preview-end { border-radius: 0 50% 50% 0 !important; }
+    .flatpickr-day.booking-range-start.booking-range-end { border-radius: 50% !important; }
     .flatpickr-day.today { border-color: #059669 !important; }
     .flatpickr-day:hover { background: #d1fae5 !important; }
+    .flatpickr-day.booking-range-start:hover,
+    .flatpickr-day.booking-range-end:hover,
+    .flatpickr-day.booking-range-preview-end:hover { background: #047857 !important; }
     .flatpickr-months .flatpickr-month { height: 40px !important; }
     .flatpickr-current-month { font-size: 1rem !important; font-weight: 600 !important; }
-    .flatpickr-time input { font-size: 1rem !important; }
-    .date-input-wrapper { position: relative; }
-    .date-input-wrapper .date-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; font-size: 14px; }
-    .date-input-wrapper input { padding-right: 32px; }
-    .date-clear-btn { position: absolute; right: 28px; top: 50%; transform: translateY(-50%); color: #9ca3af; cursor: pointer; font-size: 12px; padding: 2px 4px; display: none; }
-    .date-clear-btn:hover { color: #ef4444; }
-    .date-input-wrapper input:not([value=""]) ~ .date-clear-btn,
-    .date-input-wrapper input.has-value ~ .date-clear-btn { display: block; }
+    .date-input-wrapper { position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .date-input-wrapper .date-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; font-size: 14px; z-index: 1; }
+    .date-input-wrapper input,
+    .date-input-wrapper .flatpickr-input { display: block; width: 100%; box-sizing: border-box; padding-right: 32px; min-height: 40px; font-size: 0.875rem; cursor: pointer; }
+    .time-input-wrapper { position: relative; }
+    .time-input-wrapper .time-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; font-size: 14px; }
+    .booking-time-select {
+        min-height: 40px;
+        font-size: 0.875rem;
+        padding-right: 32px;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: none;
+        color: #111827;
+    }
+    .booking-time-select.is-placeholder { color: #9ca3af; }
 </style>
 @endsection
 
 @section('scripts')
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
 let pendingDelete = null;
 
@@ -3265,87 +3651,6 @@ function refreshOrderItems() {
     })
     .catch(() => {});
 }
-
-// --- Flatpickr for Edit Cart Modal ---
-let editStartPicker, editEndPicker;
-
-function initEditDatePickers() {
-    function toggleClearBtn(instance) {
-        const wrapper = instance.element.closest('.date-input-wrapper');
-        if (!wrapper) return;
-        const clearBtn = wrapper.querySelector('.date-clear-btn');
-        if (clearBtn) {
-            clearBtn.style.display = instance.selectedDates.length > 0 ? 'block' : 'none';
-        }
-    }
-
-    const fpConfig = {
-        enableTime: true,
-        dateFormat: 'Y-m-d H:i',
-        altInput: true,
-        altFormat: 'M j, Y h:i K',
-        time_24hr: false,
-        allowInput: false,
-        disableMobile: false,
-        monthSelectorType: 'dropdown',
-        animate: true,
-        onReady: function(selectedDates, dateStr, instance) {
-            toggleClearBtn(instance);
-        },
-        onChange: function(selectedDates, dateStr, instance) {
-            toggleClearBtn(instance);
-        }
-    };
-
-    if (editStartPicker) editStartPicker.destroy();
-    if (editEndPicker) editEndPicker.destroy();
-
-    editStartPicker = flatpickr('#edit_start_at', {
-        ...fpConfig,
-        onChange: function(selectedDates, dateStr, instance) {
-            toggleClearBtn(instance);
-            if (selectedDates.length > 0) {
-                editEndPicker.set('minDate', selectedDates[0]);
-            } else {
-                editEndPicker.set('minDate', null);
-            }
-        }
-    });
-
-    editEndPicker = flatpickr('#edit_end_at', {
-        ...fpConfig,
-        onChange: function(selectedDates, dateStr, instance) {
-            toggleClearBtn(instance);
-            if (selectedDates.length > 0) {
-                editStartPicker.set('maxDate', selectedDates[0]);
-            } else {
-                editStartPicker.set('maxDate', null);
-            }
-        }
-    });
-
-    // Set initial constraints
-    if (editStartPicker.selectedDates.length > 0) {
-        editEndPicker.set('minDate', editStartPicker.selectedDates[0]);
-    }
-    if (editEndPicker.selectedDates.length > 0) {
-        editStartPicker.set('maxDate', editEndPicker.selectedDates[0]);
-    }
-}
-
-window.clearEditDate = function(which) {
-    if (which === 'start') {
-        editStartPicker.clear();
-        editEndPicker.set('minDate', null);
-    } else {
-        editEndPicker.clear();
-        editStartPicker.set('maxDate', null);
-    }
-};
-
-document.addEventListener('DOMContentLoaded', function() {
-    initEditDatePickers();
-});
 
 // --- Discount Modal ---
 function openDiscountModal() {
@@ -3492,6 +3797,44 @@ const securityDepositState = {
     subTotal: parseFloat(@json((float) $order->sub_total)),
 };
 
+function openCompleteOrderModal() {
+    const modal = document.getElementById('completeOrderModal');
+    if (!modal) return;
+    const ack = document.getElementById('completeOrderSettlementAck');
+    if (ack) ack.checked = false;
+    syncCompleteOrderSubmitState();
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeCompleteOrderModal() {
+    const modal = document.getElementById('completeOrderModal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function syncCompleteOrderSubmitState() {
+    const ack = document.getElementById('completeOrderSettlementAck');
+    const field = document.getElementById('completeOrderSettlementField');
+    const btn = document.getElementById('completeOrderSubmitBtn');
+    if (ack && field) {
+        field.value = ack.checked ? '1' : '0';
+    }
+    if (btn && ack) {
+        btn.disabled = !ack.checked;
+    }
+}
+
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('completeOrderModal');
+        if (modal && !modal.classList.contains('hidden')) {
+            closeCompleteOrderModal();
+        }
+    }
+});
+
 function openSecurityDepositModal() {
     document.getElementById('securityDepositModal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -3583,12 +3926,61 @@ function calculateSecurityDepositAmount(cartTotals) {
     return (base * value) / 100;
 }
 
+function applyPaymentSummaryDisplay(cartTotals) {
+    const summary = cartTotals.payment_summary;
+    if (!summary) {
+        return;
+    }
+
+    const orderTotal = parseFloat(cartTotals.grand_total ?? securityDepositState.orderGrandTotal ?? 0);
+    const depositTotal = parseFloat(cartTotals.security_deposit ?? securityDepositState.amount ?? 0);
+    const orderPaid = parseFloat(summary.order_paid ?? 0);
+    const depositPaid = parseFloat(summary.deposit_paid ?? 0);
+    const orderDue = Math.max(0, orderTotal - orderPaid);
+    const depositDue = Math.max(0, depositTotal - depositPaid);
+    const totalDue = orderDue + depositDue;
+
+    const setText = (sel, value, prefix) => {
+        const el = document.querySelector(sel);
+        if (el) {
+            el.textContent = prefix + value.toFixed(2);
+        }
+    };
+    const setDueClass = (sel, due) => {
+        const el = document.querySelector(sel);
+        if (!el) return;
+        el.classList.remove('text-red-600', 'text-emerald-700');
+        el.classList.add(due > 0.009 ? 'text-red-600' : 'text-emerald-700');
+    };
+
+    setText('[data-order-payment-total]', orderTotal, '₹');
+    setText('[data-order-payment-paid]', orderPaid, '₹');
+    setText('[data-order-payment-due]', orderDue, '₹');
+    setDueClass('[data-order-payment-due]', orderDue);
+
+    setText('[data-deposit-payment-total]', depositTotal, '₹');
+    setText('[data-deposit-payment-paid]', depositPaid, '₹');
+    setText('[data-deposit-payment-due]', depositDue, '₹');
+    setDueClass('[data-deposit-payment-due]', depositDue);
+
+    setText('[data-balance-due]', totalDue, '₹');
+    setDueClass('[data-balance-due]', totalDue);
+
+    const paidEl = document.querySelector('[data-paid-amount]');
+    if (paidEl && cartTotals.paid_amount !== undefined && cartTotals.paid_amount !== null) {
+        paidEl.textContent = '₹' + parseFloat(cartTotals.paid_amount).toFixed(2);
+    }
+
+    setText('[data-refund-order-total]', parseFloat(summary.refund_order ?? 0), '₹');
+    setText('[data-refund-deposit-total]', parseFloat(summary.refund_deposit ?? 0), '₹');
+    setText('[data-refund-total]', parseFloat(summary.refund_total ?? 0), '₹');
+}
+
 function applySecurityDepositDisplay(cartTotals) {
     const securityDepositEl = document.querySelector('[data-security-deposit-total]');
     const securityDepositLabel = document.getElementById('securityDepositLabel');
     const grandTotalEl = document.querySelector('[data-grand-total]');
     const orderTotalEl = document.querySelector('[data-order-total]');
-    const balanceDueEl = document.querySelector('[data-balance-due]');
     if (!securityDepositEl || !securityDepositLabel) return;
 
     const orderTotal = parseFloat(cartTotals.grand_total ?? securityDepositState.orderGrandTotal ?? 0);
@@ -3605,10 +3997,7 @@ function applySecurityDepositDisplay(cartTotals) {
     if (grandTotalEl) {
         grandTotalEl.textContent = '₹' + totalWithDeposit.toFixed(2);
     }
-    if (balanceDueEl) {
-        const paidAmount = parseFloat(document.querySelector('[data-paid-amount]')?.textContent?.replace(/[₹,]/g, '') || 0);
-        balanceDueEl.textContent = '₹' + (totalWithDeposit - paidAmount).toFixed(2);
-    }
+    applyPaymentSummaryDisplay(cartTotals);
 
     const typeLabelMap = {
         none: 'Security Deposit',
@@ -3883,6 +4272,8 @@ function submitEditCart(e) {
 
     document.getElementById('editStartTimeError').classList.add('hidden');
     document.getElementById('editEndTimeError').classList.add('hidden');
+
+    document.dispatchEvent(new CustomEvent('sync-booking-dates'));
 
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>{{ __("vendor.updating") }}...';
@@ -4408,10 +4799,6 @@ function updateSummary(cart) {
         securityDepositState.value = parseFloat(cart.security_deposit_value);
     } else if (cart.security_deposit_type === 'none' || !cart.security_deposit_type) {
         securityDepositState.value = 0;
-    }
-    if (cart.paid_amount !== undefined && cart.paid_amount !== null) {
-        const paidEl = document.querySelector('[data-paid-amount]');
-        if (paidEl) paidEl.textContent = '₹' + parseFloat(cart.paid_amount).toFixed(2);
     }
     applySecurityDepositDisplay(cart);
     if (typeof refreshPaymentListFromOrder === 'function') {

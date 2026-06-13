@@ -114,6 +114,11 @@ class Items extends Model
         return $this->hasMany(ItemVariant::class, 'item_id');
     }
 
+    public function images(): HasMany
+    {
+        return $this->hasMany(ItemImage::class, 'item_id')->orderBy('sort_order');
+    }
+
     public function usesVariants(): bool
     {
         return (bool) $this->has_variants;
@@ -125,10 +130,45 @@ class Items extends Model
     public function effectiveStock(): int
     {
         if ($this->usesVariants()) {
+            if ($this->relationLoaded('variants')) {
+                return (int) $this->variants->sum('stock');
+            }
+
             return (int) $this->variants()->sum('stock');
         }
 
         return (int) $this->stock;
+    }
+
+    public function orderReservedQuantity(): int
+    {
+        return (int) ($this->reserved_qty ?? 0);
+    }
+
+    public function orderRentedQuantity(): int
+    {
+        return (int) ($this->rented_qty ?? 0);
+    }
+
+    public function orderCommittedQuantity(): int
+    {
+        return $this->orderReservedQuantity() + $this->orderRentedQuantity();
+    }
+
+    /**
+     * Units free to rent right now (inventory minus open order commitments).
+     */
+    public function rentableAvailableStock(): int
+    {
+        if ($this->usesVariants()) {
+            $variants = $this->relationLoaded('variants')
+                ? $this->variants
+                : $this->variants()->withOrderStockBreakdown()->ordered()->get();
+
+            return (int) $variants->sum(fn (ItemVariant $v) => $v->rentableAvailableStock());
+        }
+
+        return max(0, (int) $this->stock - $this->orderCommittedQuantity());
     }
 
     /**
@@ -152,6 +192,41 @@ class Items extends Model
     public function scopeAvailable($query)
     {
         return $query->where('is_available', true);
+    }
+
+    /**
+     * Reserved and rented quantities from open order lines (for list/detail stock breakdown).
+     */
+    public function scopeWithOrderStockBreakdown($query)
+    {
+        if ($query->getQuery()->columns === null) {
+            $query->select('items.*');
+        }
+
+        $reservedStatuses = OrderItem::reservedStatuses();
+        $rentedStatuses = OrderItem::rentedStatuses();
+
+        return $query
+            ->selectSub(
+                OrderItem::query()
+                    ->selectRaw('COALESCE(SUM(order_items.quantity), 0)')
+                    ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                    ->whereColumn('order_items.item_id', 'items.id')
+                    ->where('orders.status', '!=', 'cancelled')
+                    ->whereNotIn('order_items.item_status', ['cancelled', 'returned'])
+                    ->whereIn('order_items.item_status', $reservedStatuses),
+                'reserved_qty'
+            )
+            ->selectSub(
+                OrderItem::query()
+                    ->selectRaw('COALESCE(SUM(GREATEST(order_items.quantity - order_items.returned_qty, 0)), 0)')
+                    ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                    ->whereColumn('order_items.item_id', 'items.id')
+                    ->where('orders.status', '!=', 'cancelled')
+                    ->whereNotIn('order_items.item_status', ['cancelled', 'returned'])
+                    ->whereIn('order_items.item_status', $rentedStatuses),
+                'rented_qty'
+            );
     }
 
     public static function codeFromId(int $id): string

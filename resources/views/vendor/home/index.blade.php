@@ -4,12 +4,13 @@
 @section('page-title', __('vendor.home'))
 
 @php
-    $s = $dashboard['stats'];
+    $s = $dashboard['stats'] ?? [];
+    $attention = $dashboard['attention'] ?? ['pending_orders' => 0, 'outstanding_balance' => 0, 'orders_with_balance_due' => 0, 'out_on_rent' => 0];
     $ost = $dashboard['order_status_counts'] ?? [];
-    $rc = $dashboard['resource_counts'] ?? ['items' => 0, 'staff' => 0, 'customers' => 0];
+    $rc = $dashboard['resource_counts'] ?? ['items' => 0, 'available_items' => 0, 'categories' => 0, 'coupons' => 0, 'staff' => 0, 'customers' => 0];
     $log = $dashboard['logistics'] ?? ['outgoing_count' => 0, 'outgoing_orders' => [], 'return_count' => 0, 'return_orders' => []];
-    $recent = $dashboard['recent_activities'];
-    $popular = $dashboard['popular_items'];
+    $recent = $dashboard['recent_activities'] ?? [];
+    $popular = $dashboard['popular_items'] ?? [];
     $vendorName = Auth::user()->currentVendor()->name ?? 'Vendor';
 @endphp
 
@@ -101,7 +102,7 @@
                 <h3 class="min-w-0 truncate text-[10px] font-semibold uppercase leading-tight tracking-wide text-gray-500">{{ __('vendor.total_items') }}</h3>
             </div>
             <p class="text-lg font-bold leading-none tabular-nums text-gray-900 sm:text-xl">{{ (int) $s['total_items'] }}</p>
-            <p class="mt-0.5 truncate text-[10px] leading-tight text-gray-500">{{ (int) $s['active_items'] }} {{ __('vendor.active_listings') }}</p>
+            <p class="mt-0.5 truncate text-[10px] leading-tight text-gray-500">{{ (int) ($s['available_items'] ?? $s['active_items'] ?? 0) }} {{ __('vendor.available_listings') }}</p>
         </div>
         <div class="rounded-lg border border-gray-200/90 bg-white px-2 py-1.5 shadow-sm ring-1 ring-gray-100/80 sm:px-2.5 sm:py-2">
             <div class="mb-0.5 flex items-center gap-1.5">
@@ -133,6 +134,36 @@
             <p class="text-lg font-bold leading-none tabular-nums text-gray-900 sm:text-xl">{{ number_format((float) $s['average_rating'], 1) }}</p>
             <p class="mt-0.5 truncate text-[10px] leading-tight text-gray-500">{!! __('vendor.from_reviews', ['count' => '<span class="font-semibold text-gray-700">'.(int) $s['total_reviews'].'</span>']) !!}</p>
         </div>
+    </div>
+
+    {{-- Needs attention --}}
+    <div class="grid grid-cols-2 gap-1.5 sm:grid-cols-4 sm:gap-2">
+        <a href="{{ route('vendor.orders.index', ['status' => 'pending']) }}"
+           class="rounded-lg border border-amber-200/90 bg-amber-50/80 px-2.5 py-2 shadow-sm ring-1 ring-amber-100/80 transition hover:bg-amber-100/80 sm:px-3">
+            <p class="text-[10px] font-bold uppercase tracking-wide text-amber-800/90">{{ __('vendor.dashboard_pending_orders') }}</p>
+            <p class="mt-0.5 text-xl font-bold tabular-nums text-amber-950">{{ (int) ($attention['pending_orders'] ?? 0) }}</p>
+        </a>
+        <a href="{{ route('vendor.orders.index') }}"
+           class="rounded-lg border border-red-200/90 bg-red-50/70 px-2.5 py-2 shadow-sm ring-1 ring-red-100/80 transition hover:bg-red-100/70 sm:px-3">
+            <p class="text-[10px] font-bold uppercase tracking-wide text-red-800/90">{{ __('vendor.dashboard_outstanding_balance') }}</p>
+            <p class="mt-0.5 text-lg font-bold tabular-nums text-red-950 sm:text-xl">₹{{ number_format((int) round($attention['outstanding_balance'] ?? 0), 0, '.', ',') }}</p>
+            @if((int) ($attention['orders_with_balance_due'] ?? 0) > 0)
+                <p class="mt-0.5 text-[10px] text-red-700/80">{{ trans_choice('vendor.dashboard_orders_with_balance', (int) $attention['orders_with_balance_due'], ['count' => (int) $attention['orders_with_balance_due']]) }}</p>
+            @endif
+        </a>
+        <a href="{{ route('vendor.deliveries.index') }}"
+           class="rounded-lg border border-sky-200/90 bg-sky-50/70 px-2.5 py-2 shadow-sm ring-1 ring-sky-100/80 transition hover:bg-sky-100/70 sm:px-3">
+            <p class="text-[10px] font-bold uppercase tracking-wide text-sky-800/90">{{ __('vendor.dashboard_outgoing_short') }}</p>
+            <p class="mt-0.5 text-xl font-bold tabular-nums text-sky-950">{{ (int) ($log['outgoing_count'] ?? 0) }}</p>
+        </a>
+        <a href="{{ route('vendor.returns.index') }}"
+           class="rounded-lg border border-violet-200/90 bg-violet-50/70 px-2.5 py-2 shadow-sm ring-1 ring-violet-100/80 transition hover:bg-violet-100/70 sm:px-3">
+            <p class="text-[10px] font-bold uppercase tracking-wide text-violet-800/90">{{ __('vendor.dashboard_returns_due_short') }}</p>
+            <p class="mt-0.5 text-xl font-bold tabular-nums text-violet-950">{{ (int) ($log['return_count'] ?? 0) }}</p>
+            @if((int) ($attention['out_on_rent'] ?? 0) > 0)
+                <p class="mt-0.5 text-[10px] text-violet-700/80">{{ trans_choice('vendor.dashboard_out_on_rent_choice', (int) $attention['out_on_rent'], ['count' => (int) $attention['out_on_rent']]) }}</p>
+            @endif
+        </a>
     </div>
 
     {{-- Order status + Items / Staff / Customers (one row on sm+) --}}
@@ -196,6 +227,7 @@
                 <span class="inline-flex items-center rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800 ring-1 ring-teal-100">
                     @choice('vendor.dashboard_returns_choice', (int) $log['return_count'])
                 </span>
+                <a href="{{ route('vendor.deliveries.index') }}" wire:navigate class="text-[11px] font-semibold text-emerald-600 hover:text-emerald-700">{{ __('vendor.view_all') }}</a>
             </div>
         </div>
         <div class="grid gap-0 divide-y divide-gray-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
@@ -205,9 +237,9 @@
                     @forelse($log['outgoing_orders'] as $row)
                         @php $isDel = ($row['fulfillment_type'] ?? 'pickup') === 'delivery'; @endphp
                         <a href="{{ route('vendor.orders.show', $row['id']) }}"
-                           class="mb-1 flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 last:mb-0 hover:border-gray-100 hover:bg-gray-50/80 @if(! empty($row['is_handoff_today'])) ring-1 ring-emerald-200/80 bg-emerald-50/40 @elseif(! empty($row['is_handoff_tomorrow'])) ring-1 ring-emerald-200/60 bg-emerald-50/25 @endif">
+                           class="mb-1 flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 last:mb-0 hover:border-gray-100 hover:bg-gray-50/80 @if(! empty($row['is_highlight_today'])) ring-1 ring-emerald-200/80 bg-emerald-50/40 @elseif(! empty($row['is_highlight_tomorrow'])) ring-1 ring-emerald-200/60 bg-emerald-50/25 @endif">
                             <div class="min-w-0">
-                                <p class="truncate text-xs font-semibold text-gray-900">{{ $row['customer_name'] }}</p>
+                                <p class="truncate text-xs font-semibold text-gray-900">{{ $row['title_line'] ?? $row['customer_name'] }}</p>
                                 <p class="truncate text-[10px] leading-snug text-gray-500">
                                     <span class="text-gray-400">#{{ $row['order_number'] }}</span>
                                     <span class="mx-1 text-gray-300">·</span>
@@ -232,9 +264,9 @@
                 <div class="max-h-40 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
                     @forelse($log['return_orders'] as $row)
                         <a href="{{ route('vendor.orders.show', $row['id']) }}"
-                           class="mb-1 flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 last:mb-0 hover:border-gray-100 hover:bg-gray-50/80 @if(! empty($row['is_return_today'])) ring-1 ring-teal-200/80 bg-teal-50/40 @elseif(! empty($row['is_return_tomorrow'])) ring-1 ring-teal-200/50 bg-teal-50/25 @endif">
+                           class="mb-1 flex items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 last:mb-0 hover:border-gray-100 hover:bg-gray-50/80 @if(! empty($row['is_highlight_today'])) ring-1 ring-teal-200/80 bg-teal-50/40 @elseif(! empty($row['is_highlight_tomorrow'])) ring-1 ring-teal-200/50 bg-teal-50/25 @endif">
                             <div class="min-w-0">
-                                <p class="truncate text-xs font-semibold text-gray-900">{{ $row['customer_name'] }}</p>
+                                <p class="truncate text-xs font-semibold text-gray-900">{{ $row['title_line'] ?? $row['customer_name'] }}</p>
                                 <p class="truncate text-[10px] leading-snug text-gray-500">
                                     <span class="text-gray-400">#{{ $row['order_number'] }}</span>
                                     <span class="mx-1 text-gray-300">·</span>
@@ -287,7 +319,14 @@
                             </span>
                             <div class="min-w-0">
                                 <p class="truncate text-xs font-semibold text-gray-900">{{ $activity['customer_name'] }}</p>
-                                <p class="truncate text-[10px] text-gray-500">{{ __('vendor.total_items_count', ['count' => (int) $activity['items_count']]) }} · ₹{{ number_format((int) round($activity['total_amount']), 0, '.', ',') }}</p>
+                                <p class="truncate text-[10px] text-gray-500">
+                                    <span class="font-mono text-gray-400">#{{ $activity['order_number'] ?? '—' }}</span>
+                                    · {{ __('vendor.total_items_count', ['count' => (int) $activity['items_count']]) }}
+                                    · ₹{{ number_format((int) round($activity['total_amount']), 0, '.', ',') }}
+                                    @if(! empty($activity['balance_due']) && (float) $activity['balance_due'] > 0)
+                                        · <span class="font-semibold text-red-600">{{ __('vendor.balance_due') }} ₹{{ number_format((int) round($activity['balance_due']), 0, '.', ',') }}</span>
+                                    @endif
+                                </p>
                             </div>
                         </div>
                         <div class="flex shrink-0 flex-col items-end gap-0.5">

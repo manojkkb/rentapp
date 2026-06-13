@@ -24,8 +24,10 @@
 
 <div class="w-full" data-wizard-alpine-root>
     <form id="orderWizard_fulfillment_form"
-          @if(! ($livewireWizard ?? false)) action="{{ route('vendor.orders.create.fulfillment.store') }}" method="POST" @endif
+          @if(! ($livewireWizard ?? false)) action="{{ route('vendor.orders.create.fulfillment.store') }}" method="POST" @else onsubmit="event.preventDefault(); return false;" @endif
           class="space-y-4 rounded-xl border border-gray-200/90 bg-white p-3 shadow-sm sm:space-y-5 sm:p-4"
+          @submit.prevent="submitFulfillmentStep()"
+          @wizard-pickup-at-changed.window="pickupAt = $event.detail || ''; fulfillmentStepError = ''"
           x-data="{
               livewireWizard: @json($livewireWizard ?? false),
               fulfillment: @js($ft),
@@ -33,12 +35,7 @@
               pickupAt: @js(old('pickup_at', $wizard['pickup_at'] ?? '')),
               fulfillmentStepError: '',
               collectPayload() {
-                  if (window.__orderWizardPickupField) {
-                      window.__orderWizardPickupField.sync();
-                  }
-                  if (window.__orderWizardDeliveryField) {
-                      window.__orderWizardDeliveryField.sync();
-                  }
+                  window.dispatchEvent(new CustomEvent('sync-fulfillment-datetimes'));
                   return {
                       fulfillment_type: this.fulfillment,
                       delivery_address: this.deliveryAddress,
@@ -52,31 +49,32 @@
                       return (this.deliveryAddress || '').trim() !== '';
                   }
                   if (this.fulfillment === 'pickup') {
-                      return (this.pickupAt || '').trim() !== '';
+                      const hidden = document.getElementById('pickup_at')?.value || this.pickupAt || '';
+                      return hidden.trim() !== '';
                   }
                   return false;
               },
-              submitFulfillmentStep(ev) {
-                  if (window.__orderWizardPickupField) {
-                      window.__orderWizardPickupField.sync();
-                      const pickupHidden = document.getElementById('pickup_at');
-                      this.pickupAt = pickupHidden?.value || '';
-                  }
+              submitFulfillmentStep() {
+                  window.dispatchEvent(new CustomEvent('sync-fulfillment-datetimes'));
+                  this.pickupAt = document.getElementById('pickup_at')?.value || this.pickupAt || '';
                   if (!this.canContinue) {
-                      ev.preventDefault();
                       this.fulfillmentStepError = this.fulfillment === 'delivery'
                           ? @js(__('vendor.delivery_address_required'))
                           : @js(__('vendor.pickup_datetime_required'));
                       return;
                   }
                   this.fulfillmentStepError = '';
-                  if (this.livewireWizard) {
-                      ev.preventDefault();
-                      this.$wire.saveFulfillment(this.collectPayload());
+                  if (!this.livewireWizard) {
+                      this.$el.submit();
+                      return;
                   }
+                  if (!this.$wire?.saveFulfillment) {
+                      this.fulfillmentStepError = @js(__('vendor.order_wizard_session_expired'));
+                      return;
+                  }
+                  this.$wire.saveFulfillment(this.collectPayload());
               },
-          }"
-          @submit="submitFulfillmentStep($event)">
+          }">
         @if(! ($livewireWizard ?? false)) @csrf @endif
 
         <div>
@@ -84,12 +82,12 @@
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2">
                 <label class="flex h-10 cursor-pointer items-center gap-2.5 rounded-lg border px-3 transition [touch-action:manipulation] active:scale-[0.99] sm:h-11 sm:gap-3 sm:px-3.5"
                        :class="fulfillment === 'pickup' ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-500/25' : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'">
-                    <input type="radio" name="fulfillment_type" value="pickup" class="h-4 w-4 shrink-0 text-emerald-600 focus:ring-emerald-500 sm:h-[18px] sm:w-[18px]" x-model="fulfillment" @change="fulfillmentStepError = ''">
+                    <input type="radio" name="fulfillment_type" value="pickup" class="h-4 w-4 shrink-0 text-emerald-600 focus:ring-emerald-500 sm:h-[18px] sm:w-[18px]" x-model="fulfillment" @change="fulfillmentStepError = ''; $nextTick(() => window.dispatchEvent(new CustomEvent('remount-fulfillment-datetimes')))">
                     <span class="text-sm font-semibold text-gray-900 sm:text-base">{{ __('vendor.pickup') }}</span>
                 </label>
                 <label class="flex h-10 cursor-pointer items-center gap-2.5 rounded-lg border px-3 transition [touch-action:manipulation] active:scale-[0.99] sm:h-11 sm:gap-3 sm:px-3.5"
                        :class="fulfillment === 'delivery' ? 'border-emerald-500 bg-emerald-50/80 ring-1 ring-emerald-500/25' : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'">
-                    <input type="radio" name="fulfillment_type" value="delivery" class="h-4 w-4 shrink-0 text-emerald-600 focus:ring-emerald-500 sm:h-[18px] sm:w-[18px]" x-model="fulfillment" @change="fulfillmentStepError = ''">
+                    <input type="radio" name="fulfillment_type" value="delivery" class="h-4 w-4 shrink-0 text-emerald-600 focus:ring-emerald-500 sm:h-[18px] sm:w-[18px]" x-model="fulfillment" @change="fulfillmentStepError = ''; $nextTick(() => window.dispatchEvent(new CustomEvent('remount-fulfillment-datetimes')))">
                     <span class="text-sm font-semibold text-gray-900 sm:text-base">{{ __('vendor.delivery') }}</span>
                 </label>
             </div>
@@ -98,37 +96,20 @@
             @enderror
         </div>
 
-        <div x-show="fulfillment === 'pickup'" x-cloak class="space-y-2">
-            <label class="block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.pickup_datetime') }} <span class="text-red-500">*</span></label>
-            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <div>
-                    <div class="date-input-wrapper">
-                        <input type="text"
-                               id="pickup_date"
-                               value="{{ $pickupParts['date'] }}"
-                               data-prefill-time="{{ $pickupParts['time'] }}"
-                               readonly
-                               class="w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-emerald-500 @error('pickup_at') border-red-500 @enderror"
-                               placeholder="{{ __('vendor.select_date') }}">
-                        <span class="date-icon"><i class="fas fa-calendar-alt"></i></span>
-                    </div>
-                </div>
-                <div>
-                    <div class="time-input-wrapper">
-                        <select id="pickup_time_select"
-                                class="booking-time-select w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-emerald-500 @error('pickup_at') border-red-500 @enderror {{ $pickupParts['time'] === '' ? 'is-placeholder' : '' }}"
-                                data-placeholder="{{ __('vendor.select_time') }}">
-                            <option value="">{{ __('vendor.select_time') }}</option>
-                        </select>
-                        <span class="time-icon"><i class="fas fa-clock"></i></span>
-                    </div>
-                </div>
-            </div>
-            <input type="hidden" name="pickup_at" id="pickup_at" value="{{ old('pickup_at', $wizard['pickup_at'] ?? '') }}">
+        <div x-show="fulfillment === 'pickup'" x-cloak>
+            @include('vendor.orders.partials.order-fulfillment-datetime-fields', [
+                'prefix' => 'pickup',
+                'parts' => $pickupParts,
+                'hiddenValue' => old('pickup_at', $wizard['pickup_at'] ?? ''),
+                'restrictPastDates' => true,
+                'changeEvent' => 'wizard-pickup-at-changed',
+                'label' => __('vendor.pickup_datetime'),
+                'help' => __('vendor.pickup_datetime_help'),
+                'required' => true,
+            ])
             @error('pickup_at')
                 <p class="mt-0.5 text-xs text-red-600 sm:text-sm">{{ $message }}</p>
             @enderror
-            <p class="text-xs text-gray-500">{{ __('vendor.pickup_datetime_help') }}</p>
         </div>
 
         <div x-show="fulfillment === 'delivery'" x-cloak class="space-y-3">
@@ -144,38 +125,19 @@
                 @enderror
             </div>
 
-            <div class="space-y-2">
-                <label class="block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.delivery_datetime') }}</label>
-                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <div>
-                        <div class="date-input-wrapper">
-                            <input type="text"
-                                   id="delivery_date"
-                                   value="{{ $deliveryParts['date'] }}"
-                                   data-prefill-time="{{ $deliveryParts['time'] }}"
-                                   readonly
-                                   class="w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-emerald-500 @error('delivery_at') border-red-500 @enderror"
-                                   placeholder="{{ __('vendor.select_date') }}">
-                            <span class="date-icon"><i class="fas fa-calendar-alt"></i></span>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="time-input-wrapper">
-                            <select id="delivery_time_select"
-                                    class="booking-time-select w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-emerald-500 @error('delivery_at') border-red-500 @enderror {{ $deliveryParts['time'] === '' ? 'is-placeholder' : '' }}"
-                                    data-placeholder="{{ __('vendor.select_time') }}">
-                                <option value="">{{ __('vendor.select_time') }}</option>
-                            </select>
-                            <span class="time-icon"><i class="fas fa-clock"></i></span>
-                        </div>
-                    </div>
-                </div>
-                <input type="hidden" name="delivery_at" id="delivery_at" value="{{ old('delivery_at', $wizard['delivery_at'] ?? '') }}">
-                @error('delivery_at')
-                    <p class="mt-0.5 text-xs text-red-600 sm:text-sm">{{ $message }}</p>
-                @enderror
-                <p class="text-xs text-gray-500">{{ __('vendor.delivery_datetime_help') }}</p>
-            </div>
+            @include('vendor.orders.partials.order-fulfillment-datetime-fields', [
+                'prefix' => 'delivery',
+                'parts' => $deliveryParts,
+                'hiddenValue' => old('delivery_at', $wizard['delivery_at'] ?? ''),
+                'restrictPastDates' => true,
+                'changeEvent' => null,
+                'label' => __('vendor.delivery_datetime'),
+                'help' => __('vendor.delivery_datetime_help'),
+                'required' => false,
+            ])
+            @error('delivery_at')
+                <p class="mt-0.5 text-xs text-red-600 sm:text-sm">{{ $message }}</p>
+            @enderror
 
             <div>
                 <label class="mb-1 block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.delivery_charge') }}</label>
@@ -212,7 +174,8 @@
                    x-cloak
                    class="text-center text-xs font-medium text-red-600 sm:text-right sm:text-sm"
                    role="alert"></p>
-                <button type="submit"
+                <button type="button"
+                        @click="submitFulfillmentStep()"
                         wire:loading.attr="disabled"
                         wire:target="saveFulfillment"
                         :aria-disabled="!canContinue"

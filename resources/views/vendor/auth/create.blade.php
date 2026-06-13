@@ -265,5 +265,7 @@
             </div>
         </footer>
     </main>
+
+    @livewireScriptConfig
 </body>
 </html>

@@ -47,7 +47,11 @@
                                 {{ strtoupper(substr($member->name, 0, 1)) }}
                             </div>
                             <div class="ml-3">
-                                <p class="text-sm font-semibold text-gray-900">{{ $member->name }}</p>
+                                <a href="{{ route('vendor.staff.show', $vendorUser) }}"
+                                   @if($livewireList ?? false) wire:navigate @endif
+                                   class="text-sm font-semibold text-emerald-700 hover:text-emerald-900 hover:underline">
+                                    {{ $member->name }}
+                                </a>
                                 @if($vendorUser->is_owner)
                                     <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">
                                         <i class="fas fa-crown mr-1"></i>{{ __('vendor.owner') }}
@@ -139,6 +143,12 @@
                                              $el.style.left = (rect.right - 192) + 'px';
                                          }
                                      })">
+                                    <a href="{{ route('vendor.staff.show', $vendorUser) }}"
+                                       @if($livewireList ?? false) wire:navigate @endif
+                                       class="block px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
+                                        <i class="fas fa-eye w-5 text-gray-400 mr-3"></i>
+                                        {{ __('vendor.view_staff') }}
+                                    </a>
                                     <a href="{{ route('vendor.staff.edit', $vendorUser) }}"
                                        @if($livewireList ?? false) wire:navigate @endif
                                        class="block px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
@@ -189,7 +199,11 @@
                         {{ strtoupper(substr($member->name, 0, 1)) }}
                     </div>
                     <div class="ml-3 flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-gray-900 truncate">{{ $member->name }}</p>
+                        <a href="{{ route('vendor.staff.show', $vendorUser) }}"
+                           @if($livewireList ?? false) wire:navigate @endif
+                           class="block truncate text-sm font-semibold text-emerald-700 hover:underline">
+                            {{ $member->name }}
+                        </a>
                         <p class="text-xs text-gray-600">{{ $member->mobile }}</p>
                     </div>
                 </div>
@@ -207,6 +221,12 @@
                              x-transition
                              class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
                              style="display: none;">
+                            <a href="{{ route('vendor.staff.show', $vendorUser) }}"
+                               @if($livewireList ?? false) wire:navigate @endif
+                               class="block border-b border-gray-100 px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 active:bg-gray-100">
+                                <i class="fas fa-eye w-5 text-gray-400 mr-3"></i>
+                                {{ __('vendor.view_staff') }}
+                            </a>
                             <a href="{{ route('vendor.staff.edit', $vendorUser) }}"
                                @if($livewireList ?? false) wire:navigate @endif
                                class="block border-b border-gray-100 px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 active:bg-gray-100">
@@ -310,15 +330,11 @@
         </div>
         <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ __('vendor.no_staff_yet') }}</h3>
         <p class="text-gray-600 mb-6">{{ __('vendor.manage_team_members') }}</p>
-        <button type="button"
-                @if($livewireList ?? false)
-                    wire:click="openCreateModal"
-                @else
-                    @click="$dispatch('open-create-staff-modal')"
-                @endif
-                class="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white transition-colors hover:bg-emerald-700">
-            <i class="fas fa-plus mr-2"></i>
+        <a href="{{ route('vendor.staff.create') }}"
+           @if($livewireList ?? false) wire:navigate @endif
+           class="inline-flex min-h-[44px] items-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700">
+            <i class="fas fa-plus mr-2" aria-hidden="true"></i>
             {{ __('vendor.add_staff_member') }}
-        </button>
+        </a>
     </div>
 @endif

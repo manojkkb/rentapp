@@ -125,6 +125,21 @@ class Vendor extends Model
         return $this->hasMany(Subscription::class);
     }
 
+    public function storeSettings(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(VendorStoreSetting::class);
+    }
+
+    public function storePages(): HasMany
+    {
+        return $this->hasMany(VendorStorePage::class);
+    }
+
+    public function locations(): HasMany
+    {
+        return $this->hasMany(VendorLocation::class);
+    }
+
     /**
      * Get all reviews for the vendor.
      */

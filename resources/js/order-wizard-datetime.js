@@ -1,3 +1,5 @@
+import './lib/flatpickr';
+
 /**
  * Shared date/time helpers for the vendor order-create wizard.
  * Dates cannot be before today; times on today cannot be in the past.
@@ -162,12 +164,36 @@ export function flatpickrDateConfig(overrides = {}) {
         altInput: true,
         altFormat: 'j F Y',
         allowInput: false,
-        disableMobile: false,
+        // Keep Flatpickr UI on phones so the whole field opens the calendar (not a tiny native control).
+        disableMobile: true,
+        clickOpens: true,
         monthSelectorType: 'dropdown',
         animate: true,
         minDate: 'today',
         ...overrides,
     };
+}
+
+/** Open calendar when tapping anywhere on the date field wrapper (fixes mobile dead zones). */
+export function bindDateWrapperOpen(inputEl, picker) {
+    if (! inputEl || ! picker || typeof picker.open !== 'function') {
+        return;
+    }
+
+    const wrapper = inputEl.closest('.date-input-wrapper');
+    if (! wrapper || wrapper.dataset.dateTapBound === '1') {
+        return;
+    }
+
+    wrapper.dataset.dateTapBound = '1';
+    wrapper.classList.add('cursor-pointer');
+
+    wrapper.addEventListener('click', (e) => {
+        if (e.target.closest('.flatpickr-calendar')) {
+            return;
+        }
+        picker.open();
+    });
 }
 
 window.OrderWizardDateTime = {
@@ -180,4 +206,5 @@ window.OrderWizardDateTime = {
     buildTimeOptions,
     syncTimeSelectPlaceholderStyle,
     flatpickrDateConfig,
+    bindDateWrapperOpen,
 };

@@ -26,9 +26,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $docTitle }} — {{ $order->order_number }}</title>
     @unless($forPdf)
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    </style>
     @endunless
     <style>
         @if($forPdf)

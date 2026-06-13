@@ -292,5 +292,6 @@
         </div>
     </div>
 
+    @livewireScriptConfig
 </body>
 </html>

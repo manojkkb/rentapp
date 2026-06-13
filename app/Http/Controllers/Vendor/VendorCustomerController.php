@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Vendor\Concerns\RedirectsIfNumericRouteKey;
+use App\Models\Order;
 use App\Models\User;
 use App\Models\VendorCustomer;
 use Illuminate\Http\Request;
@@ -99,6 +100,47 @@ class VendorCustomerController extends Controller
     }
     
     /**
+     * Display customer profile and recent orders.
+     */
+    public function show(Request $request, VendorCustomer $customer)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor || $customer->vendor_id !== $vendor->id) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Unauthorized access']);
+        }
+
+        if ($redirect = $this->redirectIfNumericRouteKey($request, $customer, 'vendor.customers.show')) {
+            return $redirect;
+        }
+
+        $ordersQuery = Order::query()
+            ->where('vendor_id', $vendor->id)
+            ->where('customer_id', $customer->id);
+
+        $orderStats = [
+            'total' => (clone $ordersQuery)->count(),
+            'active' => (clone $ordersQuery)->whereIn('status', ['pending', 'confirmed'])->count(),
+            'completed' => (clone $ordersQuery)->where('status', 'completed')->count(),
+            'total_paid' => (float) (clone $ordersQuery)->sum('paid_amount'),
+        ];
+
+        $recentOrders = (clone $ordersQuery)
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        $statusMeta = [
+            'pending' => 'bg-amber-100 text-amber-800 ring-1 ring-amber-200/70',
+            'confirmed' => 'bg-teal-100 text-teal-800 ring-1 ring-teal-200/70',
+            'completed' => 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200/70',
+            'cancelled' => 'bg-rose-100 text-rose-800 ring-1 ring-rose-200/70',
+        ];
+
+        return view('vendor.customers.show', compact('customer', 'orderStats', 'recentOrders', 'statusMeta'));
+    }
+
+    /**
      * Show the form for editing a customer
      */
     public function edit(Request $request, VendorCustomer $customer)
@@ -153,8 +195,8 @@ class VendorCustomerController extends Controller
             'address' => $request->address,
         ]);
         
-        return redirect()->route('vendor.customers.index')
-            ->with('success', 'Customer updated successfully!');
+        return redirect()->route('vendor.customers.show', $customer)
+            ->with('success', __('vendor.customer_updated'));
     }
     
     /**

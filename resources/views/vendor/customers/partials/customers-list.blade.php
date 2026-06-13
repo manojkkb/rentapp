@@ -1,286 +1,185 @@
 @if($customers->count() > 0)
-    <!-- Desktop Table -->
-    <div class="hidden md:block overflow-x-auto">
-        <table class="w-full">
-            <thead class="bg-gradient-to-r from-emerald-50 to-emerald-100 border-b border-gray-200">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        {{ __('vendor.name') }}
-                    </th>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        {{ __('vendor.mobile') }}
-                    </th>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        {{ __('vendor.address') }}
-                    </th>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        {{ __('vendor.registered') }}
-                    </th>
-                    <th class="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        {{ __('vendor.status') }}
-                    </th>
-                    <th class="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        {{ __('vendor.actions') }}
-                    </th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-                @foreach($customers as $customer)
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <!-- Name -->
-                    <td class="px-6 py-4">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center flex-shrink-0">
-                                <span class="text-white font-bold text-sm">
-                                    {{ strtoupper(substr($customer->name, 0, 1)) }}
-                                </span>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-semibold text-gray-900">{{ $customer->name }}</p>
-                                <p class="text-xs text-gray-500">Added {{ $customer->created_at->diffForHumans() }}</p>
-                            </div>
-                        </div>
-                    </td>
-
-                    <!-- Mobile -->
-                    <td class="px-6 py-4">
-                        <div class="flex items-center">
-                            <i class="fas fa-phone text-emerald-500 text-xs mr-2"></i>
-                            <span class="text-sm text-gray-900">{{ $customer->mobile }}</span>
-                        </div>
-                    </td>
-
-                    <!-- Address -->
-                    <td class="px-6 py-4">
-                        <p class="text-sm text-gray-900 max-w-xs truncate">
-                            {{ $customer->address ?? 'N/A' }}
-                        </p>
-                    </td>
-
-                    <!-- Registered Status -->
-                    <td class="px-6 py-4">
-                        @if($customer->user_id)
-                            <span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700 rounded-full">
-                                <i class="fas fa-check-circle text-xs mr-1"></i>
-                                Yes
-                            </span>
-                        @else
-                            <span class="inline-flex items-center px-2.5 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded-full">
-                                <i class="fas fa-times-circle text-xs mr-1"></i>
-                                No
-                            </span>
-                        @endif
-                    </td>
-
-                    <!-- Active status -->
-                    <td class="px-6 py-4">
-                        @if($livewireList ?? false)
-                            <div class="inline-block" wire:key="customer-toggle-{{ $customer->id }}">
-                                <button type="button"
-                                        wire:click="toggleStatus({{ $customer->id }})"
-                                        wire:loading.attr="disabled"
-                                        wire:target="toggleStatus({{ $customer->id }})"
-                                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 {{ $customer->is_active ? 'bg-emerald-500' : 'bg-gray-300' }}"
-                                        title="{{ $customer->is_active ? __('vendor.click_to_deactivate') : __('vendor.click_to_activate') }}">
-                                    <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $customer->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
-                                </button>
-                                <div class="mt-1">
-                                    <span class="text-xs font-medium {{ $customer->is_active ? 'text-emerald-700' : 'text-gray-500' }}">
-                                        {{ $customer->is_active ? __('vendor.active') : __('vendor.inactive') }}
-                                    </span>
+    <div class="hidden overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-sm md:block">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-100 text-left text-sm">
+                <thead>
+                    <tr class="bg-gray-50/90 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                        <th class="px-5 py-4">{{ __('vendor.customer') }}</th>
+                        <th class="px-5 py-4">{{ __('vendor.mobile') }}</th>
+                        <th class="px-5 py-4">{{ __('vendor.address') }}</th>
+                        <th class="px-5 py-4">{{ __('vendor.registered') }}</th>
+                        <th class="px-5 py-4">{{ __('vendor.status') }}</th>
+                        <th class="px-5 py-4"><span class="sr-only">{{ __('vendor.actions') }}</span></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach($customers as $customer)
+                        @php $initial = strtoupper(substr($customer->name, 0, 1)); @endphp
+                        <tr class="hover:bg-emerald-50/35" @if($livewireList ?? false) wire:key="customer-{{ $customer->uuid }}" @endif>
+                            <td class="px-5 py-4 align-top">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 text-sm font-bold text-white">
+                                        {{ $initial }}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <a href="{{ route('vendor.customers.show', $customer) }}"
+                                           @if($livewireList ?? false) wire:navigate @endif
+                                           class="block truncate font-medium text-emerald-700 transition hover:text-emerald-900 hover:underline">
+                                            {{ $customer->name }}
+                                        </a>
+                                        <p class="mt-0.5 text-[11px] text-gray-500">{{ __('vendor.added_ago', ['time' => $customer->created_at->diffForHumans()]) }}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        @else
-                        <div class="inline-block" x-data="{ isActive: {{ $customer->is_active ? 'true' : 'false' }} }">
-                            <form action="{{ route('vendor.customers.toggle', $customer) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
-                                @csrf
-                                <button type="submit"
-                                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-                                        :class="isActive ? 'bg-emerald-500' : 'bg-gray-300'"
-                                        :title="isActive ? @json(__('vendor.click_to_deactivate')) : @json(__('vendor.click_to_activate'))">
-                                    <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                                          :class="isActive ? 'translate-x-6' : 'translate-x-1'"></span>
-                                </button>
-                            </form>
-                            <div class="mt-1">
-                                <span class="text-xs font-medium" :class="isActive ? 'text-emerald-700' : 'text-gray-500'" x-text="isActive ? @json(__('vendor.active')) : @json(__('vendor.inactive'))"></span>
-                            </div>
-                        </div>
-                        @endif
-                    </td>
-
-                    <!-- Actions -->
-                    <td class="px-6 py-4 text-right">
-                        <div class="relative inline-block" x-data="{ dropdownOpen: false }">
-                            <button @click="dropdownOpen = !dropdownOpen" 
-                                    class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                    type="button"
-                                    x-ref="dropdownButton">
-                                <i class="fas fa-ellipsis-vertical text-gray-600"></i>
-                            </button>
-                            
-                            <div x-show="dropdownOpen" 
-                                 @click.away="dropdownOpen = false"
-                                 x-transition:enter="transition ease-out duration-100"
-                                 x-transition:enter-start="opacity-0 scale-95"
-                                 x-transition:enter-end="opacity-100 scale-100"
-                                 x-transition:leave="transition ease-in duration-75"
-                                 x-transition:leave-start="opacity-100 scale-100"
-                                 x-transition:leave-end="opacity-0 scale-95"
-                                 class="fixed w-48 bg-white rounded-lg shadow-2xl border border-gray-200 py-1"
-                                 style="display: none; z-index: 9999;"
-                                 x-init="$watch('dropdownOpen', value => {
-                                     if(value) {
-                                         let rect = $refs.dropdownButton.getBoundingClientRect();
-                                         $el.style.top = rect.bottom + 5 + 'px';
-                                         $el.style.left = (rect.right - 192) + 'px';
-                                     }
-                                 })">
-                                <a href="{{ route('vendor.customers.edit', $customer) }}"
+                            </td>
+                            <td class="px-5 py-4 align-top">
+                                <a href="{{ route('vendor.customers.show', $customer) }}"
                                    @if($livewireList ?? false) wire:navigate @endif
-                                   class="block px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50">
-                                    <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
-                                    {{ __('vendor.edit') }}
+                                   class="font-medium tabular-nums text-gray-800 transition hover:text-emerald-700 hover:underline">
+                                    {{ $customer->mobile }}
                                 </a>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+                            </td>
+                            <td class="max-w-[12rem] px-5 py-4 align-top">
+                                <p class="truncate text-gray-700">{{ $customer->address ?: '—' }}</p>
+                            </td>
+                            <td class="px-5 py-4 align-top">
+                                @if($customer->user_id)
+                                    <span class="inline-flex rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-700 ring-1 ring-teal-100">{{ __('vendor.registered') }}</span>
+                                @else
+                                    <span class="text-xs text-gray-400">—</span>
+                                @endif
+                            </td>
+                            <td class="px-5 py-4 align-top">
+                                @if($livewireList ?? false)
+                                    <div wire:key="customer-toggle-{{ $customer->id }}">
+                                        <button type="button"
+                                                wire:click="toggleStatus({{ $customer->id }})"
+                                                wire:loading.attr="disabled"
+                                                wire:target="toggleStatus({{ $customer->id }})"
+                                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 {{ $customer->is_active ? 'bg-emerald-500' : 'bg-gray-300' }}"
+                                                title="{{ $customer->is_active ? __('vendor.click_to_deactivate') : __('vendor.click_to_activate') }}">
+                                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $customer->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                        </button>
+                                        <p class="mt-1 text-[11px] font-medium {{ $customer->is_active ? 'text-emerald-700' : 'text-gray-500' }}">
+                                            {{ $customer->is_active ? __('vendor.active') : __('vendor.inactive') }}
+                                        </p>
+                                    </div>
+                                @else
+                                    <div x-data="{ isActive: {{ $customer->is_active ? 'true' : 'false' }} }">
+                                        <form action="{{ route('vendor.customers.toggle', $customer) }}" method="POST" @submit.prevent="$el.submit(); isActive = !isActive">
+                                            @csrf
+                                            <button type="submit"
+                                                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                                                    :class="isActive ? 'bg-emerald-500' : 'bg-gray-300'">
+                                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                                                      :class="isActive ? 'translate-x-6' : 'translate-x-1'"></span>
+                                            </button>
+                                        </form>
+                                        <p class="mt-1 text-[11px] font-medium" :class="isActive ? 'text-emerald-700' : 'text-gray-500'" x-text="isActive ? @json(__('vendor.active')) : @json(__('vendor.inactive'))"></p>
+                                    </div>
+                                @endif
+                            </td>
+                            <td class="px-5 py-4 align-top">
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ route('vendor.customers.show', $customer) }}"
+                                       @if($livewireList ?? false) wire:navigate @endif
+                                       class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
+                                        {{ __('vendor.view_customer') }}
+                                    </a>
+                                    <a href="{{ route('vendor.customers.edit', $customer) }}"
+                                       @if($livewireList ?? false) wire:navigate @endif
+                                       class="inline-flex items-center rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                       title="{{ __('vendor.edit') }}">
+                                        <i class="fas fa-edit" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @if($customers->hasPages())
+            <div class="border-t border-gray-100 px-4 py-3">{{ $customers->links() }}</div>
+        @endif
     </div>
 
-    <!-- Mobile Cards -->
-    <div class="md:hidden divide-y divide-gray-200">
+    <div class="space-y-3 md:hidden">
         @foreach($customers as $customer)
-        <div class="p-4">
-            <!-- Customer Card -->
-            <div class="space-y-3">
-                <!-- Header -->
-                <div class="flex items-start justify-between">
-                    <div class="flex items-center space-x-3 flex-1 min-w-0">
-                        <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center flex-shrink-0">
-                            <span class="text-white font-bold text-lg">
-                                {{ strtoupper(substr($customer->name, 0, 1)) }}
-                            </span>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <h3 class="text-base font-semibold text-gray-900 truncate">
-                                {{ $customer->name }}
-                            </h3>
-                            <p class="text-xs text-gray-500 flex items-center mt-0.5">
-                                <i class="fas fa-phone text-emerald-500 text-xs mr-1.5"></i>
-                                {{ $customer->mobile }}
-                            </p>
-                        </div>
+            @php $initial = strtoupper(substr($customer->name, 0, 1)); @endphp
+            <article class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+                     @if($livewireList ?? false) wire:key="customer-m-{{ $customer->uuid }}" @endif>
+                <div class="flex items-start gap-3 border-b border-gray-100 p-4">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-base font-bold text-white">
+                        {{ $initial }}
                     </div>
-                    
-                    <!-- 3-Dot Menu -->
-                    <div class="relative ml-2 flex-shrink-0" x-data="{ mobileDropdownOpen: false }">
-                        <button @click="mobileDropdownOpen = !mobileDropdownOpen" 
-                                class="p-2 hover:bg-gray-100 rounded-lg transition-colors active:bg-gray-200"
-                                type="button">
-                            <i class="fas fa-ellipsis-vertical text-gray-600 text-lg"></i>
+                    <div class="min-w-0 flex-1">
+                        <a href="{{ route('vendor.customers.show', $customer) }}"
+                           @if($livewireList ?? false) wire:navigate @endif
+                           class="block truncate text-sm font-semibold text-emerald-700 hover:underline">
+                            {{ $customer->name }}
+                        </a>
+                        <a href="{{ route('vendor.customers.show', $customer) }}"
+                           @if($livewireList ?? false) wire:navigate @endif
+                           class="mt-0.5 block text-xs tabular-nums text-gray-600 hover:text-emerald-700 hover:underline">
+                            {{ $customer->mobile }}
+                        </a>
+                        @if($customer->address)
+                            <p class="mt-1 line-clamp-2 text-xs text-gray-500">{{ $customer->address }}</p>
+                        @endif
+                    </div>
+                    @if($livewireList ?? false)
+                        <button type="button"
+                                wire:click="toggleStatus({{ $customer->id }})"
+                                wire:loading.attr="disabled"
+                                wire:target="toggleStatus({{ $customer->id }})"
+                                class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full {{ $customer->is_active ? 'bg-emerald-500' : 'bg-gray-300' }}">
+                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $customer->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
                         </button>
-                        
-                        <div x-show="mobileDropdownOpen" 
-                             @click.away="mobileDropdownOpen = false"
-                             x-transition:enter="transition ease-out duration-200"
-                             x-transition:enter-start="opacity-0 scale-95"
-                             x-transition:enter-end="opacity-100 scale-100"
-                             x-transition:leave="transition ease-in duration-100"
-                             x-transition:leave-start="opacity-100 scale-100"
-                             x-transition:leave-end="opacity-0 scale-95"
-                             class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
-                             style="display: none;">
-                            <a href="{{ route('vendor.customers.edit', $customer) }}"
-                               @if($livewireList ?? false) wire:navigate @endif
-                               class="block px-4 py-3 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50 active:bg-gray-100">
-                                <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>
-                                {{ __('vendor.edit') }}
-                            </a>
-                            @if($livewireList ?? false)
-                                <button type="button"
-                                        wire:click="toggleStatus({{ $customer->id }})"
-                                        wire:loading.attr="disabled"
-                                        wire:target="toggleStatus({{ $customer->id }})"
-                                        class="block w-full border-t border-gray-100 px-4 py-3 text-left text-sm transition-colors {{ $customer->is_active ? 'text-orange-700 hover:bg-orange-50 active:bg-orange-100' : 'text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100' }}">
-                                    <i class="fas {{ $customer->is_active ? 'fa-ban' : 'fa-check-circle' }} mr-3 w-5" aria-hidden="true"></i>
-                                    {{ $customer->is_active ? __('vendor.deactivate') : __('vendor.activate') }}
-                                </button>
-                            @else
-                            <form action="{{ route('vendor.customers.toggle', $customer) }}" method="POST" class="border-t border-gray-100">
-                                @csrf
-                                <button type="submit"
-                                        class="w-full text-left block px-4 py-3 text-sm transition-colors {{ $customer->is_active ? 'text-orange-700 hover:bg-orange-50 active:bg-orange-100' : 'text-emerald-700 hover:bg-emerald-50 active:bg-emerald-100' }}">
-                                    <i class="fas {{ $customer->is_active ? 'fa-ban' : 'fa-check-circle' }} w-5 mr-3"></i>
-                                    {{ $customer->is_active ? __('vendor.deactivate') : __('vendor.activate') }}
-                                </button>
-                            </form>
-                            @endif
-                        </div>
-                    </div>
+                    @endif
                 </div>
-
-                <!-- Details -->
-                @if($customer->address)
-                <div class="bg-gray-50 rounded-lg px-3 py-2">
-                    <p class="text-xs font-medium text-gray-500 mb-1">Address</p>
-                    <p class="text-sm text-gray-900">{{ $customer->address }}</p>
-                </div>
-                @endif
-
-                <!-- Footer Info -->
-                <div class="flex items-center justify-between gap-2 text-xs text-gray-500">
-                    <span>
-                        <i class="fas fa-clock mr-1"></i>
-                        Added {{ $customer->created_at->diffForHumans() }}
-                    </span>
-                    <div class="flex items-center gap-2">
-                        @if($customer->is_active)
-                            <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                {{ __('vendor.active') }}
-                            </span>
-                        @else
-                            <span class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">
-                                {{ __('vendor.inactive') }}
-                            </span>
-                        @endif
+                <div class="flex items-center justify-between gap-2 px-4 py-3">
+                    <div class="flex flex-wrap gap-1.5">
+                        <span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 {{ $customer->is_active ? 'bg-emerald-50 text-emerald-700 ring-emerald-100' : 'bg-gray-50 text-gray-600 ring-gray-100' }}">
+                            {{ $customer->is_active ? __('vendor.active') : __('vendor.inactive') }}
+                        </span>
                         @if($customer->user_id)
-                            <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                <i class="fas fa-check-circle mr-1 text-xs"></i>
-                                {{ __('vendor.registered') }}
-                            </span>
+                            <span class="inline-flex rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700 ring-1 ring-teal-100">{{ __('vendor.registered') }}</span>
                         @endif
                     </div>
+                    <a href="{{ route('vendor.customers.show', $customer) }}"
+                       @if($livewireList ?? false) wire:navigate @endif
+                       class="text-xs font-semibold text-emerald-700 hover:underline">
+                        {{ __('vendor.view_customer') }} →
+                    </a>
                 </div>
-            </div>
-        </div>
+            </article>
         @endforeach
+        @if($customers->hasPages())
+            <div class="pt-1">{{ $customers->links() }}</div>
+        @endif
     </div>
-
-    <!-- Pagination -->
-    @if($customers->hasPages())
-        <div class="px-6 py-4 border-t border-gray-200">
-            {{ $customers->links() }}
-        </div>
-    @endif
 @else
-    <!-- Empty State -->
-    <div class="text-center py-12">
-        <i class="fas fa-user-friends text-gray-300 text-5xl mb-4"></i>
-        <h3 class="text-lg font-semibold text-gray-900 mb-2">No Customers Yet</h3>
-        <p class="text-sm text-gray-500 mb-6">Start adding customers to your database</p>
+    <div class="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-14 text-center shadow-sm">
+        <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+            <i class="fas fa-user-friends text-2xl" aria-hidden="true"></i>
+        </div>
+        <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.no_customers_yet') }}</h3>
+        <p class="mx-auto mt-2 max-w-md text-sm text-gray-600">
+            @if(($search ?? '') !== '')
+                {{ __('vendor.customers_empty_search') }}
+            @else
+                {{ __('vendor.customers_page_subtitle') }}
+            @endif
+        </p>
         <button type="button"
                 @if($livewireList ?? false)
                     wire:click="openCreateModal"
                 @else
                     @click="$dispatch('open-create-customer-modal')"
                 @endif
-                class="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white transition-colors hover:bg-emerald-700">
-            <i class="fas fa-plus mr-2"></i>
-            Add Your First Customer
+                class="mt-6 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">
+            <i class="fas fa-plus text-xs" aria-hidden="true"></i>
+            {{ __('vendor.add_customer') }}
         </button>
     </div>
 @endif

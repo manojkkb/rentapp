@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Vendor\Concerns\RedirectsIfNumericRouteKey;
+use App\Models\CategoryActivity;
+use App\Models\ItemActivity;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Models\VendorRole;
 use App\Models\VendorUser;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -153,6 +157,32 @@ class StaffController extends Controller
             return back()->withInput()
                 ->withErrors(['error' => __('vendor.staff_create_failed', ['error' => $e->getMessage()])]);
         }
+    }
+
+    public function show(Request $request, VendorUser $staff)
+    {
+        $vendor = Auth::user()->currentVendor();
+
+        if (! $vendor) {
+            return redirect()->route('vendor.select')->withErrors(['error' => 'Please select a vendor']);
+        }
+
+        $vendorUser = $this->authorizeStaff($vendor, $staff);
+
+        if ($redirect = $this->redirectIfNumericRouteKey($request, $vendorUser, 'vendor.staff.show')) {
+            return $redirect;
+        }
+
+        $staffUser = User::findOrFail($vendorUser->user_id);
+        $activities = $this->staffActivities($vendor, $vendorUser);
+        $activityStats = [
+            'total' => $activities->count(),
+            'logins' => $activities->where('type', 'session')->count(),
+            'items' => $activities->where('type', 'item')->count(),
+            'categories' => $activities->where('type', 'category')->count(),
+        ];
+
+        return view('vendor.staff.show', compact('vendor', 'vendorUser', 'staffUser', 'activities', 'activityStats'));
     }
 
     public function edit(Request $request, VendorUser $staff)
@@ -322,5 +352,117 @@ class StaffController extends Controller
             'is_active' => $isActive,
             'permissions' => json_encode([]),
         ];
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function staffActivities(Vendor $vendor, VendorUser $vendorUser, int $limit = 100): Collection
+    {
+        $userId = $vendorUser->user_id;
+        $activities = collect();
+
+        $activities->push([
+            'type' => 'membership',
+            'action' => 'joined',
+            'label' => __('vendor.staff_activity_joined'),
+            'description' => __('vendor.staff_activity_joined_desc'),
+            'meta' => null,
+            'url' => null,
+            'icon' => 'fa-user-plus',
+            'tone' => 'emerald',
+            'created_at' => $vendorUser->created_at,
+        ]);
+
+        $sessions = DB::table('sessions')
+            ->where('user_id', $userId)
+            ->orderByDesc('last_activity')
+            ->limit(30)
+            ->get();
+
+        foreach ($sessions as $session) {
+            $activities->push([
+                'type' => 'session',
+                'action' => 'login',
+                'label' => __('vendor.staff_activity_login'),
+                'description' => $session->ip_address
+                    ? __('vendor.staff_activity_login_from', ['ip' => $session->ip_address])
+                    : __('vendor.staff_activity_login_desc'),
+                'meta' => $this->shortUserAgent($session->user_agent ?? null),
+                'url' => null,
+                'icon' => 'fa-right-to-bracket',
+                'tone' => 'teal',
+                'created_at' => Carbon::createFromTimestamp((int) $session->last_activity),
+            ]);
+        }
+
+        ItemActivity::query()
+            ->where('user_id', $userId)
+            ->whereHas('item', fn ($q) => $q->where('vendor_id', $vendor->id))
+            ->with(['item' => fn ($q) => $q->select('id', 'uuid', 'name', 'vendor_id')])
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->each(function (ItemActivity $activity) use ($activities) {
+                $activities->push([
+                    'type' => 'item',
+                    'action' => $activity->action,
+                    'label' => $this->staffActivityLabel('item', $activity->action),
+                    'description' => $activity->item?->name ?? '—',
+                    'meta' => null,
+                    'url' => $activity->item ? route('vendor.items.show', $activity->item) : null,
+                    'icon' => 'fa-box',
+                    'tone' => 'blue',
+                    'created_at' => $activity->created_at,
+                ]);
+            });
+
+        CategoryActivity::query()
+            ->where('user_id', $userId)
+            ->whereHas('category', fn ($q) => $q->where('vendor_id', $vendor->id))
+            ->with(['category' => fn ($q) => $q->select('id', 'uuid', 'name', 'vendor_id')])
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get()
+            ->each(function (CategoryActivity $activity) use ($activities) {
+                $activities->push([
+                    'type' => 'category',
+                    'action' => $activity->action,
+                    'label' => $this->staffActivityLabel('category', $activity->action),
+                    'description' => $activity->category?->name ?? '—',
+                    'meta' => null,
+                    'url' => $activity->category ? route('vendor.categories.show', $activity->category) : null,
+                    'icon' => 'fa-tag',
+                    'tone' => 'amber',
+                    'created_at' => $activity->created_at,
+                ]);
+            });
+
+        return $activities
+            ->filter(fn (array $row) => $row['created_at'] !== null)
+            ->sortByDesc(fn (array $row) => $row['created_at'])
+            ->take($limit)
+            ->values();
+    }
+
+    private function staffActivityLabel(string $type, string $action): string
+    {
+        $key = "vendor.staff_activity_{$type}_{$action}";
+        $translated = __($key);
+
+        return $translated !== $key ? $translated : ucfirst(str_replace('_', ' ', $action));
+    }
+
+    private function shortUserAgent(?string $userAgent): ?string
+    {
+        if (! $userAgent) {
+            return null;
+        }
+
+        if (strlen($userAgent) <= 72) {
+            return $userAgent;
+        }
+
+        return substr($userAgent, 0, 69).'…';
     }
 }

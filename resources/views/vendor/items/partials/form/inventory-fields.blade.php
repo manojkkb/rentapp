@@ -13,7 +13,7 @@
     @unless(!empty($compact))
         <p class="mb-3 text-xs font-medium leading-snug text-gray-600">{{ __('vendor.item_stock_buckets_hint') }}</p>
     @endunless
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
         <div>
             <label class="{{ $ilabel }}">{{ __('vendor.stock_quantity') }} <span class="text-red-500">*</span></label>
             <p class="{{ $ihint }}">{{ __('vendor.field_hint_stock') }}</p>
@@ -38,18 +38,6 @@
                    @if(!empty($variantAware)) :disabled="hasVariants" @endif>
             @error('maintenance_stock')<p class="{{ $ierror }}">{{ $message }}</p>@enderror
         </div>
-    </div>
-    <div class="mt-3 rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
-        <label class="flex cursor-pointer items-start gap-3">
-            <input type="checkbox" name="manage_stock" value="1"
-                   class="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                   @checked(filter_var(old('manage_stock', $item?->manage_stock ?? true), FILTER_VALIDATE_BOOLEAN))
-                   @if(!empty($variantAware)) :disabled="hasVariants" @endif>
-            <span>
-                <span class="block text-sm font-medium text-gray-800">{{ __('vendor.track_stock_quantity') }}</span>
-                <span class="{{ $ihint }} mt-0.5">{{ __('vendor.field_hint_manage_stock') }}</span>
-            </span>
-        </label>
     </div>
     @if(!empty($variantAware))
         <p x-show="hasVariants" x-cloak class="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/80 px-3.5 py-2.5 text-xs leading-snug text-emerald-900">

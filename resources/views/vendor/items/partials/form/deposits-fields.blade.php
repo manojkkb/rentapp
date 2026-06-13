@@ -9,7 +9,7 @@
     };
 @endphp
 
-<div class="{{ $igrid2 ?? 'grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3' }}">
+<div class="{{ $igrid2 ?? 'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3' }}">
     <div>
         <label class="{{ $ilabel }}">{{ __('vendor.security_deposit') }} <span class="text-red-500">*</span></label>
         <p class="{{ $ihint }}">{{ __('vendor.field_hint_security_deposit') }}</p>

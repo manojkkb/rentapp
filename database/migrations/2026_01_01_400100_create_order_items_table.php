@@ -12,7 +12,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('order_id')->constrained()->cascadeOnDelete();
             $table->foreignId('item_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('item_variant_id')->nullable()->constrained('item_variants')->nullOnDelete();
             $table->string('item_name');
+            $table->string('variant_label')->nullable();
             $table->decimal('price', 12, 2);
             $table->unsignedInteger('quantity')->default(1);
             $table->string('rental_period', 32)->nullable();
@@ -27,7 +29,6 @@ return new class extends Migration
             $table->unsignedInteger('returned_qty')->default(0);
             $table->unsignedInteger('damaged_qty')->default(0);
             $table->unsignedInteger('lost_qty')->default(0);
-            $table->string('rent_type', 32)->default('per_day');
             $table->decimal('security_deposit', 12, 2)->default(0);
             $table->decimal('subtotal', 12, 2)->default(0);
             $table->decimal('discount_amount', 12, 2)->default(0);
@@ -47,6 +48,7 @@ return new class extends Migration
 
             $table->index(['order_id', 'item_id']);
             $table->index(['item_id', 'created_at']);
+            $table->index(['item_variant_id', 'created_at']);
             $table->index(['order_id', 'item_status']);
         });
     }

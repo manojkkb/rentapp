@@ -41,7 +41,6 @@ class OrderItem extends Model
         'damaged_qty',
         'lost_qty',
         'rental_period',
-        'rent_type',
         'billing_units',
         'start_at',
         'end_at',
@@ -125,7 +124,6 @@ class OrderItem extends Model
         $tp = $this->lineSubtotal();
         $this->total_price = $tp;
         $this->subtotal = $tp;
-        $this->rent_type = $this->rental_period ?: 'per_day';
         $this->final_amount = round(
             (float) $tp
                 - (float) ($this->discount_amount ?? 0)
@@ -163,5 +161,95 @@ class OrderItem extends Model
     public function usesVariant(): bool
     {
         return $this->item_variant_id !== null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function reservedStatuses(): array
+    {
+        return ['reserved', 'confirmed'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function rentedStatuses(): array
+    {
+        return ['picked_up', 'in_use', 'return_requested', 'partially_returned'];
+    }
+
+    public function activeOutQuantity(): int
+    {
+        return max(0, (int) $this->quantity - (int) $this->returned_qty);
+    }
+
+    /**
+     * Derive item_status from order status and delivery/return timestamps.
+     */
+    public function syncItemStatusFromRentalState(?Order $order = null): void
+    {
+        if (in_array($this->item_status, ['damaged', 'lost'], true)) {
+            return;
+        }
+
+        $order ??= $this->relationLoaded('order') ? $this->order : null;
+        if (! $order && $this->order_id) {
+            $order = $this->order()->first(['id', 'status']);
+        }
+
+        if ($order && $order->status === 'cancelled') {
+            $this->item_status = 'cancelled';
+
+            return;
+        }
+
+        $qty = max(1, (int) $this->quantity);
+        $returnedQty = min($qty, max(0, (int) ($this->returned_qty ?? 0)));
+
+        if ($this->returned_at !== null || $returnedQty >= $qty) {
+            $this->item_status = 'returned';
+
+            return;
+        }
+
+        if ($returnedQty > 0) {
+            $this->item_status = 'partially_returned';
+
+            return;
+        }
+
+        if ($this->delivered_at !== null) {
+            $this->item_status = 'in_use';
+
+            return;
+        }
+
+        if ($order && $order->status === 'confirmed') {
+            $this->item_status = 'confirmed';
+
+            return;
+        }
+
+        $this->item_status = 'reserved';
+    }
+
+    public static function syncAllStatusesForOrder(Order $order): void
+    {
+        $order->loadMissing('items');
+
+        foreach ($order->items as $line) {
+            $line->syncItemStatusFromRentalState($order);
+            if ($line->isDirty('item_status')) {
+                $line->saveQuietly();
+            }
+        }
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (OrderItem $item) {
+            $item->syncItemStatusFromRentalState();
+        });
     }
 }

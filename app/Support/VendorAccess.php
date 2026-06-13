@@ -132,7 +132,7 @@ class VendorAccess
 
         if (str_starts_with($routeName, 'vendor.staff.')) {
             return match ($routeName) {
-                'vendor.staff.index' => 'staff.view',
+                'vendor.staff.index', 'vendor.staff.show' => 'staff.view',
                 'vendor.staff.create', 'vendor.staff.store' => 'staff.invite',
                 'vendor.staff.destroy' => 'staff.remove',
                 default => 'staff.edit',
@@ -186,7 +186,7 @@ class VendorAccess
 
         if (str_starts_with($routeName, 'vendor.customers.')) {
             return match ($routeName) {
-                'vendor.customers.index' => 'customers.view',
+                'vendor.customers.index', 'vendor.customers.show' => 'customers.view',
                 default => 'customers.manage',
             };
         }
@@ -201,6 +201,14 @@ class VendorAccess
 
         if (str_starts_with($routeName, 'vendor.calendar')) {
             return 'calendar.view';
+        }
+
+        if (str_starts_with($routeName, 'vendor.store.')) {
+            if (preg_match('/\.(update|store|destroy|default)$/', $routeName)) {
+                return 'settings.edit';
+            }
+
+            return 'settings.view';
         }
 
         if (str_starts_with($routeName, 'vendor.subscription.')) {

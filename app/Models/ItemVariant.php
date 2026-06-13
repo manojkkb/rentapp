@@ -83,6 +83,58 @@ class ItemVariant extends Model
         return $query->orderBy('sort_order')->orderBy('id');
     }
 
+    /**
+     * Reserved and rented quantities from open order lines for this variant.
+     */
+    public function scopeWithOrderStockBreakdown($query)
+    {
+        if ($query->getQuery()->columns === null) {
+            $query->select('item_variants.*');
+        }
+
+        $reservedStatuses = OrderItem::reservedStatuses();
+        $rentedStatuses = OrderItem::rentedStatuses();
+
+        return $query
+            ->selectSub(
+                OrderItem::query()
+                    ->selectRaw('COALESCE(SUM(order_items.quantity), 0)')
+                    ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                    ->whereColumn('order_items.item_variant_id', 'item_variants.id')
+                    ->where('orders.status', '!=', 'cancelled')
+                    ->whereNotIn('order_items.item_status', ['cancelled', 'returned'])
+                    ->whereIn('order_items.item_status', $reservedStatuses),
+                'reserved_qty'
+            )
+            ->selectSub(
+                OrderItem::query()
+                    ->selectRaw('COALESCE(SUM(GREATEST(order_items.quantity - order_items.returned_qty, 0)), 0)')
+                    ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                    ->whereColumn('order_items.item_variant_id', 'item_variants.id')
+                    ->where('orders.status', '!=', 'cancelled')
+                    ->whereNotIn('order_items.item_status', ['cancelled', 'returned'])
+                    ->whereIn('order_items.item_status', $rentedStatuses),
+                'rented_qty'
+            );
+    }
+
+    public function orderCommittedQuantity(): int
+    {
+        return (int) ($this->reserved_qty ?? 0) + (int) ($this->rented_qty ?? 0);
+    }
+
+    /**
+     * Units free to rent right now for this variant.
+     */
+    public function rentableAvailableStock(): int
+    {
+        if (! (bool) ($this->manage_stock ?? false)) {
+            return (int) $this->stock;
+        }
+
+        return max(0, (int) $this->stock - $this->orderCommittedQuantity());
+    }
+
     public static function codeFromId(int $id): string
     {
         return 'VRN-'.str_pad((string) $id, 6, '0', STR_PAD_LEFT);

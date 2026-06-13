@@ -96,7 +96,7 @@
         </div>
         <div class="mt-1.5">
             <label class="flex cursor-pointer items-center gap-1.5">
-                <input type="checkbox" name="manage_stock" value="1" class="h-3.5 w-3.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" @checked(filter_var(old('manage_stock', $item?->manage_stock ?? true), FILTER_VALIDATE_BOOLEAN)) @if(!empty($variantAware)) :disabled="hasVariants" @endif>
+                <input type="checkbox" name="manage_stock" value="1" class="h-3.5 w-3.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" @checked(filter_var(old('manage_stock', $item?->manage_stock ?? true), FILTER_VALIDATE_BOOLEAN))>
                 <span class="text-xs font-medium text-gray-700">{{ __('vendor.track_stock_quantity') }}</span>
             </label>
             <p class="{{ $fh }} mt-0.5 mb-0 pl-5">{{ __('vendor.field_hint_manage_stock') }}</p>

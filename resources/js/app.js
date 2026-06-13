@@ -1,11 +1,18 @@
 import './bootstrap';
+import './lib/flatpickr';
 
 // Category image square crop (Croppie) — bundled here so it always loads with the vendor app
 import './category-image-crop';
 import './vendor/item-variant-form';
 import './order-wizard-datetime';
+import './order-booking-dates';
+import './order-fulfillment-datetime';
 import './order-wizard-step-one';
 import './order-wizard-items';
+import './order-wizard-summary';
+import './order-wizard-payment';
+import './vendor-store-locations';
+import './vendor-rich-text';
 
 import { Livewire, Alpine } from '../../vendor/livewire/livewire/dist/livewire.esm';
 
@@ -82,7 +89,10 @@ Alpine.data('vendorDashboardPwaInstall', () => ({
     },
 }));
 
-Livewire.start();
+if (!window.__rentkiaLivewireStarted) {
+    window.__rentkiaLivewireStarted = true;
+    Livewire.start();
+}
 
 (function initVendorNavigateProgress() {
     const wrap = () => document.getElementById('vendor-nav-progress');

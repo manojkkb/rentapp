@@ -8,11 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('items', function (Blueprint $table) {
-            $table->boolean('has_variants')->default(false)->after('is_active');
-            $table->index(['vendor_id', 'has_variants']);
-        });
-
         Schema::create('item_variants', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
@@ -40,33 +35,10 @@ return new class extends Migration
             $table->index(['item_id', 'is_active', 'is_available']);
             $table->index(['item_id', 'sort_order']);
         });
-
-        Schema::table('order_items', function (Blueprint $table) {
-            $table->foreignId('item_variant_id')
-                ->nullable()
-                ->after('item_id')
-                ->constrained('item_variants')
-                ->nullOnDelete();
-
-            $table->string('variant_label')->nullable()->after('item_name');
-
-            $table->index(['item_variant_id', 'created_at']);
-        });
     }
 
     public function down(): void
     {
-        Schema::table('order_items', function (Blueprint $table) {
-            $table->dropForeign(['item_variant_id']);
-            $table->dropIndex(['item_variant_id', 'created_at']);
-            $table->dropColumn(['item_variant_id', 'variant_label']);
-        });
-
         Schema::dropIfExists('item_variants');
-
-        Schema::table('items', function (Blueprint $table) {
-            $table->dropIndex(['vendor_id', 'has_variants']);
-            $table->dropColumn('has_variants');
-        });
     }
 };

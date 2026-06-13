@@ -23,8 +23,13 @@
         'quickStoreUrl' => route('vendor.items.quick-store'),
         'categoryStoreUrl' => route('vendor.categories.store'),
         'categories' => isset($categories) ? $categories->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values() : [],
+        'bookingWindow' => (! empty($wizard['start_time']) && ! empty($wizard['end_time']))
+            ? ['start' => $wizard['start_time'], 'end' => $wizard['end_time']]
+            : null,
+        'stockBufferMinutes' => \App\Services\RentalStockAvailability::BUFFER_MINUTES,
         'i18n' => [
             'stock' => __('vendor.stock'),
+            'available_stock' => __('vendor.available_stock'),
             'select_at_least_one_item' => __('vendor.order_wizard_select_at_least_one_item'),
             'billing_units' => __('vendor.billing_units'),
             'enter_quantity' => __('vendor.enter_quantity'),
@@ -171,9 +176,7 @@
                                         <p class="truncate text-sm font-semibold leading-snug text-gray-900 sm:text-[15px]" x-text="item.name"></p>
                                         <span x-show="itemHasVariants(item)" x-cloak class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-200/60">{{ __('vendor.item_has_variants_badge') }}</span>
                                     </div>
-                                    <p class="mt-0.5 text-[11px] text-gray-500 sm:text-xs" x-show="item.manage_stock && !itemHasVariants(item) && !isSimpleSelected(item.id)">
-                                        {{ __('vendor.stock') }}: <span x-text="item.stock"></span>
-                                    </p>
+                                    <p class="mt-0.5 text-[11px] font-medium text-blue-600 tabular-nums sm:text-xs" x-show="item.manage_stock && (!itemHasVariants(item) || !hasVariantLines(item.id))" x-text="itemStockLabel(item)"></p>
                                     <p class="mt-0.5 text-[11px] text-gray-500 sm:text-xs" x-show="itemHasVariants(item) && !hasVariantLines(item.id)">
                                         <span x-text="(item.variants || []).length"></span> {{ __('vendor.order_wizard_variants_available') }}
                                     </p>
@@ -257,6 +260,7 @@
                                         <div class="flex items-center gap-2 rounded-xl border border-emerald-100/90 bg-white/70 p-2.5 shadow-sm ring-1 ring-emerald-100/50 sm:gap-3 sm:p-3">
                                             <div class="min-w-0 flex-1 pr-1">
                                                 <p class="truncate text-xs font-semibold leading-snug text-emerald-900 sm:text-sm" x-text="lineMeta[lineKey]?.variant_label || ''"></p>
+                                                <p class="mt-0.5 text-[10px] font-medium text-blue-600 tabular-nums sm:text-[11px]" x-show="variantLineStockLabel(item, lineKey)" x-text="variantLineStockLabel(item, lineKey)"></p>
                                                 <p class="mt-1 inline-flex flex-wrap items-center gap-1 text-[11px] leading-snug text-gray-600 tabular-nums sm:text-xs">
                                                     <span class="font-medium text-gray-800">₹<span x-text="formatRupeeInt(linePriceForKey(lineKey, item))"></span></span>
                                                     <span class="text-gray-400">×</span>

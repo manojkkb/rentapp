@@ -18,7 +18,6 @@
 @section('main_bottom_class', 'pb-24 md:pb-6')
 
 @section('styles')
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
 <style>
     @keyframes calendarModalIn {
         from { opacity: 0; transform: translateY(16px) scale(0.98); }
@@ -304,7 +303,7 @@
 @endsection
 
 @section('scripts')
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+@vite('resources/js/lib/fullcalendar.js')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const calendarEl = document.getElementById('calendar');

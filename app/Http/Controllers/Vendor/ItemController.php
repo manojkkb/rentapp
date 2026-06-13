@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Vendor\Concerns\RedirectsIfNumericRouteKey;
 use App\Models\Category;
 use App\Models\ItemAttribute;
+use App\Models\ItemImage;
 use App\Models\Items;
 use App\Models\ItemVariant;
 use Illuminate\Http\JsonResponse;
@@ -152,6 +153,7 @@ class ItemController extends Controller
         }
 
         $request->validate($this->itemPayloadValidationRules());
+        $this->validateGalleryImagePayload($request);
         $this->validateItemInventoryConsistency($request);
         $this->validateVariantPayload($request);
 
@@ -182,6 +184,7 @@ class ItemController extends Controller
                 $item->update(['photo' => $path]);
             }
 
+            $this->syncItemGalleryImages($item, $request, $vendor->id);
             $this->syncItemVariantsFromRequest($item, $request);
 
             // If AJAX request, return JSON
@@ -274,7 +277,11 @@ class ItemController extends Controller
                 $item->update(['item_code' => Items::codeFromId($item->id)]);
             }
 
-            $item->load('category');
+            $item = Items::query()
+                ->whereKey($item->id)
+                ->withOrderStockBreakdown()
+                ->with('category')
+                ->firstOrFail();
 
             return response()->json([
                 'success' => true,
@@ -307,7 +314,7 @@ class ItemController extends Controller
             'photo_url' => $i->photo_url,
             'category_id' => $i->category_id,
             'category' => $i->category ? ['id' => $i->category->id, 'name' => $i->category->name] : null,
-            'stock' => (int) ($i->stock ?? 0),
+            'stock' => $i->rentableAvailableStock(),
             'manage_stock' => (bool) ($i->manage_stock ?? false),
             'rental_period' => $pt,
             'uses_billing_units' => Items::rentalPeriodUsesBillingUnits($pt),
@@ -333,11 +340,18 @@ class ItemController extends Controller
             return $redirect;
         }
 
-        $item->load([
-            'category',
-            'variantAttributes' => fn ($q) => $q->ordered(),
-            'variants' => fn ($q) => $q->ordered(),
-        ]);
+        $item = Items::query()
+            ->whereKey($item->getKey())
+            ->where('vendor_id', $vendor->id)
+            ->withOrderStockBreakdown()
+            ->with([
+                'category',
+                'images',
+                'variantAttributes' => fn ($q) => $q->ordered(),
+                'variants' => fn ($q) => $q->ordered()->withOrderStockBreakdown(),
+            ])
+            ->firstOrFail();
+
         $rentalPeriods = $this->rentalPeriodOptions();
         $conditionLabels = Items::conditionStatusOptions();
 
@@ -372,6 +386,8 @@ class ItemController extends Controller
             ]);
         }
 
+        $item->load('images');
+
         $categories = $this->categoriesForItemForm($vendor->id, $item->category_id);
 
         $rentalPeriods = $this->rentalPeriodOptions();
@@ -397,6 +413,7 @@ class ItemController extends Controller
         }
 
         $request->validate($this->itemPayloadValidationRules($item));
+        $this->validateGalleryImagePayload($request, $item);
         $this->validateItemInventoryConsistency($request);
         $this->validateVariantPayload($request);
 
@@ -430,6 +447,7 @@ class ItemController extends Controller
 
             $item->update($data);
 
+            $this->syncItemGalleryImages($item, $request, $vendor->id);
             $this->syncItemVariantsFromRequest($item, $request);
 
             // If AJAX request, return JSON
@@ -475,6 +493,7 @@ class ItemController extends Controller
         }
 
         $this->deleteItemPhotoFromS3($item->photo);
+        $this->deleteAllItemGalleryImages($item);
 
         $item->delete(); // Soft delete
 
@@ -596,6 +615,84 @@ class ItemController extends Controller
         ]);
     }
 
+    private function validateGalleryImagePayload(Request $request, ?Items $item = null): void
+    {
+        $request->validate([
+            'gallery_images' => 'nullable|array',
+            'gallery_images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'remove_gallery_images' => 'nullable|array',
+            'remove_gallery_images.*' => 'integer',
+        ]);
+
+        $max = 8;
+        $keptExisting = 0;
+
+        if ($item) {
+            $removeIds = array_map('intval', (array) $request->input('remove_gallery_images', []));
+            $validRemoveCount = $item->images()->whereIn('id', $removeIds)->count();
+            $keptExisting = $item->images()->count() - $validRemoveCount;
+        }
+
+        $newCount = count(array_filter($request->file('gallery_images', []) ?? []));
+
+        if ($keptExisting + $newCount > $max) {
+            throw ValidationException::withMessages([
+                'gallery_images' => [__('vendor.item_gallery_max_images', ['max' => $max])],
+            ]);
+        }
+    }
+
+    private function syncItemGalleryImages(Items $item, Request $request, int $vendorId): void
+    {
+        $removeIds = array_map('intval', (array) $request->input('remove_gallery_images', []));
+
+        if ($removeIds !== []) {
+            $images = ItemImage::query()
+                ->where('item_id', $item->id)
+                ->whereIn('id', $removeIds)
+                ->get();
+
+            foreach ($images as $image) {
+                $this->deleteItemPhotoFromS3($image->path);
+                $image->delete();
+            }
+        }
+
+        $files = $request->file('gallery_images', []);
+        if ($files === [] || $files === null) {
+            return;
+        }
+
+        $sortOrder = (int) ItemImage::query()
+            ->where('item_id', $item->id)
+            ->max('sort_order');
+
+        foreach ($files as $file) {
+            if (! $file instanceof UploadedFile || ! $file->isValid()) {
+                continue;
+            }
+
+            $sortOrder++;
+            $path = $this->storeItemGalleryImageOnS3($file, $vendorId, $item->id);
+
+            ItemImage::create([
+                'item_id' => $item->id,
+                'path' => $path,
+                'sort_order' => $sortOrder,
+            ]);
+        }
+    }
+
+    private function deleteAllItemGalleryImages(Items $item): void
+    {
+        $item->loadMissing('images');
+
+        foreach ($item->images as $image) {
+            $this->deleteItemPhotoFromS3($image->path);
+            $image->delete();
+        }
+    }
+
     private function validateItemInventoryConsistency(Request $request): void
     {
         $min = (int) $request->input('min_rental_duration');
@@ -630,10 +727,10 @@ class ItemController extends Controller
             'stock' => $usesVariants ? 0 : $stock,
             'damaged_stock' => $usesVariants ? 0 : (int) $request->input('damaged_stock'),
             'maintenance_stock' => $usesVariants ? 0 : (int) $request->input('maintenance_stock'),
-            'manage_stock' => $usesVariants ? true : $request->boolean('manage_stock', true),
+            'manage_stock' => $request->boolean('manage_stock'),
             'has_variants' => $usesVariants,
-            'is_available' => $request->boolean('is_available', $usesVariants || $stock > 0),
-            'is_active' => $request->boolean('is_active', true),
+            'is_available' => $request->boolean('is_available'),
+            'is_active' => $request->boolean('is_active'),
         ];
     }
 
@@ -654,6 +751,9 @@ class ItemController extends Controller
 
             return [
                 'hasVariants' => true,
+                'itemManageStock' => (bool) $item->manage_stock,
+                'itemIsAvailable' => (bool) $item->is_available,
+                'itemIsActive' => (bool) $item->is_active,
                 'attributes' => $item->variantAttributes->map(fn (ItemAttribute $a) => [
                     'id' => $a->id,
                     'name' => $a->name,
@@ -670,6 +770,7 @@ class ItemController extends Controller
                     'maintenance_stock' => (int) $v->maintenance_stock,
                     'manage_stock' => (bool) $v->manage_stock,
                     'is_available' => (bool) $v->is_available,
+                    'is_active' => (bool) $v->is_active,
                 ])->values()->all(),
             ];
         }
@@ -678,6 +779,9 @@ class ItemController extends Controller
             'hasVariants' => false,
             'attributes' => [],
             'variants' => [],
+            'itemManageStock' => (bool) ($item?->manage_stock ?? true),
+            'itemIsAvailable' => (bool) ($item?->is_available ?? true),
+            'itemIsActive' => (bool) ($item?->is_active ?? true),
         ];
     }
 
@@ -725,6 +829,7 @@ class ItemController extends Controller
                     'maintenance_stock' => (int) ($row['maintenance_stock'] ?? 0),
                     'manage_stock' => filter_var($row['manage_stock'] ?? true, FILTER_VALIDATE_BOOLEAN),
                     'is_available' => filter_var($row['is_available'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                    'is_active' => filter_var($row['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
                 ];
             })
             ->filter()
@@ -733,6 +838,9 @@ class ItemController extends Controller
 
         return [
             'hasVariants' => (bool) old('has_variants'),
+            'itemManageStock' => filter_var(old('manage_stock', true), FILTER_VALIDATE_BOOLEAN),
+            'itemIsAvailable' => filter_var(old('is_available', true), FILTER_VALIDATE_BOOLEAN),
+            'itemIsActive' => filter_var(old('is_active', true), FILTER_VALIDATE_BOOLEAN),
             'attributes' => $attributes,
             'variants' => $variants,
         ];
@@ -797,6 +905,9 @@ class ItemController extends Controller
         }
 
         $definitions = $item->variantAttributes()->ordered()->get();
+        $itemManageStock = $request->boolean('manage_stock');
+        $itemIsAvailable = $request->boolean('is_available');
+        $itemIsActive = $request->boolean('is_active');
         $variantRows = collect($request->input('variants', []))
             ->values()
             ->filter(fn ($row) => is_array($row));
@@ -815,8 +926,9 @@ class ItemController extends Controller
                 'stock' => $stock,
                 'damaged_stock' => (int) ($row['damaged_stock'] ?? 0),
                 'maintenance_stock' => (int) ($row['maintenance_stock'] ?? 0),
-                'manage_stock' => filter_var($row['manage_stock'] ?? true, FILTER_VALIDATE_BOOLEAN),
-                'is_available' => filter_var($row['is_available'] ?? ($stock > 0), FILTER_VALIDATE_BOOLEAN),
+                'manage_stock' => $itemManageStock,
+                'is_available' => $itemIsAvailable,
+                'is_active' => $itemIsActive,
                 'sort_order' => $index,
             ];
 
@@ -935,10 +1047,10 @@ class ItemController extends Controller
 
     private function storeItemPhotoOnS3(UploadedFile $file, int $vendorId, int $itemId): string
     {
-        $filename = 'item_'.$itemId.'_'.time().'_'.Str::random(8).'.'.$file->extension();
+        $filename = 'feature_'.time().'_'.Str::random(8).'.'.$file->extension();
 
         $path = $file->storeAs(
-            'vendors/'.$vendorId.'/items',
+            'vendors/'.$vendorId.'/items/'.$itemId,
             $filename,
             [
                 'disk' => 's3',
@@ -949,6 +1061,28 @@ class ItemController extends Controller
         if (! is_string($path) || $path === '') {
             throw new \RuntimeException(
                 'Could not upload the image to storage. Check S3 credentials, bucket name, region, and IAM permissions (s3:PutObject).'
+            );
+        }
+
+        return $path;
+    }
+
+    private function storeItemGalleryImageOnS3(UploadedFile $file, int $vendorId, int $itemId): string
+    {
+        $filename = 'gallery_'.time().'_'.Str::random(8).'.'.$file->extension();
+
+        $path = $file->storeAs(
+            'vendors/'.$vendorId.'/items/'.$itemId.'/images',
+            $filename,
+            [
+                'disk' => 's3',
+                'visibility' => 'public',
+            ]
+        );
+
+        if (! is_string($path) || $path === '') {
+            throw new \RuntimeException(
+                'Could not upload gallery image to storage. Check S3 credentials, bucket name, region, and IAM permissions (s3:PutObject).'
             );
         }
 

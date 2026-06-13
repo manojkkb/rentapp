@@ -32,6 +32,7 @@ return new class extends Migration
             $table->boolean('manage_stock')->default(true);
             $table->boolean('is_available')->default(true);
             $table->boolean('is_active')->default(true);
+            $table->boolean('has_variants')->default(false);
             $table->timestampsTz();
             $table->softDeletesTz();
 
@@ -40,6 +41,7 @@ return new class extends Migration
             $table->index(['vendor_id', 'category_id']);
             $table->index(['vendor_id', 'is_active', 'is_available']);
             $table->index(['vendor_id', 'category_id', 'is_active']);
+            $table->index(['vendor_id', 'has_variants']);
         });
     }
 

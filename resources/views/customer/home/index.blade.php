@@ -665,5 +665,6 @@
         </div>
     </nav>
     
+    @livewireScriptConfig
 </body>
 </html>

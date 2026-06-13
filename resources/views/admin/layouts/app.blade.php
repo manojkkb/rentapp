@@ -89,5 +89,7 @@
     </div>
 
     @yield('scripts')
+
+    @livewireScriptConfig
 </body>
 </html>

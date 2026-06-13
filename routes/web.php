@@ -24,6 +24,11 @@ use App\Http\Controllers\Vendor\VendorCustomerController;
 use App\Http\Controllers\Vendor\VendorOrderController;
 use App\Http\Controllers\Admin\SupportController as AdminSupportController;
 use App\Http\Controllers\Vendor\VendorPwaController;
+use App\Http\Controllers\StorefrontBookingController;
+use App\Http\Controllers\StorefrontCartController;
+use App\Http\Controllers\StorefrontCheckoutController;
+use App\Http\Controllers\StorefrontController;
+use App\Http\Controllers\Vendor\VendorStoreController;
 use App\Http\Controllers\Vendor\VendorSupportController;
 use App\Http\Controllers\WelcomeCtrl;
 use App\Http\Middleware\AdminAuthMidddleware;
@@ -34,6 +39,27 @@ Route::get('/', [WelcomeCtrl::class, 'index'])->name('welcome');
 
 // Customer Routes
 Route::get('/home', [HomeController::class, 'index'])->name('customer.home');
+
+// Public vendor online store
+Route::get('/store/{slug}', [StorefrontController::class, 'show'])->name('storefront.show');
+Route::get('/store/{slug}/category/{categorySlug}', [StorefrontController::class, 'showCategory'])->name('storefront.category');
+Route::get('/store/{slug}/items/{item}', [StorefrontController::class, 'showItem'])->name('storefront.items.show');
+Route::get('/store/{slug}/privacy', [StorefrontController::class, 'privacy'])->name('storefront.privacy');
+Route::get('/store/{slug}/terms', [StorefrontController::class, 'terms'])->name('storefront.terms');
+Route::get('/store/{slug}/about', [StorefrontController::class, 'about'])->name('storefront.about');
+Route::get('/store/{slug}/contact', [StorefrontController::class, 'contact'])->name('storefront.contact');
+Route::get('/store/{slug}/faq', [StorefrontController::class, 'faq'])->name('storefront.faq');
+Route::get('/store/{slug}/returns', [StorefrontController::class, 'returns'])->name('storefront.returns');
+Route::post('/store/{slug}/booking', [StorefrontBookingController::class, 'save'])->name('storefront.booking.save');
+Route::post('/store/{slug}/cart', [StorefrontCartController::class, 'add'])->name('storefront.cart.add');
+Route::get('/store/{slug}/cart', [StorefrontCheckoutController::class, 'cart'])->name('storefront.cart');
+Route::patch('/store/{slug}/cart/{key}', [StorefrontCartController::class, 'update'])->name('storefront.cart.update');
+Route::delete('/store/{slug}/cart/{key}', [StorefrontCartController::class, 'remove'])->name('storefront.cart.remove');
+Route::get('/store/{slug}/checkout', [StorefrontCheckoutController::class, 'checkout'])->name('storefront.checkout');
+Route::post('/store/{slug}/checkout', [StorefrontCheckoutController::class, 'place'])->name('storefront.checkout.place');
+Route::post('/store/{slug}/otp/send', [StorefrontCheckoutController::class, 'sendOtp'])->name('storefront.otp.send');
+Route::get('/store/{slug}/orders', [StorefrontCheckoutController::class, 'orders'])->name('storefront.orders');
+Route::get('/store/{slug}/orders/{orderUuid}', [StorefrontCheckoutController::class, 'orderShow'])->name('storefront.orders.show');
 
 Route::prefix('admin')->name('admin.')->group(function () {
 
@@ -103,7 +129,8 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
 
     Route::post('logout', [AuthVendorCtrl::class, 'logout'])->name('logout');
 
-    Route::middleware([VendorAuthMiddleware::class, 'vendor.subscription', 'vendor.permission'])->group(function () {
+    Route::middleware([VendorAuthMiddleware::class, 'vendor.subscription', 'vendor.permission'])->group(function () 
+    {
 
         Route::get('/home', [VendorController::class, 'home'])->name('home');
         Route::get('/dashboard/stats', [VendorController::class, 'getDashboardStats'])->name('dashboard.stats');
@@ -119,17 +146,20 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
         Route::post('/language/switch', [VendorController::class, 'switchLanguage'])->name('language.switch');
 
         // Staff Management
-        Route::resource('staff', StaffController::class)->except(['show']);
+        Route::resource('staff', StaffController::class);
         Route::post('staff/{staff}/toggle', [StaffController::class, 'toggleStatus'])->name('staff.toggle');
 
         // Staff roles & permissions
         Route::get('staff-permissions', [StaffPermissionController::class, 'index'])->name('staff-permissions.index');
+        Route::get('staff-permissions/create', [StaffPermissionController::class, 'create'])->name('staff-permissions.create');
         Route::post('staff-permissions', [StaffPermissionController::class, 'store'])->name('staff-permissions.store');
+        Route::get('staff-permissions/{staffPermission}', [StaffPermissionController::class, 'show'])->name('staff-permissions.show');
+        Route::get('staff-permissions/{staffPermission}/edit', [StaffPermissionController::class, 'edit'])->name('staff-permissions.edit');
         Route::put('staff-permissions/{staffPermission}', [StaffPermissionController::class, 'update'])->name('staff-permissions.update');
         Route::delete('staff-permissions/{staffPermission}', [StaffPermissionController::class, 'destroy'])->name('staff-permissions.destroy');
 
         // Categories
-        Route::resource('categories', CategoryController::class)->except(['show']);
+        Route::resource('categories', CategoryController::class);
         Route::post('categories/{category}/toggle', [CategoryController::class, 'toggleStatus'])->name('categories.toggle');
         Route::get('categories/{category}/subcategories', [CategoryController::class, 'subcategories'])->name('categories.subcategories');
 
@@ -141,7 +171,7 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
         Route::post('items/{item}/availability', [ItemController::class, 'toggleAvailability'])->name('items.availability');
 
         // Customers
-        Route::resource('customers', VendorCustomerController::class)->except(['show', 'destroy']);
+        Route::resource('customers', VendorCustomerController::class)->except(['destroy']);
         Route::post('customers/{customer}/toggle', [VendorCustomerController::class, 'toggleStatus'])->name('customers.toggle');
 
         Route::resource('coupons', VendorCouponController::class);
@@ -179,6 +209,7 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
         Route::patch('orders/{order}/booking', [VendorOrderController::class, 'updateOrderBooking'])->name('orders.booking');
         Route::post('orders/{order}/items', [VendorOrderController::class, 'addOrderLine'])->name('orders.items.add');
         Route::put('orders/{order}/items/{item}', [VendorOrderController::class, 'updateOrderLine'])->name('orders.items.update');
+        Route::patch('orders/{order}/lines/{orderItem}/variant', [VendorOrderController::class, 'changeOrderLineVariant'])->name('orders.lines.variant');
         Route::delete('orders/{order}/items/{item}', [VendorOrderController::class, 'removeOrderLine'])->name('orders.items.remove');
         Route::post('orders/{order}/discount', [VendorOrderController::class, 'applyOrderDiscount'])->name('orders.discount');
         Route::delete('orders/{order}/discount', [VendorOrderController::class, 'removeOrderDiscount'])->name('orders.discount.remove');
@@ -199,6 +230,35 @@ Route::prefix('vendor')->name('vendor.')->group(function () {
         Route::get('reviews', [ReviewController::class, 'index'])->name('reviews.index');
         Route::post('reviews/{review}/reply', [ReviewController::class, 'reply'])->name('reviews.reply');
         Route::post('reviews/{review}/toggle', [ReviewController::class, 'toggleApproval'])->name('reviews.toggle');
+
+        Route::get('online-store', [VendorStoreController::class, 'index'])->name('store.index');
+        Route::get('online-store/general', [VendorStoreController::class, 'general'])->name('store.general');
+        Route::get('online-store/address', [VendorStoreController::class, 'address'])->name('store.address');
+        Route::get('online-store/pricing', [VendorStoreController::class, 'pricing'])->name('store.pricing');
+        Route::get('online-store/delivery', [VendorStoreController::class, 'delivery'])->name('store.delivery');
+        Route::get('online-store/locations', [VendorStoreController::class, 'locations'])->name('store.locations');
+        Route::get('online-store/banner', [VendorStoreController::class, 'banner'])->name('store.banner');
+        Route::get('online-store/theme', [VendorStoreController::class, 'theme'])->name('store.theme');
+        Route::get('online-store/seo', [VendorStoreController::class, 'seo'])->name('store.seo');
+        Route::get('online-store/pages', [VendorStoreController::class, 'pages'])->name('store.pages');
+        Route::get('online-store/pages/{pageKey}', [VendorStoreController::class, 'editPage'])
+            ->whereIn('pageKey', \App\Models\VendorStorePage::KEYS)
+            ->name('store.pages.edit');
+        Route::put('online-store/pages/{pageKey}', [VendorStoreController::class, 'updatePage'])
+            ->whereIn('pageKey', \App\Models\VendorStorePage::KEYS)
+            ->name('store.pages.update');
+        Route::get('online-store/legal', fn () => redirect()->route('vendor.store.pages'))->name('store.legal');
+        Route::put('online-store/general', [VendorStoreController::class, 'updateGeneral'])->name('store.general.update');
+        Route::put('online-store/address', [VendorStoreController::class, 'updateAddress'])->name('store.address.update');
+        Route::put('online-store/pricing', [VendorStoreController::class, 'updatePricing'])->name('store.pricing.update');
+        Route::put('online-store/delivery', [VendorStoreController::class, 'updateDelivery'])->name('store.delivery.update');
+        Route::put('online-store/seo', [VendorStoreController::class, 'updateSeo'])->name('store.seo.update');
+        Route::put('online-store/banner', [VendorStoreController::class, 'updateBanner'])->name('store.banner.update');
+        Route::put('online-store/theme', [VendorStoreController::class, 'updateTheme'])->name('store.theme.update');
+        Route::post('online-store/locations', [VendorStoreController::class, 'storeLocation'])->name('store.locations.store');
+        Route::put('online-store/locations/{location}', [VendorStoreController::class, 'updateLocation'])->name('store.locations.update');
+        Route::delete('online-store/locations/{location}', [VendorStoreController::class, 'destroyLocation'])->name('store.locations.destroy');
+        Route::post('online-store/locations/{location}/default', [VendorStoreController::class, 'setDefaultLocation'])->name('store.locations.default');
 
         Route::get('subscription/plans', [SubscriptionVendorController::class, 'subscriptionPlans'])->name('subscription.plans');
         Route::post('subscription/create-order', [SubscriptionVendorController::class, 'createOrder'])->name('subscription.create-order');

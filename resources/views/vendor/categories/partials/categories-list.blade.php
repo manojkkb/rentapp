@@ -32,9 +32,11 @@
                                     </div>
                                 @endif
                                 <div>
-                                    <div class="text-sm font-semibold text-gray-900">
+                                    <a href="{{ route('vendor.categories.show', $category) }}"
+                                       @if($livewireList ?? false) wire:navigate @endif
+                                       class="text-sm font-semibold text-emerald-700 hover:text-emerald-900 hover:underline">
                                         {{ $category->name }}
-                                    </div>
+                                    </a>
                                     <div class="text-xs text-gray-500 mt-0.5">
                                         @if($category->subcategories->count() > 0)
                                             <a href="{{ route('vendor.categories.subcategories', $category) }}" 
@@ -117,6 +119,9 @@
                                          }
                                      })">
                                     @if($livewireList ?? false)
+                                        <a href="{{ route('vendor.categories.show', $category) }}" wire:navigate class="block px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50">
+                                            <i class="fas fa-eye w-5 text-gray-400 mr-3"></i>{{ __('vendor.view_category') }}
+                                        </a>
                                         <a href="{{ route('vendor.categories.edit', $category) }}" wire:navigate class="block px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50">
                                             <i class="fas fa-edit w-5 text-emerald-500 mr-3"></i>{{ __('vendor.edit') }}
                                         </a>
@@ -130,10 +135,10 @@
                                             <i class="fas fa-trash w-5 mr-3"></i>{{ __('vendor.delete') }}
                                         </button>
                                     @else
-                                    <a href="{{ route('vendor.categories.edit', $category) }}" 
+                                    <a href="{{ route('vendor.categories.show', $category) }}"
                                        class="block text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                         <i class="fas fa-eye w-5 text-gray-400 mr-3"></i>
-                                        {{ __('vendor.view') }}
+                                        {{ __('vendor.view_category') }}
                                     </a>
                                     <button type="button" 
                                             onclick="openEditModal({{ $category->id }}, @js($category->name), {{ $category->is_active ? 'true' : 'false' }}, @js(route('vendor.categories.update', $category)), @js($category->image_url))"
@@ -180,9 +185,11 @@
                                 </div>
                             @endif
                             <div class="flex-1 min-w-0">
-                                <h3 class="text-base font-semibold text-gray-900 truncate">
+                                <a href="{{ route('vendor.categories.show', $category) }}"
+                                   @if($livewireList ?? false) wire:navigate @endif
+                                   class="block truncate text-base font-semibold text-emerald-700 hover:underline">
                                     {{ $category->name }}
-                                </h3>
+                                </a>
                                 <div class="flex items-center gap-2 mt-0.5 flex-wrap">
                                     <p class="text-xs text-gray-500">
                                         <i class="fas fa-box text-xs mr-1"></i>
@@ -226,10 +233,11 @@
                                  x-transition:leave-end="opacity-0 scale-95"
                                  class="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
                                  style="display: none;">
-                                <a href="{{ route('vendor.categories.edit', $category) }}" 
+                                <a href="{{ route('vendor.categories.show', $category) }}"
+                                   @if($livewireList ?? false) wire:navigate @endif
                                    class="block text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors border-b border-gray-100">
                                     <i class="fas fa-eye w-5 text-gray-400 mr-3"></i>
-                                    {{ __('vendor.view') }}
+                                    {{ __('vendor.view_category') }}
                                 </a>
                                 <button type="button" 
                                         onclick="openEditModal({{ $category->id }}, @js($category->name), {{ $category->is_active ? 'true' : 'false' }}, @js(route('vendor.categories.update', $category)), @js($category->image_url))"

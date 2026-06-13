@@ -6,6 +6,7 @@ use App\Models\Concerns\HasUuid;
 use App\Models\Concerns\RoutesByUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Coupon extends Model
 {
@@ -43,6 +44,11 @@ class Coupon extends Model
         return $this->belongsTo(Vendor::class);
     }
 
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
     public function isValid(float $orderAmount = 0): bool
     {
         if (!$this->is_active) return false;
@@ -66,5 +72,40 @@ class Coupon extends Model
         }
 
         return min($discount, $subTotal);
+    }
+
+    /**
+     * UI status: inactive, exhausted, expired, scheduled, or active.
+     */
+    public function lifecycleStatus(): string
+    {
+        if (! $this->is_active) {
+            return 'inactive';
+        }
+
+        if ($this->usage_limit && $this->used_count >= $this->usage_limit) {
+            return 'exhausted';
+        }
+
+        if ($this->end_date && now()->gt($this->end_date)) {
+            return 'expired';
+        }
+
+        if ($this->start_date && now()->lt($this->start_date)) {
+            return 'scheduled';
+        }
+
+        return 'active';
+    }
+
+    public function discountLabel(): string
+    {
+        if ($this->type === 'percent') {
+            $pct = rtrim(rtrim(number_format((float) $this->value, 2), '0'), '.');
+
+            return $pct.'% '.__('vendor.off');
+        }
+
+        return '₹'.number_format((float) $this->value, 2).' '.__('vendor.off');
     }
 }

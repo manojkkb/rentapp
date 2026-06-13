@@ -3,18 +3,20 @@
 namespace App\Http\Controllers\Vendor;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Vendor\Concerns\ListsVendorLogistics;
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Vendor;
 use App\Models\VendorCustomer;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class VendorController extends Controller
 {
+    use ListsVendorLogistics;
     /**
      * Display the vendor dashboard home page
      */
@@ -38,6 +40,10 @@ class VendorController extends Controller
     {
         $totalItems = $vendor->items()->count();
         $activeItems = $vendor->items()->where('is_active', true)->count();
+        $availableItems = $vendor->items()
+            ->where('is_active', true)
+            ->where('is_available', true)
+            ->count();
         $totalOrders = $vendor->orders()->count();
         $monthlyOrders = $vendor->orders()
             ->whereYear('created_at', now()->year)
@@ -49,8 +55,6 @@ class VendorController extends Controller
             ->whereYear('created_at', now()->year)
             ->whereMonth('created_at', now()->month)
             ->sum('grand_total');
-        $averageRating = (float) ($vendor->reviews()->avg('rating') ?? 0);
-        $totalReviews = $vendor->reviews()->count();
 
         $statusCountRows = $vendor->orders()
             ->selectRaw('status, count(*) as aggregate')
@@ -62,20 +66,43 @@ class VendorController extends Controller
             $orderStatusCounts[$status] = (int) ($statusCountRows[$status] ?? 0);
         }
 
-        $staffCount = $vendor->users()->count();
+        $pendingOrders = (int) ($orderStatusCounts['pending'] ?? 0);
+
+        $outstandingBalance = (float) $vendor->orders()
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->selectRaw('COALESCE(SUM(GREATEST(0, COALESCE(grand_total, 0) + COALESCE(security_deposit, 0) - COALESCE(paid_amount, 0))), 0) as balance')
+            ->value('balance');
+
+        $ordersWithBalanceDue = (int) $vendor->orders()
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->whereRaw('(COALESCE(grand_total, 0) + COALESCE(security_deposit, 0) - COALESCE(paid_amount, 0)) > 0.009')
+            ->count();
+
+        $outOnRent = $vendor->orders()
+            ->where('status', 'confirmed')
+            ->whereNotNull('delivered_at')
+            ->whereNull('returned_at')
+            ->count();
+
+        $staffCount = $vendor->activeUsers()->count();
         $customerCount = VendorCustomer::where('vendor_id', $vendor->id)->count();
+        $categoryCount = $vendor->categories()->count();
+        $couponCount = Coupon::where('vendor_id', $vendor->id)->count();
 
         $recentActivities = $vendor->orders()
-            ->with(['customer', 'items'])
+            ->with(['customer' => fn ($q) => $q->withTrashed(), 'items'])
             ->latest()
             ->take(5)
             ->get()
             ->map(function ($order) {
                 return [
                     'id' => $order->uuid,
+                    'order_number' => $order->order_number,
                     'customer_name' => $order->customer->name ?? 'N/A',
                     'items_count' => $order->items->count(),
                     'total_amount' => (float) $order->grand_total,
+                    'paid_amount' => (float) ($order->paid_amount ?? 0),
+                    'balance_due' => max(0, (float) $order->grand_total + (float) ($order->security_deposit ?? 0) - (float) ($order->paid_amount ?? 0)),
                     'status' => $order->status,
                     'created_at' => $order->created_at->diffForHumans(),
                 ];
@@ -100,43 +127,29 @@ class VendorController extends Controller
             ->values()
             ->all();
 
+        $today = now()->toDateString();
+        $now = now()->format('Y-m-d H:i:s');
+
         $outgoingQuery = $vendor->orders()
             ->whereNull('delivered_at')
             ->whereIn('status', ['confirmed']);
 
         $outgoingCount = (clone $outgoingQuery)->count();
 
-        $today = now()->toDateString();
-        $now = now()->format('Y-m-d H:i:s');
-
         $outgoingOrders = (clone $outgoingQuery)
-            ->with('customer')
+            ->with(['customer' => fn ($q) => $q->withTrashed(), 'items.item'])
             ->orderByRaw('case
                 when (start_at is not null and date(start_at) = ?)
                     or (pickup_at is not null and date(pickup_at) = ?)
+                    or (delivery_at is not null and date(delivery_at) = ?)
                 then 0
-                when coalesce(start_at, pickup_at, created_at) < ?
+                when coalesce(delivery_at, start_at, pickup_at, created_at) < ?
                 then 1
                 else 2
-            end asc, coalesce(start_at, pickup_at, created_at) asc', [$today, $today, $now])
+            end asc, coalesce(delivery_at, start_at, pickup_at, created_at) asc', [$today, $today, $today, $now])
             ->take(5)
             ->get()
-            ->map(function ($order) {
-                $handoffAt = $order->start_at ?? $order->pickup_at;
-                $sched = $this->dashboardLogisticsDayTime($handoffAt);
-
-                return [
-                    'id' => $order->uuid,
-                    'order_number' => $order->order_number,
-                    'customer_name' => $order->customer->name ?? 'N/A',
-                    'fulfillment_type' => $order->fulfillment_type ?? 'pickup',
-                    'day_line' => $sched['day_line'],
-                    'time_line' => $sched['time_line'],
-                    'when_label' => trim($sched['day_line'].($sched['time_line'] !== '' ? ' '.$sched['time_line'] : '')),
-                    'is_handoff_today' => $sched['is_today'],
-                    'is_handoff_tomorrow' => $sched['is_tomorrow'],
-                ];
-            })
+            ->map(fn (Order $order) => $this->mapDeliveryRow($order))
             ->values()
             ->all();
 
@@ -148,7 +161,7 @@ class VendorController extends Controller
         $returnCount = (clone $returnsQuery)->count();
 
         $returnOrders = (clone $returnsQuery)
-            ->with('customer')
+            ->with(['customer' => fn ($q) => $q->withTrashed(), 'items.item'])
             ->orderByRaw('case
                 when end_at is not null and date(end_at) = ? then 0
                 when coalesce(end_at, created_at) < ? then 1
@@ -156,20 +169,7 @@ class VendorController extends Controller
             end asc, coalesce(end_at, created_at) asc', [$today, $now])
             ->take(5)
             ->get()
-            ->map(function ($order) {
-                $sched = $this->dashboardLogisticsDayTime($order->end_at);
-
-                return [
-                    'id' => $order->uuid,
-                    'order_number' => $order->order_number,
-                    'customer_name' => $order->customer->name ?? 'N/A',
-                    'day_line' => $sched['day_line'],
-                    'time_line' => $sched['time_line'],
-                    'when_label' => trim($sched['day_line'].($sched['time_line'] !== '' ? ' '.$sched['time_line'] : '')),
-                    'is_return_today' => $sched['is_today'],
-                    'is_return_tomorrow' => $sched['is_tomorrow'],
-                ];
-            })
+            ->map(fn (Order $order) => $this->mapReturnRow($order))
             ->values()
             ->all();
 
@@ -177,16 +177,27 @@ class VendorController extends Controller
             'stats' => [
                 'total_items' => $totalItems,
                 'active_items' => $activeItems,
+                'available_items' => $availableItems,
                 'total_orders' => $totalOrders,
                 'monthly_orders' => $monthlyOrders,
+                'pending_orders' => $pendingOrders,
                 'total_revenue' => $totalRevenue,
                 'monthly_revenue' => $monthlyRevenue,
-                'average_rating' => round($averageRating, 1),
-                'total_reviews' => $totalReviews,
+                'average_rating' => round((float) ($vendor->rating ?? 0), 1),
+                'total_reviews' => (int) ($vendor->total_reviews ?? 0),
+            ],
+            'attention' => [
+                'pending_orders' => $pendingOrders,
+                'outstanding_balance' => $outstandingBalance,
+                'orders_with_balance_due' => $ordersWithBalanceDue,
+                'out_on_rent' => $outOnRent,
             ],
             'order_status_counts' => $orderStatusCounts,
             'resource_counts' => [
                 'items' => $totalItems,
+                'available_items' => $availableItems,
+                'categories' => $categoryCount,
+                'coupons' => $couponCount,
                 'staff' => $staffCount,
                 'customers' => $customerCount,
             ],
@@ -426,51 +437,6 @@ class VendorController extends Controller
         if (Storage::disk('public')->exists($path)) {
             Storage::disk('public')->delete($path);
         }
-    }
-
-    /**
-     * @return array{day_line: string, time_line: string, is_today: bool, is_tomorrow: bool}
-     */
-    private function dashboardLogisticsDayTime(?Carbon $at): array
-    {
-        if ($at === null) {
-            return [
-                'day_line' => '—',
-                'time_line' => '',
-                'is_today' => false,
-                'is_tomorrow' => false,
-            ];
-        }
-
-        $at = $at->copy()->timezone((string) config('app.timezone'));
-        $now = now()->timezone((string) config('app.timezone'));
-
-        $isToday = $at->isSameDay($now);
-        $isTomorrow = $at->isSameDay($now->copy()->addDay());
-
-        if ($isToday) {
-            $dayLine = __('vendor.dashboard_handoff_today');
-        } elseif ($isTomorrow) {
-            $dayLine = __('vendor.dashboard_handoff_tomorrow');
-        } elseif ($at->greaterThan($now)) {
-            $daysUntil = (int) $now->copy()->startOfDay()->diffInDays($at->copy()->startOfDay(), false);
-            if ($daysUntil > 0 && $daysUntil <= 6) {
-                $dayLine = $at->translatedFormat('l');
-            } else {
-                $dayLine = $at->translatedFormat('d M Y');
-            }
-        } else {
-            $dayLine = $at->translatedFormat('d M Y');
-        }
-
-        $timeLine = $at->format('g:i A');
-
-        return [
-            'day_line' => $dayLine,
-            'time_line' => $timeLine,
-            'is_today' => $isToday,
-            'is_tomorrow' => $isTomorrow,
-        ];
     }
 
     private function storeUserAvatarOnS3(UploadedFile $file, int $userId): string

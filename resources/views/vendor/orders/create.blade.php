@@ -4,8 +4,6 @@
 @section('page-title', __('vendor.create_order'))
 
 @section('styles')
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
 <style>
     .flatpickr-calendar { border-radius: 12px !important; box-shadow: 0 10px 40px rgba(0,0,0,.15) !important; border: 1px solid #e5e7eb !important; font-family: 'Inter', sans-serif !important; }
     .flatpickr-day.selected, .flatpickr-day.selected:hover { background: #059669 !important; border-color: #059669 !important; }
@@ -331,8 +329,7 @@
 @endsection
 
 @section('scripts')
-@vite('resources/js/order-wizard-datetime.js')
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+@vite(['resources/js/order-wizard-datetime.js'])
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const OWD = window.OrderWizardDateTime;

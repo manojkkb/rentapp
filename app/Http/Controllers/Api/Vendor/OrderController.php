@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Concerns\ResolvesApiVendor;
 use App\Http\Controllers\Vendor\Concerns\ListsVendorLogistics;
 use App\Http\Controllers\Vendor\Concerns\ManagesOrderLive;
 use App\Models\Order;
+use App\Support\OrderActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -83,9 +84,15 @@ class OrderController extends ApiController
             return $this->fail(__('vendor.order_invalid_status_transition'), 422);
         }
 
+        $oldStatus = (string) $order->status;
         $order->update(['status' => $validated['status']]);
+        $order->refresh();
 
-        return $this->ok(['order' => $this->orderListItem($order->fresh())], 'Status updated.');
+        if ($oldStatus !== (string) $validated['status']) {
+            OrderActivityLogger::logStatusChanged($order, $oldStatus, (string) $validated['status']);
+        }
+
+        return $this->ok(['order' => $this->orderListItem($order)], 'Status updated.');
     }
 
     public function deliveries(Request $request): JsonResponse

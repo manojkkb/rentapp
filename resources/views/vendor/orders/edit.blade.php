@@ -17,6 +17,25 @@ function isoToDatetimeLocalValue(iso) {
     const pad = (n) => String(n).padStart(2, '0');
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
 }
+function isoToFulfillmentValue(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+function formatFulfillmentDisplay(val) {
+    if (!val) return '';
+    let d;
+    if (String(val).includes('T')) {
+        d = new Date(val);
+    } else {
+        const m = String(val).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+        d = m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : new Date(val);
+    }
+    if (isNaN(d.getTime())) return val;
+    return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
 function orderPageData() {
     const p = {
         addedItems: @json($order->items->pluck('quantity', 'item_id')),
@@ -25,9 +44,12 @@ function orderPageData() {
         items: @json($availableItems),
         fulfillmentType: @json($order->fulfillment_type ?: 'pickup'),
         deliveryAddress: @json($order->delivery_address ?? ''),
-        pickupAt: @json($order->pickup_at ? $order->pickup_at->copy()->timezone(config('app.timezone'))->format('Y-m-d\TH:i') : ''),
+        pickupAt: @json($order->pickup_at ? $order->pickup_at->copy()->timezone(config('app.timezone'))->format('Y-m-d H:i') : ''),
+        deliveryAt: @json($order->delivery_at ? $order->delivery_at->copy()->timezone(config('app.timezone'))->format('Y-m-d H:i') : ''),
         deliveryCharge: @json(round((float) ($order->delivery_charge ?? 0), 2)),
         saveFulfillmentUrl: @json(route('vendor.orders.fulfillment', $order)),
+        fulfillmentPickupHiddenId: 'fulfillment_edit_pickup_at',
+        fulfillmentDeliveryHiddenId: 'fulfillment_edit_delivery_at',
     };
     return {
         showAddItem: false,
@@ -42,12 +64,28 @@ function orderPageData() {
         fulfillmentType: p.fulfillmentType,
         deliveryAddress: p.deliveryAddress,
         pickupAt: p.pickupAt,
+        deliveryAt: p.deliveryAt,
         deliveryCharge: p.deliveryCharge,
         savingFulfillment: false,
         fulfillmentFieldError: '',
         saveFulfillmentUrl: p.saveFulfillmentUrl,
+        fulfillmentPickupHiddenId: p.fulfillmentPickupHiddenId,
+        fulfillmentDeliveryHiddenId: p.fulfillmentDeliveryHiddenId,
         async saveFulfillment() {
             this.fulfillmentFieldError = '';
+            document.dispatchEvent(new CustomEvent('sync-fulfillment-datetimes'));
+            const pickupVal = document.getElementById(this.fulfillmentPickupHiddenId)?.value?.trim() || '';
+            const deliveryVal = document.getElementById(this.fulfillmentDeliveryHiddenId)?.value?.trim() || '';
+            if (this.fulfillmentType === 'pickup' && !pickupVal) {
+                this.fulfillmentFieldError = @json(__('vendor.pickup_datetime_required'));
+                showToast(this.fulfillmentFieldError, 'error');
+                return;
+            }
+            if (this.fulfillmentType === 'delivery' && !(this.deliveryAddress || '').trim()) {
+                this.fulfillmentFieldError = @json(__('vendor.delivery_address_required'));
+                showToast(this.fulfillmentFieldError, 'error');
+                return;
+            }
             this.savingFulfillment = true;
             const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             try {
@@ -62,23 +100,18 @@ function orderPageData() {
                     body: JSON.stringify({
                         fulfillment_type: this.fulfillmentType,
                         delivery_address: (this.deliveryAddress || '').trim(),
-                        pickup_at: this.fulfillmentType === 'pickup' && this.pickupAt ? this.pickupAt : null,
+                        pickup_at: this.fulfillmentType === 'pickup' ? pickupVal : null,
+                        delivery_at: this.fulfillmentType === 'delivery' ? (deliveryVal || null) : null,
                         delivery_charge: this.fulfillmentType === 'delivery' ? (parseFloat(this.deliveryCharge) || 0) : 0,
                     }),
                 });
                 const data = await res.json();
                 if (res.ok && data.success) {
-                    if (this.fulfillmentType === 'delivery') {
-                        this.pickupAt = '';
-                    }
                     if (data.delivery_address !== undefined) {
                         this.deliveryAddress = data.delivery_address ?? '';
                     }
-                    if (data.pickup_at) {
-                        this.pickupAt = isoToDatetimeLocalValue(data.pickup_at);
-                    } else if (this.fulfillmentType === 'pickup') {
-                        this.pickupAt = '';
-                    }
+                    this.pickupAt = data.pickup_at ? isoToFulfillmentValue(data.pickup_at) : '';
+                    this.deliveryAt = data.delivery_at ? isoToFulfillmentValue(data.delivery_at) : '';
                     if (data.delivery_charge !== undefined && data.delivery_charge !== null) {
                         this.deliveryCharge = parseFloat(data.delivery_charge) || 0;
                     }
@@ -208,7 +241,10 @@ function orderPageData() {
     };
 }
 </script>
-<div id="orderApp" x-data="orderPageData()"
+<div id="orderApp"
+     x-data="orderPageData()"
+     @fulfillment-pickup-at-changed.window="pickupAt = $event.detail || ''"
+     @fulfillment-delivery-at-changed.window="deliveryAt = $event.detail || ''"
 @order-item-removed.window="syncItemRemoved($event.detail.itemId)"
 @order-item-updated.window="syncItemUpdated($event.detail.itemId, $event.detail.quantity, $event.detail.billing_units)"
 @order-emptied.window="syncAllRemoved()"
@@ -357,95 +393,12 @@ function orderPageData() {
                     </div>
                 </div>
                 <div class="space-y-5 p-4 sm:p-6">
-                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                        <label class="relative flex min-h-[52px] cursor-pointer rounded-2xl border-2 p-4 transition-all"
-                               :class="fulfillmentType === 'pickup' ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/30' : 'border-gray-200 hover:border-gray-300 bg-white'">
-                            <input type="radio" name="fulfillment_type" value="pickup" x-model="fulfillmentType" @change="fulfillmentFieldError = ''" class="sr-only">
-                            <div class="flex items-start gap-3 w-full">
-                                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2"
-                                      :class="fulfillmentType === 'pickup' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300 bg-white'">
-                                    <span class="h-2 w-2 rounded-full bg-white" x-show="fulfillmentType === 'pickup'"></span>
-                                </span>
-                                <div>
-                                    <span class="block text-sm font-bold text-gray-900">{{ __('vendor.pickup') }}</span>
-                                    <span class="block text-xs text-gray-600 mt-0.5">{{ __('vendor.pickup_short_help') }}</span>
-                                </div>
-                            </div>
-                        </label>
-                        <label class="relative flex min-h-[52px] cursor-pointer rounded-2xl border-2 p-4 transition-all"
-                               :class="fulfillmentType === 'delivery' ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/30' : 'border-gray-200 hover:border-gray-300 bg-white'">
-                            <input type="radio" name="fulfillment_type" value="delivery" x-model="fulfillmentType" @change="fulfillmentFieldError = ''" class="sr-only">
-                            <div class="flex items-start gap-3 w-full">
-                                <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2"
-                                      :class="fulfillmentType === 'delivery' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300 bg-white'">
-                                    <span class="h-2 w-2 rounded-full bg-white" x-show="fulfillmentType === 'delivery'"></span>
-                                </span>
-                                <div>
-                                    <span class="block text-sm font-bold text-gray-900">{{ __('vendor.delivery') }}</span>
-                                    <span class="block text-xs text-gray-600 mt-0.5">{{ __('vendor.delivery_short_help') }}</span>
-                                </div>
-                            </div>
-                        </label>
-                    </div>
+                    @include('vendor.orders.partials.order-fulfillment-form-body', [
+                        'order' => $order,
+                        'prefix' => 'fulfillment_edit',
+                    ])
 
-                    <div x-show="fulfillmentType === 'pickup'" class="space-y-4" x-cloak>
-                        <div class="space-y-2">
-                            <label for="pickup_at_input" class="block text-sm font-semibold text-gray-800">
-                                {{ __('vendor.pickup_datetime') }}
-                            </label>
-                            <input type="datetime-local"
-                                   id="pickup_at_input"
-                                   x-model="pickupAt"
-                                   class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-base text-gray-900 shadow-inner focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 sm:text-sm"
-                            />
-                            <p class="text-xs text-gray-500">{{ __('vendor.pickup_datetime_help') }}</p>
-                        </div>
-                        <div class="space-y-2">
-                            <label for="delivery_address_pickup_input" class="block text-sm font-semibold text-gray-800">
-                                {{ __('vendor.delivery_address') }}
-                            </label>
-                            <textarea id="delivery_address_pickup_input"
-                                      x-model="deliveryAddress"
-                                      rows="4"
-                                      class="w-full resize-y rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-base text-gray-900 shadow-inner placeholder:text-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 sm:text-sm"
-                                      :class="fulfillmentFieldError ? 'border-red-400' : ''"
-                                      placeholder="{{ __('vendor.delivery_address_help') }}"></textarea>
-                            <p class="text-xs text-gray-500">{{ __('vendor.delivery_address_optional_pickup') }}</p>
-                        </div>
-                    </div>
-
-                    <div x-show="fulfillmentType === 'delivery'" class="space-y-2" x-cloak>
-                        <div>
-                            <label for="delivery_charge_input" class="block text-sm font-semibold text-gray-800">
-                                {{ __('vendor.delivery_charge') }}
-                            </label>
-                            <div class="relative mt-1">
-                                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-gray-500">₹</span>
-                                <input type="number"
-                                       id="delivery_charge_input"
-                                       x-model.number="deliveryCharge"
-                                       min="0"
-                                       step="0.01"
-                                       class="w-full rounded-xl border border-gray-200 bg-white py-3 pl-9 pr-4 text-base text-gray-900 shadow-inner focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 sm:text-sm"
-                                       placeholder="0.00"
-                                />
-                            </div>
-                            <p class="mt-1 text-xs text-gray-500">{{ __('vendor.delivery_charge_help') }}</p>
-                        </div>
-                        <label for="delivery_address_input" class="block text-sm font-semibold text-gray-800">
-                            {{ __('vendor.delivery_address') }}
-                        </label>
-                        <textarea id="delivery_address_input"
-                                  x-model="deliveryAddress"
-                                  rows="4"
-                                  class="w-full resize-y rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-base text-gray-900 shadow-inner placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 sm:text-sm"
-                                  :class="fulfillmentFieldError ? 'border-red-400' : ''"
-                                  placeholder="{{ __('vendor.delivery_address_help') }}"></textarea>
-                        <p class="text-xs text-gray-500">{{ __('vendor.delivery_address_help') }}</p>
-                        <p x-show="fulfillmentFieldError" class="text-sm text-red-600" x-text="fulfillmentFieldError"></p>
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-3 pt-1">
+                    <div class="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
                         <button type="button"
                                 @click="saveFulfillment()"
                                 :disabled="savingFulfillment"
@@ -1920,99 +1873,88 @@ function orderPageData() {
     </div>
 </div>
 
-<!-- Edit Cart Modal -->
+@php
+    $bookingTz = config('app.timezone');
+    $parseOrderBooking = function ($dt) use ($bookingTz) {
+        if (! $dt) {
+            return ['date' => '', 'time' => ''];
+        }
+        $local = $dt->copy()->timezone($bookingTz);
+
+        return ['date' => $local->format('Y-m-d'), 'time' => $local->format('H:i')];
+    };
+    $bookingStartParts = $parseOrderBooking($order->start_at);
+    $bookingEndParts = $parseOrderBooking($order->end_at);
+    $bookingStartAtValue = $order->start_at
+        ? $order->start_at->copy()->timezone($bookingTz)->format('Y-m-d H:i')
+        : '';
+    $bookingEndAtValue = $order->end_at
+        ? $order->end_at->copy()->timezone($bookingTz)->format('Y-m-d H:i')
+        : '';
+@endphp
+
+<!-- Edit Booking Dates Modal -->
 <div id="editCartModal" class="fixed inset-0 z-[70] hidden">
     <div class="fixed inset-0 bg-gray-900/50 transition-opacity" onclick="closeEditCartModal()"></div>
-    <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="relative bg-white rounded-xl shadow-2xl max-w-lg w-full transform transition-all" onclick="event.stopPropagation()">
-            <!-- Modal Header -->
-            <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-t-xl">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 flex items-center justify-center bg-emerald-600 rounded-lg">
-                            <i class="fas fa-shopping-cart text-white"></i>
+    <div class="fixed inset-0 flex items-end justify-center p-0 sm:items-center sm:p-4">
+        <div class="relative flex max-h-[min(92dvh,40rem)] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl" onclick="event.stopPropagation()">
+            <div class="shrink-0 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-4 sm:px-6">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex min-w-0 items-start gap-3">
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+                            <i class="fas fa-calendar-alt" aria-hidden="true"></i>
                         </div>
-                        <div>
+                        <div class="min-w-0">
                             <h3 class="text-lg font-bold text-gray-900">{{ __('vendor.edit') }} {{ __('vendor.booking_dates') }}</h3>
-                            <p class="text-xs text-gray-600">{{ __('vendor.order_booking_modal_help') }}</p>
+                            <p class="mt-0.5 text-xs text-gray-600 sm:text-sm">{{ __('vendor.order_booking_modal_help') }}</p>
                         </div>
                     </div>
-                    <button type="button" onclick="closeEditCartModal()" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg transition-colors">
-                        <i class="fas fa-times text-xl"></i>
+                    <button type="button"
+                            onclick="closeEditCartModal()"
+                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500 transition hover:bg-white hover:text-gray-800"
+                            aria-label="{{ __('vendor.modal_close_aria') }}">
+                        <i class="fas fa-times" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Modal Body -->
-            <form id="editCartForm" onsubmit="submitEditCart(event)" class="p-6 space-y-5">
-                <!-- Customer (Read-only) -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">{{ __('vendor.customer') }}</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="fas fa-user text-gray-400"></i>
-                        </div>
-                        <input type="text" 
-                               value="{{ $order->customer ? $order->customer->name . ' - ' . $order->customer->mobile : __('vendor.order_customer_unavailable') }}"
-                               class="w-full pl-11 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
-                               disabled readonly>
+            <form id="editCartForm" onsubmit="submitEditCart(event)" class="flex min-h-0 flex-1 flex-col">
+                <div class="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
+                    <div class="rounded-lg border border-gray-100 bg-gray-50/80 px-3 py-2.5">
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{{ __('vendor.customer') }}</p>
+                        <p class="mt-0.5 truncate text-sm font-medium text-gray-900">
+                            {{ $order->customer ? $order->customer->name . ' — ' . $order->customer->mobile : __('vendor.order_customer_unavailable') }}
+                        </p>
                     </div>
-                    <p class="mt-1.5 text-xs text-gray-500"><i class="fas fa-info-circle mr-1"></i>{{ __('vendor.customer_cannot_change') }}</p>
-                </div>
 
-                <!-- Booking Dates -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <i class="fas fa-calendar text-emerald-600 mr-1"></i>
-                        {{ __('vendor.booking_dates') }} <span class="text-gray-500 text-xs">({{ __('vendor.optional') }})</span>
-                    </label>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label for="edit_start_at" class="block text-sm font-semibold text-gray-700 mb-1">
-                                <i class="far fa-calendar-alt text-emerald-600 mr-1"></i>{{ __('vendor.start_date_time') }}
-                            </label>
-                            <div class="date-input-wrapper">
-                                <input type="text" name="start_at" id="edit_start_at"
-                                       value="{{ $order->start_at ? $order->start_at->format('Y-m-d H:i') : '' }}"
-                                       readonly
-                                       class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white cursor-pointer"
-                                       placeholder="Select start date">
-                                <span class="date-clear-btn" onclick="clearEditDate('start')" title="Clear">
-                                    <i class="fas fa-times"></i>
-                                </span>
-                                <span class="date-icon"><i class="fas fa-chevron-down"></i></span>
-                            </div>
-                            <p id="editStartTimeError" class="mt-1 text-sm text-red-600 hidden"></p>
-                        </div>
-                        <div>
-                            <label for="edit_end_at" class="block text-sm font-semibold text-gray-700 mb-1">
-                                <i class="far fa-calendar-alt text-emerald-600 mr-1"></i>{{ __('vendor.end_date_time') }}
-                            </label>
-                            <div class="date-input-wrapper">
-                                <input type="text" name="end_at" id="edit_end_at"
-                                       value="{{ $order->end_at ? $order->end_at->format('Y-m-d H:i') : '' }}"
-                                       readonly
-                                       class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white cursor-pointer"
-                                       placeholder="Select end date">
-                                <span class="date-clear-btn" onclick="clearEditDate('end')" title="Clear">
-                                    <i class="fas fa-times"></i>
-                                </span>
-                                <span class="date-icon"><i class="fas fa-chevron-down"></i></span>
-                            </div>
-                            <p id="editEndTimeError" class="mt-1 text-sm text-red-600 hidden"></p>
-                        </div>
+                    <div>
+                        <label class="mb-2 block text-sm font-semibold text-gray-800">
+                            <i class="fas fa-calendar mr-1 text-emerald-600" aria-hidden="true"></i>
+                            {{ __('vendor.booking_dates') }}
+                            <span class="text-xs font-normal text-gray-500">({{ __('vendor.optional') }})</span>
+                        </label>
+                        @include('vendor.orders.partials.order-booking-dates-fields', [
+                            'prefix' => 'edit',
+                            'startParts' => $bookingStartParts,
+                            'endParts' => $bookingEndParts,
+                            'startAtValue' => $bookingStartAtValue,
+                            'endAtValue' => $bookingEndAtValue,
+                            'restrictPastDates' => false,
+                        ])
                     </div>
                 </div>
 
-                <!-- Footer -->
-                <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                    <button type="button" onclick="closeEditCartModal()"
-                            class="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                <div class="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-200 bg-white px-4 py-3 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
+                    <button type="button"
+                            onclick="closeEditCartModal()"
+                            class="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-gray-300 bg-white px-5 text-sm font-semibold text-gray-700 hover:bg-gray-50 sm:min-h-[40px]">
                         {{ __('vendor.cancel') }}
                     </button>
-                    <button type="submit" id="editCartSubmitBtn"
-                            class="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all active:scale-95 shadow-sm">
-                        <i class="fas fa-save mr-2"></i>{{ __('vendor.update') }}
+                    <button type="submit"
+                            id="editCartSubmitBtn"
+                            class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-[0.98] sm:min-h-[40px]">
+                        <i class="fas fa-save text-xs" aria-hidden="true"></i>
+                        {{ __('vendor.update') }}
                     </button>
                 </div>
             </form>
@@ -2047,29 +1989,57 @@ function orderPageData() {
     </div>
 </div>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
 <style>
     [x-cloak] { display: none !important; }
     .flatpickr-calendar { border-radius: 12px !important; box-shadow: 0 10px 40px rgba(0,0,0,.15) !important; border: 1px solid #e5e7eb !important; font-family: 'Inter', sans-serif !important; }
     .flatpickr-day.selected, .flatpickr-day.selected:hover { background: #059669 !important; border-color: #059669 !important; }
+    .flatpickr-day.booking-in-range {
+        background: #d1fae5 !important;
+        border-color: #a7f3d0 !important;
+        color: #065f46 !important;
+        box-shadow: none !important;
+    }
+    .flatpickr-day.booking-range-start,
+    .flatpickr-day.booking-range-end,
+    .flatpickr-day.booking-range-preview-end {
+        background: #059669 !important;
+        border-color: #059669 !important;
+        color: #fff !important;
+    }
+    .flatpickr-day.booking-range-start.booking-in-range,
+    .flatpickr-day.booking-range-end.booking-in-range { border-radius: 0 !important; }
+    .flatpickr-day.booking-range-start { border-radius: 50% 0 0 50% !important; }
+    .flatpickr-day.booking-range-end,
+    .flatpickr-day.booking-range-preview-end { border-radius: 0 50% 50% 0 !important; }
+    .flatpickr-day.booking-range-start.booking-range-end { border-radius: 50% !important; }
     .flatpickr-day.today { border-color: #059669 !important; }
     .flatpickr-day:hover { background: #d1fae5 !important; }
+    .flatpickr-day.booking-range-start:hover,
+    .flatpickr-day.booking-range-end:hover,
+    .flatpickr-day.booking-range-preview-end:hover { background: #047857 !important; }
     .flatpickr-months .flatpickr-month { height: 40px !important; }
     .flatpickr-current-month { font-size: 1rem !important; font-weight: 600 !important; }
-    .flatpickr-time input { font-size: 1rem !important; }
-    .date-input-wrapper { position: relative; }
-    .date-input-wrapper .date-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; font-size: 14px; }
-    .date-input-wrapper input { padding-right: 32px; }
-    .date-clear-btn { position: absolute; right: 28px; top: 50%; transform: translateY(-50%); color: #9ca3af; cursor: pointer; font-size: 12px; padding: 2px 4px; display: none; }
-    .date-clear-btn:hover { color: #ef4444; }
-    .date-input-wrapper input:not([value=""]) ~ .date-clear-btn,
-    .date-input-wrapper input.has-value ~ .date-clear-btn { display: block; }
+    .date-input-wrapper { position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .date-input-wrapper .date-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; font-size: 14px; z-index: 1; }
+    .date-input-wrapper input,
+    .date-input-wrapper .flatpickr-input { display: block; width: 100%; box-sizing: border-box; padding-right: 32px; min-height: 40px; font-size: 0.875rem; cursor: pointer; }
+    .time-input-wrapper { position: relative; }
+    .time-input-wrapper .time-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; font-size: 14px; }
+    .booking-time-select {
+        min-height: 40px;
+        font-size: 0.875rem;
+        padding-right: 32px;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: none;
+        color: #111827;
+    }
+    .booking-time-select.is-placeholder { color: #9ca3af; }
 </style>
 @endsection
 
 @section('scripts')
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
 let pendingDelete = null;
 
@@ -2206,87 +2176,6 @@ function refreshOrderItems() {
     })
     .catch(() => {});
 }
-
-// --- Flatpickr for Edit Cart Modal ---
-let editStartPicker, editEndPicker;
-
-function initEditDatePickers() {
-    function toggleClearBtn(instance) {
-        const wrapper = instance.element.closest('.date-input-wrapper');
-        if (!wrapper) return;
-        const clearBtn = wrapper.querySelector('.date-clear-btn');
-        if (clearBtn) {
-            clearBtn.style.display = instance.selectedDates.length > 0 ? 'block' : 'none';
-        }
-    }
-
-    const fpConfig = {
-        enableTime: true,
-        dateFormat: 'Y-m-d H:i',
-        altInput: true,
-        altFormat: 'M j, Y h:i K',
-        time_24hr: false,
-        allowInput: false,
-        disableMobile: false,
-        monthSelectorType: 'dropdown',
-        animate: true,
-        onReady: function(selectedDates, dateStr, instance) {
-            toggleClearBtn(instance);
-        },
-        onChange: function(selectedDates, dateStr, instance) {
-            toggleClearBtn(instance);
-        }
-    };
-
-    if (editStartPicker) editStartPicker.destroy();
-    if (editEndPicker) editEndPicker.destroy();
-
-    editStartPicker = flatpickr('#edit_start_at', {
-        ...fpConfig,
-        onChange: function(selectedDates, dateStr, instance) {
-            toggleClearBtn(instance);
-            if (selectedDates.length > 0) {
-                editEndPicker.set('minDate', selectedDates[0]);
-            } else {
-                editEndPicker.set('minDate', null);
-            }
-        }
-    });
-
-    editEndPicker = flatpickr('#edit_end_at', {
-        ...fpConfig,
-        onChange: function(selectedDates, dateStr, instance) {
-            toggleClearBtn(instance);
-            if (selectedDates.length > 0) {
-                editStartPicker.set('maxDate', selectedDates[0]);
-            } else {
-                editStartPicker.set('maxDate', null);
-            }
-        }
-    });
-
-    // Set initial constraints
-    if (editStartPicker.selectedDates.length > 0) {
-        editEndPicker.set('minDate', editStartPicker.selectedDates[0]);
-    }
-    if (editEndPicker.selectedDates.length > 0) {
-        editStartPicker.set('maxDate', editEndPicker.selectedDates[0]);
-    }
-}
-
-window.clearEditDate = function(which) {
-    if (which === 'start') {
-        editStartPicker.clear();
-        editEndPicker.set('minDate', null);
-    } else {
-        editEndPicker.clear();
-        editStartPicker.set('maxDate', null);
-    }
-};
-
-document.addEventListener('DOMContentLoaded', function() {
-    initEditDatePickers();
-});
 
 // --- Discount Modal ---
 function openDiscountModal() {
@@ -2824,6 +2713,8 @@ function submitEditCart(e) {
 
     document.getElementById('editStartTimeError').classList.add('hidden');
     document.getElementById('editEndTimeError').classList.add('hidden');
+
+    document.dispatchEvent(new CustomEvent('sync-booking-dates'));
 
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>{{ __("vendor.updating") }}...';

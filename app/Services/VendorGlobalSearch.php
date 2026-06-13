@@ -161,7 +161,7 @@ class VendorGlobalSearch
             'items' => $customers->map(fn (VendorCustomer $customer) => [
                 'title' => $customer->name,
                 'subtitle' => $customer->mobile,
-                'url' => route('vendor.customers.edit', $customer),
+                'url' => route('vendor.customers.show', $customer),
                 'image' => null,
             ])->all(),
         ];

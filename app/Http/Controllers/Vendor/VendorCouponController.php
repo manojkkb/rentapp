@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Coupon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class VendorCouponController extends Controller
 {
@@ -14,91 +15,176 @@ class VendorCouponController extends Controller
         return Auth::user()->currentVendor();
     }
 
-    public function index(Request $request)
+    private function authorizeCoupon(Coupon $coupon): void
     {
         $vendor = $this->vendor();
 
+        if (! $vendor || $coupon->vendor_id !== $vendor->id) {
+            abort(403);
+        }
+    }
+
+    public function index(Request $request)
+    {
         return view('vendor.coupons.index');
+    }
+
+    public function create()
+    {
+        $this->vendor();
+
+        return view('vendor.coupons.create');
     }
 
     public function store(Request $request)
     {
         $vendor = $this->vendor();
 
-        $request->validate([
-            'code' => 'required|string|max:50',
-            'name' => 'nullable|string|max:255',
-            'type' => 'required|in:fixed,percent',
-            'value' => 'required|numeric|min:0.01',
-            'min_order_amount' => 'nullable|numeric|min:0',
-            'max_discount_amount' => 'nullable|numeric|min:0',
-            'usage_limit' => 'nullable|integer|min:1',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'is_active' => 'boolean',
-        ]);
+        $validated = $this->validateCoupon($request);
 
-        $code = strtoupper(trim($request->code));
+        $code = strtoupper(trim($validated['code']));
 
         if (Coupon::where('vendor_id', $vendor->id)->where('code', $code)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Coupon code already exists',
-                'errors' => ['code' => ['This coupon code already exists']],
-            ], 422);
-        }
-
-        if ($request->type === 'percent' && $request->value > 100) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Percentage cannot exceed 100%',
-                'errors' => ['value' => ['Percentage cannot exceed 100%']],
-            ], 422);
+            throw ValidationException::withMessages([
+                'code' => [__('vendor.coupon_code_exists')],
+            ]);
         }
 
         $coupon = Coupon::create([
             'vendor_id' => $vendor->id,
             'code' => $code,
-            'name' => $request->name,
-            'type' => $request->type,
-            'value' => $request->value,
-            'min_order_amount' => $request->min_order_amount ?? 0,
-            'max_discount_amount' => $request->max_discount_amount,
-            'usage_limit' => $request->usage_limit,
+            'name' => $validated['name'] ?? null,
+            'type' => $validated['type'],
+            'value' => $validated['value'],
+            'min_order_amount' => $validated['min_order_amount'] ?? 0,
+            'max_discount_amount' => $validated['max_discount_amount'] ?? null,
+            'usage_limit' => $validated['usage_limit'] ?? null,
             'used_count' => 0,
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
+            'start_date' => $validated['start_date'] ?? null,
+            'end_date' => $validated['end_date'] ?? null,
             'is_active' => $request->boolean('is_active', true),
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Coupon created successfully!',
-            'coupon' => $coupon,
-        ]);
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => __('vendor.coupon_created'),
+                'coupon' => $coupon,
+            ]);
+        }
+
+        return redirect()
+            ->route('vendor.coupons.show', $coupon)
+            ->with('success', __('vendor.coupon_created'));
     }
 
     public function show(Coupon $coupon)
     {
-        $vendor = $this->vendor();
-        if ($coupon->vendor_id !== $vendor->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
+        $this->authorizeCoupon($coupon);
 
-        return response()->json([
-            'success' => true,
-            'coupon' => $coupon,
-        ]);
+        $coupon->loadCount('orders');
+
+        $usageStats = [
+            'orders' => (int) $coupon->orders_count,
+            'total_discount' => (float) $coupon->orders()->sum('coupon_discount'),
+        ];
+
+        return view('vendor.coupons.show', compact('coupon', 'usageStats'));
+    }
+
+    public function edit(Coupon $coupon)
+    {
+        $this->authorizeCoupon($coupon);
+
+        return view('vendor.coupons.edit', compact('coupon'));
     }
 
     public function update(Request $request, Coupon $coupon)
     {
         $vendor = $this->vendor();
-        if ($coupon->vendor_id !== $vendor->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        $this->authorizeCoupon($coupon);
+
+        $validated = $this->validateCoupon($request);
+
+        $code = strtoupper(trim($validated['code']));
+
+        if (Coupon::where('vendor_id', $vendor->id)->where('code', $code)->where('id', '!=', $coupon->id)->exists()) {
+            throw ValidationException::withMessages([
+                'code' => [__('vendor.coupon_code_exists')],
+            ]);
         }
 
-        $request->validate([
+        $coupon->update([
+            'code' => $code,
+            'name' => $validated['name'] ?? null,
+            'type' => $validated['type'],
+            'value' => $validated['value'],
+            'min_order_amount' => $validated['min_order_amount'] ?? 0,
+            'max_discount_amount' => $validated['max_discount_amount'] ?? null,
+            'usage_limit' => $validated['usage_limit'] ?? null,
+            'start_date' => $validated['start_date'] ?? null,
+            'end_date' => $validated['end_date'] ?? null,
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => __('vendor.coupon_updated'),
+                'coupon' => $coupon->fresh(),
+            ]);
+        }
+
+        return redirect()
+            ->route('vendor.coupons.show', $coupon)
+            ->with('success', __('vendor.coupon_updated'));
+    }
+
+    public function destroy(Coupon $coupon)
+    {
+        $this->authorizeCoupon($coupon);
+
+        $coupon->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => __('vendor.coupon_deleted'),
+            ]);
+        }
+
+        return redirect()
+            ->route('vendor.coupons.index')
+            ->with('success', __('vendor.coupon_deleted'));
+    }
+
+    public function toggleStatus(Coupon $coupon)
+    {
+        $this->authorizeCoupon($coupon);
+
+        $coupon->update(['is_active' => ! $coupon->is_active]);
+
+        $message = $coupon->is_active
+            ? __('vendor.coupon_activated')
+            : __('vendor.coupon_deactivated');
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'is_active' => $coupon->is_active,
+            ]);
+        }
+
+        return back()->with('success', $message);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validateCoupon(Request $request): array
+    {
+        $validated = $request->validate([
             'code' => 'required|string|max:50',
             'name' => 'nullable|string|max:255',
             'type' => 'required|in:fixed,percent',
@@ -111,72 +197,12 @@ class VendorCouponController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        $code = strtoupper(trim($request->code));
-
-        if (Coupon::where('vendor_id', $vendor->id)->where('code', $code)->where('id', '!=', $coupon->id)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Coupon code already exists',
-                'errors' => ['code' => ['This coupon code already exists']],
-            ], 422);
+        if ($validated['type'] === 'percent' && (float) $validated['value'] > 100) {
+            throw ValidationException::withMessages([
+                'value' => [__('vendor.coupon_percent_max')],
+            ]);
         }
 
-        if ($request->type === 'percent' && $request->value > 100) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Percentage cannot exceed 100%',
-                'errors' => ['value' => ['Percentage cannot exceed 100%']],
-            ], 422);
-        }
-
-        $coupon->update([
-            'code' => $code,
-            'name' => $request->name,
-            'type' => $request->type,
-            'value' => $request->value,
-            'min_order_amount' => $request->min_order_amount ?? 0,
-            'max_discount_amount' => $request->max_discount_amount,
-            'usage_limit' => $request->usage_limit,
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'is_active' => $request->boolean('is_active', true),
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Coupon updated successfully!',
-            'coupon' => $coupon->fresh(),
-        ]);
-    }
-
-    public function destroy(Coupon $coupon)
-    {
-        $vendor = $this->vendor();
-        if ($coupon->vendor_id !== $vendor->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        $coupon->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Coupon deleted successfully!',
-        ]);
-    }
-
-    public function toggleStatus(Coupon $coupon)
-    {
-        $vendor = $this->vendor();
-        if ($coupon->vendor_id !== $vendor->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        $coupon->update(['is_active' => !$coupon->is_active]);
-
-        return response()->json([
-            'success' => true,
-            'message' => $coupon->is_active ? 'Coupon activated' : 'Coupon deactivated',
-            'is_active' => $coupon->is_active,
-        ]);
+        return $validated;
     }
 }
