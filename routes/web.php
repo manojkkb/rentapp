@@ -41,6 +41,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [WelcomeCtrl::class, 'index'])->name('welcome');
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+Route::get('/sitemap', [SitemapController::class, 'index']);
 Route::get('/stores', [StoreDirectoryController::class, 'index'])->name('stores.index');
 Route::get('/privacy-policy', [LegalController::class, 'privacy'])->name('legal.privacy');
 Route::get('/terms-and-conditions', [LegalController::class, 'terms'])->name('legal.terms');

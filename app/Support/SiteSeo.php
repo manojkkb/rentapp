@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Vendor;
+use Illuminate\Support\Facades\Log;
 
 final class SiteSeo
 {
@@ -24,7 +25,7 @@ final class SiteSeo
         $title = 'Rentkia — Rent Cameras, Tools & Equipment Online in India';
         $description = 'Rentkia is India\'s rental marketplace. Rent cameras, tools, electronics, party gear and more from trusted local vendors near you. Book online with pickup or delivery.';
         $keywords = 'Rentkia, rental marketplace India, rent camera, rent tools, equipment rental, party equipment rent, vendor rental store';
-        $canonical = route('welcome');
+        $canonical = url('/');
         $logo = asset('vendor/icons/icon-512.png');
 
         return [
@@ -62,7 +63,7 @@ final class SiteSeo
                     ],
                     'potentialAction' => [
                         '@type' => 'SearchAction',
-                        'target' => route('stores.index').'?q={search_term_string}',
+                        'target' => url('/stores').'?q={search_term_string}',
                         'query-input' => 'required name=search_term_string',
                     ],
                 ],
@@ -91,31 +92,61 @@ final class SiteSeo
         $now = now()->toAtomString();
 
         $entries = [
-            ['loc' => route('welcome'), 'changefreq' => 'weekly', 'priority' => '1.0', 'lastmod' => $now],
-            ['loc' => route('stores.index'), 'changefreq' => 'daily', 'priority' => '0.9', 'lastmod' => $now],
-            ['loc' => route('pages.about'), 'changefreq' => 'monthly', 'priority' => '0.7', 'lastmod' => $now],
-            ['loc' => route('pages.how-it-works'), 'changefreq' => 'monthly', 'priority' => '0.7', 'lastmod' => $now],
-            ['loc' => route('pages.team'), 'changefreq' => 'monthly', 'priority' => '0.6', 'lastmod' => $now],
-            ['loc' => route('pages.contact'), 'changefreq' => 'monthly', 'priority' => '0.6', 'lastmod' => $now],
-            ['loc' => route('legal.privacy'), 'changefreq' => 'yearly', 'priority' => '0.4', 'lastmod' => $now],
-            ['loc' => route('legal.terms'), 'changefreq' => 'yearly', 'priority' => '0.4', 'lastmod' => $now],
+            ['loc' => url('/'), 'changefreq' => 'weekly', 'priority' => '1.0', 'lastmod' => $now],
+            ['loc' => url('/stores'), 'changefreq' => 'daily', 'priority' => '0.9', 'lastmod' => $now],
+            ['loc' => url('/about-us'), 'changefreq' => 'monthly', 'priority' => '0.7', 'lastmod' => $now],
+            ['loc' => url('/how-it-works'), 'changefreq' => 'monthly', 'priority' => '0.7', 'lastmod' => $now],
+            ['loc' => url('/our-team'), 'changefreq' => 'monthly', 'priority' => '0.6', 'lastmod' => $now],
+            ['loc' => url('/contact-us'), 'changefreq' => 'monthly', 'priority' => '0.6', 'lastmod' => $now],
+            ['loc' => url('/privacy-policy'), 'changefreq' => 'yearly', 'priority' => '0.4', 'lastmod' => $now],
+            ['loc' => url('/terms-and-conditions'), 'changefreq' => 'yearly', 'priority' => '0.4', 'lastmod' => $now],
         ];
 
-        Vendor::query()
-            ->active()
-            ->with('storeSettings')
-            ->orderByDesc('updated_at')
-            ->get()
-            ->filter(fn (Vendor $vendor) => StorefrontPublish::isLive($vendor, $vendor->storeSettings))
-            ->each(function (Vendor $vendor) use (&$entries) {
-                $entries[] = [
-                    'loc' => route('storefront.show', $vendor->slug),
-                    'changefreq' => 'weekly',
-                    'priority' => '0.8',
-                    'lastmod' => $vendor->updated_at?->toAtomString(),
-                ];
-            });
+        try {
+            Vendor::query()
+                ->active()
+                ->with('storeSettings')
+                ->orderByDesc('updated_at')
+                ->get()
+                ->filter(fn (Vendor $vendor) => StorefrontPublish::isLive($vendor, $vendor->storeSettings))
+                ->each(function (Vendor $vendor) use (&$entries) {
+                    $entries[] = [
+                        'loc' => url('/store/'.$vendor->slug),
+                        'changefreq' => 'weekly',
+                        'priority' => '0.8',
+                        'lastmod' => $vendor->updated_at?->toAtomString(),
+                    ];
+                });
+        } catch (\Throwable $e) {
+            Log::warning('Sitemap vendor entries skipped', ['error' => $e->getMessage()]);
+        }
 
         return $entries;
+    }
+
+    /**
+     * @param  list<array{loc: string, changefreq: string, priority: string, lastmod?: string|null}>  $entries
+     */
+    public static function toXml(array $entries): string
+    {
+        $lines = [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        ];
+
+        foreach ($entries as $entry) {
+            $lines[] = '  <url>';
+            $lines[] = '    <loc>'.htmlspecialchars($entry['loc'], ENT_XML1 | ENT_COMPAT, 'UTF-8').'</loc>';
+            if (! empty($entry['lastmod'])) {
+                $lines[] = '    <lastmod>'.htmlspecialchars((string) $entry['lastmod'], ENT_XML1 | ENT_COMPAT, 'UTF-8').'</lastmod>';
+            }
+            $lines[] = '    <changefreq>'.htmlspecialchars($entry['changefreq'], ENT_XML1 | ENT_COMPAT, 'UTF-8').'</changefreq>';
+            $lines[] = '    <priority>'.htmlspecialchars($entry['priority'], ENT_XML1 | ENT_COMPAT, 'UTF-8').'</priority>';
+            $lines[] = '  </url>';
+        }
+
+        $lines[] = '</urlset>';
+
+        return implode("\n", $lines)."\n";
     }
 }
