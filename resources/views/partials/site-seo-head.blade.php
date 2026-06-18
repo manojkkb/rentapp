@@ -1,6 +1,6 @@
 @php
     $seo = $seo ?? [];
-    $seoTitle = $seo['title'] ?? trim($__env->yieldContent('title')) ?: 'Rentkia';
+    $seoTitle = $seo['title'] ?? trim($__env->yieldContent('title')) ?: \App\Support\SiteSeo::BRAND;
     $seoDescription = $seo['description'] ?? trim($__env->yieldContent('meta_description')) ?: 'Rent anything, anytime from trusted local vendors on Rentkia.';
     $seoKeywords = $seo['keywords'] ?? null;
     $canonical = $seo['canonical'] ?? url()->current();
@@ -10,13 +10,15 @@
     $jsonLd = $seo['json_ld'] ?? [];
 @endphp
 <title>{{ $seoTitle }}</title>
+<meta name="application-name" content="{{ \App\Support\SiteSeo::BRAND }}">
+<meta name="apple-mobile-web-app-title" content="{{ \App\Support\SiteSeo::BRAND }}">
 <meta name="robots" content="{{ $robots }}">
 <link rel="canonical" href="{{ $canonical }}">
 <meta name="description" content="{{ $seoDescription }}">
 @if($seoKeywords)
     <meta name="keywords" content="{{ $seoKeywords }}">
 @endif
-<meta property="og:site_name" content="Rentkia">
+<meta property="og:site_name" content="{{ \App\Support\SiteSeo::BRAND }}">
 <meta property="og:title" content="{{ $seoTitle }}">
 <meta property="og:description" content="{{ $seoDescription }}">
 <meta property="og:type" content="{{ $ogType }}">

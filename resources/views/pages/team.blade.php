@@ -1,7 +1,5 @@
 @extends('pages.partials.layout')
 
-@section('title', 'Our Team — Rentkia')
-
 @section('page-content')
     <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         @foreach([

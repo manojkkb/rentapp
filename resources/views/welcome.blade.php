@@ -22,6 +22,7 @@
                     </div>
 
                     <h1 class="fade-up fade-up-delay-1 text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-white leading-[1.08] tracking-tight mb-6">
+                        <span class="block text-emerald-400 text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 tracking-tight">Rentkia</span>
                         Rent what you need.
                         <span class="block text-gradient mt-1">Own the moment.</span>
                     </h1>

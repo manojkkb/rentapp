@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vendor;
+use App\Support\SiteSeo;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -41,6 +42,14 @@ class StoreDirectoryController extends Controller
             ->paginate(24)
             ->withQueryString();
 
-        return view('stores.index', compact('stores', 'search'));
+        return view('stores.index', [
+            'stores' => $stores,
+            'search' => $search,
+            'seo' => SiteSeo::forPage(
+                'Stores',
+                'Browse rental stores on Rentkia — find cameras, tools, party gear, and equipment from trusted local vendors near you.',
+                '/stores',
+            ),
+        ]);
     }
 }

@@ -5,7 +5,7 @@
 @section('content')
     <section class="relative overflow-hidden hero-mesh grid-pattern pt-28 pb-10 lg:pt-32 lg:pb-12 px-4 sm:px-6 lg:px-8">
         <div class="relative z-10 max-w-3xl mx-auto text-center">
-            <span class="inline-block text-emerald-300 font-semibold text-sm uppercase tracking-widest mb-3">Legal</span>
+            <span class="inline-block text-emerald-300 font-semibold text-sm uppercase tracking-widest mb-3">{{ \App\Support\SiteSeo::BRAND }}</span>
             <h1 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">{{ $title }}</h1>
             <p class="mt-3 text-sm text-slate-400">Last updated: {{ $updated ?? 'June 18, 2026' }}</p>
         </div>

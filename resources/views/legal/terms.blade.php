@@ -1,7 +1,5 @@
 @extends('legal.partials.layout')
 
-@section('title', 'Terms & Conditions — Rentkia')
-
 @php
     $title = 'Terms & Conditions';
     $alternateRoute = route('legal.privacy');

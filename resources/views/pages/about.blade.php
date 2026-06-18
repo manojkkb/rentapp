@@ -1,7 +1,5 @@
 @extends('pages.partials.layout')
 
-@section('title', 'About Us — Rentkia')
-
 @section('page-content')
     <div class="grid gap-6 lg:grid-cols-2 lg:gap-8">
         <article class="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">

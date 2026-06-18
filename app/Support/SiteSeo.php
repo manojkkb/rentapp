@@ -7,6 +7,60 @@ use Illuminate\Support\Facades\Log;
 
 final class SiteSeo
 {
+    public const BRAND = 'Rentkia';
+
+    public static function title(string $pageTitle = ''): string
+    {
+        if ($pageTitle === '') {
+            return self::BRAND.' | India\'s Rental Marketplace';
+        }
+
+        return self::BRAND.' | '.$pageTitle;
+    }
+
+    /**
+     * @return array{
+     *     title: string,
+     *     description: string,
+     *     keywords: string|null,
+     *     canonical: string,
+     *     og_type: string,
+     *     og_image: string|null,
+     *     robots: string,
+     *     json_ld: list<array<string, mixed>>
+     * }
+     */
+    public static function forPage(string $pageTitle, string $description, string $path): array
+    {
+        $title = self::title($pageTitle);
+        $canonical = url($path);
+
+        return [
+            'title' => $title,
+            'description' => $description,
+            'keywords' => self::BRAND.', rental marketplace India, rent equipment online',
+            'canonical' => $canonical,
+            'og_type' => 'website',
+            'og_image' => asset('vendor/icons/icon-512.png'),
+            'robots' => 'index, follow',
+            'json_ld' => [
+                [
+                    '@context' => 'https://schema.org',
+                    '@type' => 'WebPage',
+                    'name' => $title,
+                    'url' => $canonical,
+                    'description' => $description,
+                    'inLanguage' => 'en-IN',
+                    'isPartOf' => [
+                        '@type' => 'WebSite',
+                        'name' => self::BRAND,
+                        'url' => rtrim((string) config('app.url'), '/'),
+                    ],
+                ],
+            ],
+        ];
+    }
+
     /**
      * @return array{
      *     title: string,
@@ -22,7 +76,7 @@ final class SiteSeo
     public static function forHome(): array
     {
         $siteUrl = rtrim((string) config('app.url'), '/');
-        $title = 'Rentkia — Rent Cameras, Tools & Equipment Online in India';
+        $title = self::title('Rent Cameras, Tools & Equipment Online in India');
         $description = 'Rentkia is India\'s rental marketplace. Rent cameras, tools, electronics, party gear and more from trusted local vendors near you. Book online with pickup or delivery.';
         $keywords = 'Rentkia, rental marketplace India, rent camera, rent tools, equipment rental, party equipment rent, vendor rental store';
         $canonical = url('/');
@@ -40,7 +94,7 @@ final class SiteSeo
                 [
                     '@context' => 'https://schema.org',
                     '@type' => 'Organization',
-                    'name' => 'Rentkia',
+                    'name' => self::BRAND,
                     'url' => $siteUrl,
                     'logo' => $logo,
                     'email' => 'hello@rentkia.com',
@@ -50,12 +104,12 @@ final class SiteSeo
                 [
                     '@context' => 'https://schema.org',
                     '@type' => 'WebSite',
-                    'name' => 'Rentkia',
+                    'name' => self::BRAND,
                     'url' => $siteUrl,
                     'description' => $description,
                     'publisher' => [
                         '@type' => 'Organization',
-                        'name' => 'Rentkia',
+                        'name' => self::BRAND,
                         'logo' => [
                             '@type' => 'ImageObject',
                             'url' => $logo,
@@ -76,7 +130,7 @@ final class SiteSeo
                     'inLanguage' => 'en-IN',
                     'isPartOf' => [
                         '@type' => 'WebSite',
-                        'name' => 'Rentkia',
+                        'name' => self::BRAND,
                         'url' => $siteUrl,
                     ],
                 ],

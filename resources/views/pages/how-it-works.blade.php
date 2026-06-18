@@ -1,7 +1,5 @@
 @extends('pages.partials.layout')
 
-@section('title', 'How It Works — Rentkia')
-
 @section('page-content')
     <div class="relative">
         <div class="grid gap-10 md:grid-cols-3 md:gap-8 lg:gap-12">

@@ -1,6 +1,5 @@
 @extends('layouts.guest')
 
-@section('title', 'Stores — Rentkia')
 @section('headerSolid', '1')
 
 @section('content')
@@ -10,7 +9,7 @@
         <div class="blob bg-teal-400 w-[320px] h-[320px] bottom-0 -left-20 opacity-25" style="animation-delay: 2s;"></div>
 
         <div class="relative z-10 max-w-7xl mx-auto text-center">
-            <span class="inline-block text-emerald-300 font-semibold text-sm uppercase tracking-widest mb-3">Marketplace</span>
+            <span class="inline-block text-emerald-300 font-semibold text-sm uppercase tracking-widest mb-3">Rentkia</span>
             <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
                 Browse <span class="text-gradient">stores</span>
             </h1>
