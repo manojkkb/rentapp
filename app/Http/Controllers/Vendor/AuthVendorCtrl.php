@@ -303,7 +303,7 @@ class AuthVendorCtrl extends Controller
             'owner_name' => $request->owner_name,
             'slug' => $slug,
             'language' => $language,
-            'is_verified' => false,
+            'is_verified' => true,
             'is_active' => true,
             'rating' => 0,
             'total_reviews' => 0,
@@ -381,7 +381,7 @@ class AuthVendorCtrl extends Controller
         if ($user->vendor_id) {
             $defaultVendor = $vendors->firstWhere('id', $user->vendor_id);
 
-            if ($defaultVendor && $defaultVendor->is_verified) {
+            if ($defaultVendor) {
                 return $this->activateVendorSession($user, $defaultVendor);
             }
         }
@@ -404,15 +404,6 @@ class AuthVendorCtrl extends Controller
         if ($vendors->count() === 1) {
             $vendor = $vendors->first();
 
-            if (! $vendor->is_verified) {
-                Auth::logout();
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Your vendor account is pending verification. Please contact support.',
-                ], 403);
-            }
-
             $user->setCurrentVendorId($vendor->id);
             $user->vendors()->updateExistingPivot($vendor->id, ['last_login_at' => now()]);
             Session::put('language', $vendor->language ?? $user->language ?? 'en');
@@ -427,7 +418,7 @@ class AuthVendorCtrl extends Controller
         if ($user->vendor_id) {
             $defaultVendor = $vendors->firstWhere('id', $user->vendor_id);
 
-            if ($defaultVendor && $defaultVendor->is_verified) {
+            if ($defaultVendor) {
                 $user->setCurrentVendorId($defaultVendor->id);
                 $user->vendors()->updateExistingPivot($defaultVendor->id, ['last_login_at' => now()]);
                 Session::put('language', $defaultVendor->language ?? $user->language ?? 'en');
@@ -449,14 +440,6 @@ class AuthVendorCtrl extends Controller
 
     private function activateVendorSession(User $user, Vendor $vendor)
     {
-        if (! $vendor->is_verified) {
-            Auth::logout();
-
-            return back()->withErrors([
-                'mobile' => 'Your vendor account is pending verification. Please contact support.',
-            ]);
-        }
-
         $user->vendors()->updateExistingPivot($vendor->id, ['last_login_at' => now()]);
         $user->setCurrentVendorId($vendor->id);
         Session::put('language', $vendor->language ?? $user->language ?? 'en');

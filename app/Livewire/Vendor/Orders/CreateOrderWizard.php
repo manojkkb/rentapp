@@ -8,6 +8,8 @@ use App\Models\CreateOrder;
 use App\Models\User;
 use App\Models\VendorCustomer;
 use App\Support\OrderCreateWizardSession;
+use App\Support\OrderWizardDateTimeDefaults;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -59,6 +61,16 @@ class CreateOrderWizard extends VendorComponent
             $this->eventName = (string) ($wizard['event_name'] ?? '');
             $this->startTime = (string) ($wizard['start_time'] ?? '');
             $this->endTime = (string) ($wizard['end_time'] ?? '');
+        }
+
+        if ($this->startTime === '') {
+            $this->startTime = OrderWizardDateTimeDefaults::format(OrderWizardDateTimeDefaults::defaultStartAt());
+        }
+        if ($this->endTime === '') {
+            $startAt = Carbon::createFromFormat('Y-m-d H:i', $this->startTime);
+            $this->endTime = OrderWizardDateTimeDefaults::format(
+                OrderWizardDateTimeDefaults::defaultEndAt($startAt),
+            );
         }
 
         $requestedStep = (int) request()->query('step', 0);

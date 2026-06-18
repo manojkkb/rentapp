@@ -1,9 +1,12 @@
 @php
+    use App\Support\OrderWizardDateTimeDefaults;
+
     $livewireWizard = $livewireWizard ?? false;
 @endphp
 
 @php
     $ft = old('fulfillment_type', $wizard['fulfillment_type'] ?? 'pickup');
+    $defaultFulfillmentAt = OrderWizardDateTimeDefaults::format(OrderWizardDateTimeDefaults::defaultFulfillmentAt());
     $parseDateTime = function (?string $value): array {
         if (! $value) {
             return ['date' => '', 'time' => ''];
@@ -16,8 +19,10 @@
             return ['date' => '', 'time' => ''];
         }
     };
-    $pickupParts = $parseDateTime(old('pickup_at', $wizard['pickup_at'] ?? null));
-    $deliveryParts = $parseDateTime(old('delivery_at', $wizard['delivery_at'] ?? null));
+    $pickupAtValue = old('pickup_at', $wizard['pickup_at'] ?? '') ?: $defaultFulfillmentAt;
+    $deliveryAtValue = old('delivery_at', $wizard['delivery_at'] ?? '') ?: $defaultFulfillmentAt;
+    $pickupParts = $parseDateTime($pickupAtValue);
+    $deliveryParts = $parseDateTime($deliveryAtValue);
     $delAddr = old('delivery_address', $wizard['delivery_address'] ?? '');
     $delCharge = old('delivery_charge', isset($wizard['delivery_charge']) ? (string) $wizard['delivery_charge'] : '0');
 @endphp
@@ -32,7 +37,7 @@
               livewireWizard: @json($livewireWizard ?? false),
               fulfillment: @js($ft),
               deliveryAddress: @js($delAddr),
-              pickupAt: @js(old('pickup_at', $wizard['pickup_at'] ?? '')),
+              pickupAt: @js($pickupAtValue),
               fulfillmentStepError: '',
               collectPayload() {
                   window.dispatchEvent(new CustomEvent('sync-fulfillment-datetimes'));
@@ -100,7 +105,7 @@
             @include('vendor.orders.partials.order-fulfillment-datetime-fields', [
                 'prefix' => 'pickup',
                 'parts' => $pickupParts,
-                'hiddenValue' => old('pickup_at', $wizard['pickup_at'] ?? ''),
+                'hiddenValue' => $pickupAtValue,
                 'restrictPastDates' => true,
                 'changeEvent' => 'wizard-pickup-at-changed',
                 'label' => __('vendor.pickup_datetime'),
@@ -128,7 +133,7 @@
             @include('vendor.orders.partials.order-fulfillment-datetime-fields', [
                 'prefix' => 'delivery',
                 'parts' => $deliveryParts,
-                'hiddenValue' => old('delivery_at', $wizard['delivery_at'] ?? ''),
+                'hiddenValue' => $deliveryAtValue,
                 'restrictPastDates' => true,
                 'changeEvent' => null,
                 'label' => __('vendor.delivery_datetime'),

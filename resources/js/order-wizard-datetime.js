@@ -14,6 +14,55 @@ export function todayYmd() {
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
 }
 
+export function formatYmd(date) {
+    return date.getFullYear() + '-' + pad2(date.getMonth() + 1) + '-' + pad2(date.getDate());
+}
+
+export function formatHi(date) {
+    return pad2(date.getHours()) + ':' + pad2(date.getMinutes());
+}
+
+export function nextAvailableTimeSlot(fromDate = new Date()) {
+    const slot = new Date(fromDate);
+    slot.setSeconds(0, 0);
+    slot.setMilliseconds(0);
+
+    const minute = slot.getMinutes();
+    const remainder = minute % 30;
+
+    if (remainder === 0) {
+        if (slot <= fromDate) {
+            slot.setMinutes(minute + 30);
+        }
+    } else {
+        slot.setMinutes(minute + (30 - remainder));
+    }
+
+    return slot;
+}
+
+export function defaultBookingDateParts() {
+    const startSlot = nextAvailableTimeSlot();
+    const endSlot = new Date(startSlot);
+    endSlot.setDate(endSlot.getDate() + 1);
+
+    return {
+        startDateValue: formatYmd(startSlot),
+        endDateValue: formatYmd(endSlot),
+        prefillStartTime: formatHi(startSlot),
+        prefillEndTime: formatHi(startSlot),
+    };
+}
+
+export function defaultFulfillmentDateParts() {
+    const slot = nextAvailableTimeSlot();
+
+    return {
+        dateValue: formatYmd(slot),
+        prefillTime: formatHi(slot),
+    };
+}
+
 export function formatTimeLabel(hour, minute) {
     const period = hour >= 12 ? 'PM' : 'AM';
     const h12 = hour % 12 === 0 ? 12 : hour % 12;
@@ -198,6 +247,11 @@ export function bindDateWrapperOpen(inputEl, picker) {
 
 window.OrderWizardDateTime = {
     todayYmd,
+    formatYmd,
+    formatHi,
+    nextAvailableTimeSlot,
+    defaultBookingDateParts,
+    defaultFulfillmentDateParts,
     formatTimeLabel,
     parseDateTime,
     combineDateTime,

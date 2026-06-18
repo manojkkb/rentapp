@@ -31,8 +31,35 @@ export function createOrderBookingDatesController(config) {
             const startTimeSelect = this.$refs.startTimeSelect;
             const endTimeSelect = this.$refs.endTimeSelect;
 
-            const rawStartDate = config.startDateValue || '';
-            const rawEndDate = config.endDateValue || '';
+            let rawStartDate = config.startDateValue || '';
+            let rawEndDate = config.endDateValue || '';
+            let prefillStart = config.prefillStartTime || '';
+            let prefillEnd = config.prefillEndTime || '';
+
+            if (!rawStartDate && !prefillStart) {
+                const defaults = OWD.defaultBookingDateParts();
+                rawStartDate = defaults.startDateValue;
+                prefillStart = defaults.prefillStartTime;
+                this.prefillStartTime = prefillStart;
+            }
+            if (!rawEndDate && !prefillEnd) {
+                if (rawStartDate && prefillStart) {
+                    const start = OWD.parseDateTime(rawStartDate, prefillStart);
+                    if (start) {
+                        const end = new Date(start);
+                        end.setDate(end.getDate() + 1);
+                        rawEndDate = OWD.formatYmd(end);
+                        prefillEnd = prefillStart;
+                    }
+                }
+                if (!rawEndDate) {
+                    const defaults = OWD.defaultBookingDateParts();
+                    rawEndDate = defaults.endDateValue;
+                    prefillEnd = defaults.prefillEndTime;
+                }
+                this.prefillEndTime = prefillEnd;
+            }
+
             const safeStartDate = restrictPastDates ? OWD.sanitizeDateStr(rawStartDate) : rawStartDate;
             const safeEndDate = restrictPastDates ? OWD.sanitizeDateStr(rawEndDate) : rawEndDate;
             startDateInput.value = safeStartDate;

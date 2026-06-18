@@ -27,7 +27,15 @@ export function initFulfillmentDatetimeField(config) {
     }
 
     const restrictPastDates = config.restrictPastDates !== false;
-    const rawDate = dateInput.value || '';
+    let rawDate = dateInput.value || '';
+    let prefillTime = config.prefillTime || '';
+
+    if (!rawDate && !prefillTime) {
+        const defaults = OWD.defaultFulfillmentDateParts();
+        rawDate = defaults.dateValue;
+        prefillTime = defaults.prefillTime;
+    }
+
     const safeDate = restrictPastDates ? OWD.sanitizeDateStr(rawDate) : rawDate;
     dateInput.value = safeDate;
 
@@ -40,7 +48,7 @@ export function initFulfillmentDatetimeField(config) {
     }
 
     function refreshTimes(dateStr) {
-        OWD.buildTimeOptions(timeSelect, timeSelect.value || config.prefillTime || '', {
+        OWD.buildTimeOptions(timeSelect, timeSelect.value || prefillTime || '', {
             dateStr: dateStr || '',
         });
         syncHidden(dateStr || '', timeSelect.value || '');

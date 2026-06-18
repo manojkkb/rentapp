@@ -129,10 +129,6 @@ class AuthController extends ApiController
             return $this->fail('You do not have access to this vendor.', 403);
         }
 
-        if (! $vendor->is_verified) {
-            return $this->fail('This vendor account is pending verification.', 403);
-        }
-
         $user->vendors()->updateExistingPivot($vendor->id, ['last_login_at' => now()]);
         $user->setCurrentVendorId($vendor->id);
         VendorAccess::flush();
@@ -176,7 +172,7 @@ class AuthController extends ApiController
             'state' => $validated['state'] ?? null,
             'gst_number' => $validated['gst_number'] ?? null,
             'language' => $validated['language'],
-            'is_verified' => false,
+            'is_verified' => true,
             'is_active' => true,
             'rating' => 0,
             'total_reviews' => 0,
@@ -260,17 +256,15 @@ class AuthController extends ApiController
 
         if ($vendors->count() === 1) {
             $vendor = $vendors->first();
-            if ($vendor->is_verified) {
-                $user->setCurrentVendorId($vendor->id);
-                $user->vendors()->updateExistingPivot($vendor->id, ['last_login_at' => now()]);
-            }
+            $user->setCurrentVendorId($vendor->id);
+            $user->vendors()->updateExistingPivot($vendor->id, ['last_login_at' => now()]);
 
             return;
         }
 
         if ($user->vendor_id) {
             $defaultVendor = $vendors->firstWhere('id', $user->vendor_id);
-            if ($defaultVendor?->is_verified) {
+            if ($defaultVendor) {
                 $user->vendors()->updateExistingPivot($defaultVendor->id, ['last_login_at' => now()]);
             }
         }

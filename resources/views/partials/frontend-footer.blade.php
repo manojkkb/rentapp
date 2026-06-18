@@ -27,20 +27,26 @@
             </div>
 
             <div>
-                <h4 class="text-sm font-semibold uppercase tracking-wider text-emerald-400 mb-5">Explore</h4>
+                <h4 class="text-sm font-semibold uppercase tracking-wider text-emerald-400 mb-5">Company</h4>
                 <ul class="space-y-3 text-sm">
-                    @foreach(['About Us', 'How It Works', 'Categories', 'For Vendors', 'FAQs'] as $link)
-                        <li><a href="#" class="text-slate-400 hover:text-white transition">{{ $link }}</a></li>
-                    @endforeach
+                    <li><a href="{{ route('pages.about') }}" class="text-slate-400 hover:text-white transition">About Us</a></li>
+                    <li><a href="{{ route('pages.how-it-works') }}" class="text-slate-400 hover:text-white transition">How It Works</a></li>
+                    <li><a href="{{ route('pages.team') }}" class="text-slate-400 hover:text-white transition">Our Team</a></li>
+                    <li><a href="{{ route('pages.contact') }}" class="text-slate-400 hover:text-white transition">Contact Us</a></li>
+                    <li><a href="{{ route('stores.index') }}" class="text-slate-400 hover:text-white transition">Stores</a></li>
+                    <li><a href="{{ \App\Support\VendorPortal::entryUrl() }}" class="text-slate-400 hover:text-white transition">For Vendors</a></li>
                 </ul>
             </div>
 
             <div>
-                <h4 class="text-sm font-semibold uppercase tracking-wider text-emerald-400 mb-5">Categories</h4>
+                <h4 class="text-sm font-semibold uppercase tracking-wider text-emerald-400 mb-5">Legal</h4>
                 <ul class="space-y-3 text-sm">
-                    @foreach(['Electronics', 'Cameras & Drones', 'Tools & Equipment', 'Sports & Fitness', 'Party & Events'] as $cat)
-                        <li><a href="#categories" class="text-slate-400 hover:text-white transition">{{ $cat }}</a></li>
-                    @endforeach
+                    <li>
+                        <a href="{{ route('legal.privacy') }}" class="text-slate-400 hover:text-white transition">Privacy Policy</a>
+                    </li>
+                    <li>
+                        <a href="{{ route('legal.terms') }}" class="text-slate-400 hover:text-white transition">Terms &amp; Conditions</a>
+                    </li>
                 </ul>
             </div>
 
@@ -57,7 +63,7 @@
                     </li>
                     <li class="flex items-center gap-3 text-slate-400">
                         <i class="fas fa-envelope text-emerald-400"></i>
-                        <span>hello@rentkia.com</span>
+                        <a href="{{ route('pages.contact') }}" class="hover:text-white transition">hello@rentkia.com</a>
                     </li>
                 </ul>
             </div>
@@ -65,10 +71,9 @@
 
         <div class="border-t border-white/10 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
             <p class="text-slate-500 text-sm">&copy; {{ date('Y') }} Rentkia. All rights reserved.</p>
-            <div class="flex gap-6 text-sm">
-                <a href="#" class="text-slate-500 hover:text-emerald-400 transition">Privacy</a>
-                <a href="#" class="text-slate-500 hover:text-emerald-400 transition">Terms</a>
-                <a href="#" class="text-slate-500 hover:text-emerald-400 transition">Cookies</a>
+            <div class="flex flex-wrap justify-center sm:justify-end gap-4 sm:gap-6 text-sm">
+                <a href="{{ route('legal.privacy') }}" class="text-slate-500 hover:text-emerald-400 transition">Privacy Policy</a>
+                <a href="{{ route('legal.terms') }}" class="text-slate-500 hover:text-emerald-400 transition">Terms &amp; Conditions</a>
             </div>
         </div>
     </div>

@@ -1,8 +1,7 @@
 @extends('layouts.guest')
 
-@section('title', 'Rentkia — Rent Anything, Anytime')
-
 @section('content')
+<main id="main-content">
 
     {{-- ═══════════════════ HERO ═══════════════════ --}}
     <section id="home" class="relative min-h-screen flex items-center hero-mesh grid-pattern overflow-hidden">
@@ -31,29 +30,35 @@
                         From DSLR cameras to power tools, party tents to gaming consoles — access premium gear from verified local vendors, without the full price tag.
                     </p>
 
-                    {{-- Search bar mockup --}}
-                    <div class="fade-up fade-up-delay-3 max-w-lg mx-auto lg:mx-0 mb-8">
+                    {{-- Search --}}
+                    <form action="{{ route('stores.index') }}" method="GET" class="fade-up fade-up-delay-3 max-w-lg mx-auto lg:mx-0 mb-8" role="search" aria-label="Search rental stores">
                         <div class="flex items-center gap-2 p-2 rounded-2xl glass-dark border border-white/10 shadow-2xl shadow-black/20">
+                            <label for="homeSearch" class="sr-only">Search rentals</label>
                             <div class="flex-1 flex items-center gap-3 px-4 py-3">
-                                <i class="fas fa-search text-emerald-400"></i>
-                                <span class="text-slate-400 text-sm sm:text-base">Search cameras, tools, bikes…</span>
+                                <i class="fas fa-search text-emerald-400" aria-hidden="true"></i>
+                                <input type="search"
+                                       id="homeSearch"
+                                       name="q"
+                                       placeholder="Search cameras, tools, bikes…"
+                                       autocomplete="off"
+                                       class="w-full bg-transparent text-sm sm:text-base text-white placeholder:text-slate-400 focus:outline-none">
                             </div>
-                            <button class="gradient-green px-5 sm:px-7 py-3 rounded-xl text-white font-semibold text-sm sm:text-base shine whitespace-nowrap">
+                            <button type="submit" class="gradient-green px-5 sm:px-7 py-3 rounded-xl text-white font-semibold text-sm sm:text-base shine whitespace-nowrap">
                                 Explore
                             </button>
                         </div>
-                    </div>
+                    </form>
 
                     <div class="fade-up fade-up-delay-3 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                        <a href="#categories"
+                        <a href="{{ route('stores.index') }}"
                            class="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-slate-900 font-bold bg-white hover:bg-emerald-50 shadow-xl shadow-black/20 transition-all hover:-translate-y-0.5">
                             <i class="fas fa-compass text-emerald-600"></i>
-                            Browse Categories
+                            Browse Stores
                         </a>
-                        <a href="{{ route('vendor.login') }}"
+                        <a href="{{ \App\Support\VendorPortal::entryUrl() }}"
                            class="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-bold text-white border border-white/20 hover:bg-white/10 transition-all hover:-translate-y-0.5">
                             <i class="fas fa-store"></i>
-                            List as Vendor
+                            {{ \App\Support\VendorPortal::entryLabel('List as Vendor', 'Go to Dashboard') }}
                         </a>
                     </div>
 
@@ -78,8 +83,12 @@
                         <div class="floating">
                             <div class="rounded-3xl overflow-hidden shadow-2xl shadow-emerald-500/20 border border-white/10">
                                 <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&h=700&fit=crop"
-                                     alt="Rental equipment"
-                                     class="w-full h-[420px] object-cover">
+                                     alt="Rental equipment including cameras and tools available on Rentkia"
+                                     class="w-full h-[420px] object-cover"
+                                     width="600"
+                                     height="420"
+                                     loading="eager"
+                                     fetchpriority="high">
                             </div>
                         </div>
 
@@ -235,8 +244,8 @@
                         Popular <span class="text-gradient">rentals</span>
                     </h2>
                 </div>
-                <a href="#categories" class="inline-flex items-center gap-2 text-emerald-600 font-semibold hover:text-emerald-700 transition group">
-                    View all items
+                <a href="{{ route('stores.index') }}" class="inline-flex items-center gap-2 text-emerald-600 font-semibold hover:text-emerald-700 transition group">
+                    Browse all stores
                     <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
                 </a>
             </div>
@@ -299,19 +308,22 @@
                     ['name' => 'Party', 'count' => '540+', 'icon' => 'fa-glass-cheers', 'img' => 'photo-1530103862676-de8c9debad1d'],
                     ['name' => 'Gaming', 'count' => '430+', 'icon' => 'fa-gamepad', 'img' => 'photo-1606144042614-b2417e99c4e3'],
                 ] as $cat)
-                    <div class="group relative rounded-2xl overflow-hidden aspect-[3/4] cursor-pointer hover-lift">
+                    <a href="{{ route('stores.index') }}" class="group relative rounded-2xl overflow-hidden aspect-[3/4] hover-lift block">
                         <img src="https://images.unsplash.com/{{ $cat['img'] }}?w=300&h=400&fit=crop"
-                             alt="{{ $cat['name'] }}"
-                             class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                             alt="Rent {{ $cat['name'] }} on Rentkia"
+                             class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                             loading="lazy"
+                             width="300"
+                             height="400">
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/30 to-transparent"></div>
                         <div class="absolute bottom-0 left-0 right-0 p-4">
                             <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center mb-2 group-hover:bg-emerald-500 transition-colors">
                                 <i class="fas {{ $cat['icon'] }} text-white text-sm"></i>
                             </div>
-                            <h4 class="text-white font-bold text-sm">{{ $cat['name'] }}</h4>
+                            <h3 class="text-white font-bold text-sm">{{ $cat['name'] }}</h3>
                             <p class="text-emerald-300 text-xs mt-0.5">{{ $cat['count'] }} items</p>
                         </div>
-                    </div>
+                    </a>
                 @endforeach
             </div>
         </div>
@@ -374,12 +386,12 @@
                         Join 850+ vendors earning passive income by listing cameras, tools, electronics, and more. Free to start, powerful tools included.
                     </p>
                     <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                        <a href="{{ route('vendor.login') }}"
+                        <a href="{{ \App\Support\VendorPortal::entryUrl() }}"
                            class="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-white text-emerald-700 font-bold shadow-xl hover:bg-emerald-50 transition-all hover:-translate-y-0.5">
                             <i class="fas fa-store"></i>
-                            Start as Vendor
+                            {{ \App\Support\VendorPortal::entryLabel('Start as Vendor', 'Go to Dashboard') }}
                         </a>
-                        <a href="#how-it-works"
+                        <a href="{{ route('pages.how-it-works') }}"
                            class="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-white font-bold border border-white/30 hover:bg-white/10 transition-all">
                             Learn More
                             <i class="fas fa-arrow-right text-sm"></i>
@@ -403,4 +415,5 @@
         </div>
     </section>
 
+</main>
 @endsection

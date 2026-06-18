@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="description" content="Rentkia — Rent anything, anytime. Tools, electronics, cameras, party gear and more from verified local vendors.">
-    <title>@yield('title', 'Rentkia - Rent Anything, Anytime')</title>
+    @include('partials.site-seo-head', ['seo' => $seo ?? []])
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -174,7 +173,7 @@
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased">
 
-    @include('partials.frontend-header')
+    @include('partials.frontend-header', ['headerSolid' => trim($__env->yieldContent('headerSolid')) === '1'])
 
     @yield('content')
 

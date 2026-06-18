@@ -24,6 +24,10 @@ use App\Http\Controllers\Vendor\VendorCustomerController;
 use App\Http\Controllers\Vendor\VendorOrderController;
 use App\Http\Controllers\Admin\SupportController as AdminSupportController;
 use App\Http\Controllers\Vendor\VendorPwaController;
+use App\Http\Controllers\LegalController;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\StoreDirectoryController;
 use App\Http\Controllers\StorefrontBookingController;
 use App\Http\Controllers\StorefrontCartController;
 use App\Http\Controllers\StorefrontCheckoutController;
@@ -36,6 +40,15 @@ use App\Http\Middleware\VendorAuthMiddleware;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [WelcomeCtrl::class, 'index'])->name('welcome');
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+Route::get('/stores', [StoreDirectoryController::class, 'index'])->name('stores.index');
+Route::get('/privacy-policy', [LegalController::class, 'privacy'])->name('legal.privacy');
+Route::get('/terms-and-conditions', [LegalController::class, 'terms'])->name('legal.terms');
+Route::get('/about-us', [PageController::class, 'about'])->name('pages.about');
+Route::get('/how-it-works', [PageController::class, 'howItWorks'])->name('pages.how-it-works');
+Route::get('/our-team', [PageController::class, 'team'])->name('pages.team');
+Route::get('/contact-us', [PageController::class, 'contact'])->name('pages.contact');
+Route::post('/contact-us', [PageController::class, 'contactSubmit'])->name('pages.contact.submit');
 
 // Customer Routes
 Route::get('/home', [HomeController::class, 'index'])->name('customer.home');
