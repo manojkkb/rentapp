@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\User;
 use App\Models\Vendor;
+use App\Models\VendorRole;
 use App\Models\VendorUser;
 
 class ApiUserPresenter
@@ -50,6 +51,59 @@ class ApiUserPresenter
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public static function sessionPayload(User $user): array
+    {
+        $vendors = self::memberships($user);
+
+        return array_merge([
+            'user' => self::user($user),
+            'vendors' => $vendors,
+            'requires_vendor_selection' => ! $user->vendor_id && count($vendors) > 1,
+            'requires_vendor_creation' => $vendors === [],
+        ], self::vendorSessionFields($user));
+    }
+
+    /**
+     * @return array{permissions: list<string>, is_owner: bool, subscription: string|null}
+     */
+    public static function vendorSessionFields(User $user): array
+    {
+        $vendor = $user->currentVendor();
+        if (! $vendor) {
+            return [
+                'permissions' => [],
+                'is_owner' => false,
+                'subscription' => null,
+            ];
+        }
+
+        $membership = VendorUser::query()
+            ->where('vendor_id', $vendor->id)
+            ->where('user_id', $user->id)
+            ->where('is_active', true)
+            ->with(['vendorRole.permissions'])
+            ->first();
+
+        if (! $membership) {
+            return [
+                'permissions' => [],
+                'is_owner' => false,
+                'subscription' => VendorSubscription::status($vendor),
+            ];
+        }
+
+        $isOwner = (bool) $membership->is_owner;
+
+        return [
+            'permissions' => $isOwner ? ['*'] : self::permissionKeysForMembership($membership),
+            'is_owner' => $isOwner,
+            'subscription' => VendorSubscription::status($vendor),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public static function vendorContext(User $user): ?array
@@ -59,14 +113,10 @@ class ApiUserPresenter
             return null;
         }
 
-        $access = VendorAccess::current();
-
-        return [
-            'vendor' => self::vendor($vendor),
-            'permissions' => $access ? ($access->isOwner() ? ['*'] : $access->permissionKeys()) : [],
-            'is_owner' => $access?->isOwner() ?? false,
-            'subscription' => VendorSubscription::status($vendor),
-        ];
+        return array_merge(
+            ['vendor' => self::vendor($vendor)],
+            self::vendorSessionFields($user)
+        );
     }
 
     /**
@@ -88,5 +138,32 @@ class ApiUserPresenter
             'rating' => (float) $vendor->rating,
             'total_reviews' => (int) $vendor->total_reviews,
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function permissionKeysForMembership(VendorUser $membership): array
+    {
+        $role = $membership->vendorRole;
+
+        if (! $role && $membership->role) {
+            $role = VendorRole::query()
+                ->where('vendor_id', $membership->vendor_id)
+                ->where('slug', $membership->role)
+                ->with('permissions')
+                ->first();
+        }
+
+        if ($role) {
+            return $role->permissions->pluck('key')->values()->all();
+        }
+
+        $legacy = $membership->permissions;
+        if (is_array($legacy) && $legacy !== []) {
+            return $legacy;
+        }
+
+        return [];
     }
 }

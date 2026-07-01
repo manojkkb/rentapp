@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     // Public — onboarding
     Route::get('business-categories', [AuthController::class, 'businessCategories']);
+    Route::get('languages', [AuthController::class, 'languages']);
 
     // Auth — vendor mobile app (OTP only)
     Route::prefix('auth')->group(function () {
@@ -46,10 +47,15 @@ Route::prefix('v1')->group(function () {
             Route::put('profile/business', [ApiProfileController::class, 'updateBusiness']);
 
             Route::apiResource('categories', ApiCategoryController::class)->except(['show']);
+            Route::post('items/{item}/photo', [ApiItemController::class, 'uploadPhoto']);
+            Route::delete('items/{item}/photo', [ApiItemController::class, 'deletePhoto']);
+            Route::post('items/{item}/gallery', [ApiItemController::class, 'uploadGalleryImage']);
+            Route::delete('items/{item}/gallery/{image}', [ApiItemController::class, 'deleteGalleryImage']);
             Route::apiResource('items', ApiItemController::class);
             Route::apiResource('customers', ApiCustomerController::class)->except(['show']);
 
             Route::get('orders', [ApiOrderController::class, 'index']);
+            Route::post('orders', [ApiOrderController::class, 'store']);
             Route::get('orders/deliveries', [ApiOrderController::class, 'deliveries']);
             Route::get('orders/returns', [ApiOrderController::class, 'returns']);
             Route::get('orders/{order}', [ApiOrderController::class, 'show']);

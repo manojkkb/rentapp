@@ -79,77 +79,17 @@
                         </div>
                     </div>
                 </div>
-                @error('customer_id')
-                    <p class="mt-1.5 flex items-center text-xs text-red-600 sm:text-sm">
-                        <i class="fas fa-exclamation-circle mr-1 text-xs"></i>
-                        {{ $message }}
-                    </p>
-                @enderror
-
-                <div x-show="$wire.showNewCustomerForm" x-cloak class="mt-3 rounded-lg border border-emerald-200 bg-emerald-50/80 p-3 sm:p-3.5">
-                    <div class="mb-2 flex items-center justify-between">
-                        <h4 class="text-xs font-bold text-emerald-900 sm:text-sm">
-                            <i class="fas fa-user-plus mr-1 text-xs" aria-hidden="true"></i>{{ __('vendor.order_wizard_new_customer_heading') }}
-                        </h4>
-                        <button type="button" wire:click="closeNewCustomerForm" class="rounded p-1 text-gray-500 hover:bg-white/80 hover:text-gray-700" aria-label="{{ __('vendor.cancel') }}">
-                            <i class="fas fa-times text-sm"></i>
-                        </button>
-                    </div>
-                    <div class="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-                        <div>
-                            <label for="orderWizard_newCustomerName" class="mb-0.5 block text-[11px] font-medium text-gray-600 sm:text-xs">{{ __('vendor.customer_name') }} <span class="text-red-500">*</span></label>
-                            <input type="text"
-                                   id="orderWizard_newCustomerName"
-                                   wire:model="newCustomerName"
-                                   maxlength="255"
-                                   class="h-9 w-full rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-emerald-500 sm:h-10 @error('newCustomerName') border-red-500 @enderror"
-                                   placeholder="{{ __('vendor.customer_name') }}">
-                            @error('newCustomerName')
-                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-                        <div>
-                            <label for="orderWizard_newCustomerMobile" class="mb-0.5 block text-[11px] font-medium text-gray-600 sm:text-xs">{{ __('vendor.mobile') }} <span class="text-red-500">*</span></label>
-                            <input type="text"
-                                   id="orderWizard_newCustomerMobile"
-                                   wire:model="newCustomerMobile"
-                                   maxlength="10"
-                                   inputmode="numeric"
-                                   class="h-9 w-full rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-emerald-500 sm:h-10 @error('newCustomerMobile') border-red-500 @enderror"
-                                   placeholder="{{ __('vendor.customer_mobile') }}">
-                            @error('newCustomerMobile')
-                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    </div>
-                    <div class="mb-2">
-                        <label for="orderWizard_newCustomerAddress" class="mb-0.5 block text-[11px] font-medium text-gray-600 sm:text-xs">{{ __('vendor.address') }}</label>
-                        <input type="text"
-                               id="orderWizard_newCustomerAddress"
-                               wire:model="newCustomerAddress"
-                               maxlength="500"
-                               class="h-9 w-full rounded-lg border border-gray-300 bg-white px-2.5 text-sm focus:border-transparent focus:ring-2 focus:ring-emerald-500 sm:h-10"
-                               placeholder="{{ __('vendor.optional') }}">
-                    </div>
-                    <button type="button"
-                            wire:click="saveNewCustomer"
-                            wire:loading.attr="disabled"
-                            wire:target="saveNewCustomer"
-                            class="inline-flex h-10 w-full items-center justify-center rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white transition hover:bg-emerald-700 active:scale-[0.99] disabled:opacity-70">
-                        <span wire:loading.remove wire:target="saveNewCustomer">
-                            <i class="fas fa-save mr-1 text-xs" aria-hidden="true"></i>{{ __('vendor.order_wizard_save_and_select_customer') }}
-                        </span>
-                        <span wire:loading wire:target="saveNewCustomer">
-                            <i class="fas fa-spinner fa-spin mr-1"></i>
-                        </span>
-                    </button>
-                </div>
 
                 @if(count($customers) === 0)
                     <div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 sm:p-3">
                         <p class="text-xs text-amber-900 sm:text-sm">
                             <i class="fas fa-info-circle mr-1 text-xs" aria-hidden="true"></i>
-                            {{ __('vendor.no_customers') }}. {{ __('vendor.order_wizard_add_customer_inline') }}.
+                            {{ __('vendor.no_customers') }}.
+                            <button type="button"
+                                    @click="openNewCustomer()"
+                                    class="font-semibold text-emerald-700 underline decoration-emerald-600/40 underline-offset-2 hover:text-emerald-800">
+                                {{ __('vendor.order_wizard_add_customer_inline') }}
+                            </button>
                         </p>
                     </div>
                 @endif
@@ -171,12 +111,6 @@
                            placeholder="{{ __('vendor.cart_name_placeholder') }}"
                            maxlength="255">
                 </div>
-                @error('event_name')
-                    <p class="mt-1.5 flex items-center text-xs text-red-600 sm:text-sm">
-                        <i class="fas fa-exclamation-circle mr-1 text-xs"></i>
-                        {{ $message }}
-                    </p>
-                @enderror
             </div>
 
             {{-- Booking dates (Flatpickr + Alpine, wire:ignore on inputs only) --}}
@@ -254,20 +188,6 @@
                 </div>
                 </div>
 
-                @error('start_time')
-                    <p class="mt-1.5 flex items-center text-xs text-red-600 sm:text-sm">
-                        <i class="fas fa-exclamation-circle mr-1 text-xs"></i>
-                        {{ $message }}
-                    </p>
-                @enderror
-                @error('end_time')
-                    <p class="mt-1.5 flex items-center text-xs text-red-600 sm:text-sm">
-                        <i class="fas fa-exclamation-circle mr-1 text-xs"></i>
-                        {{ $message }}
-                    </p>
-                @enderror
-            </div>
-
             <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/90 p-2.5 sm:p-3">
                 <div class="flex items-start gap-2">
                     <i class="fas fa-info-circle mt-0.5 shrink-0 text-sm text-emerald-600"></i>
@@ -295,5 +215,92 @@
                 </button>
             </x-order-wizard-actions>
         </form>
+
+        @if($showNewCustomerForm)
+            <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
+                 wire:key="order-wizard-new-customer-modal"
+                 x-data
+                 x-trap.noscroll="true"
+                 @keydown.escape.window="$wire.closeNewCustomerForm()">
+                <div class="fixed inset-0 bg-black/50"
+                     wire:click="closeNewCustomerForm"
+                     aria-hidden="true"></div>
+
+                <div class="relative z-10 w-full max-w-lg overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-2xl sm:rounded-2xl"
+                     @click.stop
+                     role="dialog"
+                     aria-modal="true"
+                     aria-labelledby="orderWizard_newCustomerModalTitle">
+                    <div class="border-b border-gray-100 px-4 py-3 sm:px-5 sm:py-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <h3 id="orderWizard_newCustomerModalTitle" class="text-base font-bold text-gray-900 sm:text-lg">
+                                <i class="fas fa-user-plus mr-1.5 text-sm text-emerald-600" aria-hidden="true"></i>{{ __('vendor.order_wizard_new_customer_heading') }}
+                            </h3>
+                            <button type="button"
+                                    wire:click="closeNewCustomerForm"
+                                    class="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                                    aria-label="{{ __('vendor.cancel') }}">
+                                <i class="fas fa-times" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-4 sm:p-5">
+                        <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div>
+                                <label for="orderWizard_newCustomerName" class="mb-0.5 block text-sm font-medium text-gray-800">{{ __('vendor.customer_name') }} <span class="text-red-500">*</span></label>
+                                <input type="text"
+                                       id="orderWizard_newCustomerName"
+                                       wire:model="newCustomerName"
+                                       maxlength="255"
+                                       autofocus
+                                       class="block w-full min-h-[40px] rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 @error('newCustomerName') border-red-500 @enderror"
+                                       placeholder="{{ __('vendor.customer_name') }}">
+                            </div>
+                            <div>
+                                <label for="orderWizard_newCustomerMobile" class="mb-0.5 block text-sm font-medium text-gray-800">{{ __('vendor.mobile') }} <span class="text-red-500">*</span></label>
+                                <input type="text"
+                                       id="orderWizard_newCustomerMobile"
+                                       wire:model="newCustomerMobile"
+                                       maxlength="10"
+                                       inputmode="numeric"
+                                       class="block w-full min-h-[40px] rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 @error('newCustomerMobile') border-red-500 @enderror"
+                                       placeholder="{{ __('vendor.customer_mobile') }}">
+                            </div>
+                        </div>
+                        <div class="mb-5">
+                            <label for="orderWizard_newCustomerAddress" class="mb-0.5 block text-sm font-medium text-gray-800">{{ __('vendor.address') }}</label>
+                            <input type="text"
+                                   id="orderWizard_newCustomerAddress"
+                                   wire:model="newCustomerAddress"
+                                   maxlength="500"
+                                   class="block w-full min-h-[40px] rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                   placeholder="{{ __('vendor.optional') }}">
+                        </div>
+
+                        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                            <button type="button"
+                                    wire:click="closeNewCustomerForm"
+                                    class="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-gray-200 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50 sm:min-h-[40px]">
+                                {{ __('vendor.cancel') }}
+                            </button>
+                            <button type="button"
+                                    wire:click="saveNewCustomer"
+                                    wire:loading.attr="disabled"
+                                    wire:target="saveNewCustomer"
+                                    class="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-70 sm:min-h-[40px]">
+                                <span wire:loading.remove wire:target="saveNewCustomer">
+                                    <i class="fas fa-save text-xs" aria-hidden="true"></i>
+                                    {{ __('vendor.order_wizard_save_and_select_customer') }}
+                                </span>
+                                <span wire:loading wire:target="saveNewCustomer">
+                                    <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 </div>

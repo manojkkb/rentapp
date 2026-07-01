@@ -117,12 +117,6 @@
         @if(! ($livewireWizard ?? false)) @csrf @endif
         <input type="hidden" name="security_deposit_type" x-bind:value="depositType">
         <input type="hidden" name="security_deposit_value" x-bind:value="depositType === 'none' ? '' : depositValue">
-        @error('security_deposit_type')
-            <p class="text-sm text-red-600">{{ $message }}</p>
-        @enderror
-        @error('security_deposit_value')
-            <p class="text-sm text-red-600">{{ $message }}</p>
-        @enderror
 
         <div>
             <h3 class="text-sm font-bold text-gray-900">{{ __('vendor.order_wizard_initial_payment') }}</h3>
@@ -134,9 +128,6 @@
                            inputmode="decimal"
                            class="h-10 w-full rounded-lg border border-gray-300 bg-white px-2.5 text-sm text-gray-900 shadow-inner focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 @error('initial_payment_amount') border-red-500 @enderror"
                            placeholder="0.00">
-                    @error('initial_payment_amount')
-                        <p class="mt-0.5 text-xs text-red-600">{{ $message }}</p>
-                    @enderror
                 </div>
                 <div>
                     <label class="mb-1 block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.order_wizard_payment_method') }}</label>
@@ -147,9 +138,6 @@
                         <option value="Card" @selected(old('initial_payment_method') === 'Card')>Card</option>
                         <option value="Bank transfer" @selected(old('initial_payment_method') === 'Bank transfer')>Bank transfer</option>
                     </select>
-                    @error('initial_payment_method')
-                        <p class="mt-0.5 text-xs text-red-600">{{ $message }}</p>
-                    @enderror
                 </div>
             </div>
         </div>
@@ -166,9 +154,6 @@
                                inputmode="decimal"
                                class="h-10 w-full rounded-lg border border-gray-300 bg-white px-2.5 text-sm text-gray-900 shadow-inner focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 @error('security_deposit_payment_amount') border-red-500 @enderror"
                                placeholder="0.00">
-                        @error('security_deposit_payment_amount')
-                            <p class="mt-0.5 text-xs text-red-600">{{ $message }}</p>
-                        @enderror
                     </div>
                     <div>
                         <label class="mb-1 block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.order_wizard_payment_method') }}</label>
@@ -180,17 +165,10 @@
                             <option value="Card" @selected(old('security_deposit_payment_method') === 'Card')>Card</option>
                             <option value="Bank transfer" @selected(old('security_deposit_payment_method') === 'Bank transfer')>Bank transfer</option>
                         </select>
-                        @error('security_deposit_payment_method')
-                            <p class="mt-0.5 text-xs text-red-600">{{ $message }}</p>
-                        @enderror
                     </div>
                 </div>
             </div>
         </template>
-
-        @if($errors->has('error'))
-            <div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 sm:text-sm">{{ $errors->first('error') }}</div>
-        @endif
 
         <x-order-wizard-actions class="border-t border-gray-200 pt-3 sm:pt-3">
             @if($livewireWizard ?? false)

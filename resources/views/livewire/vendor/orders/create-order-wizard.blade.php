@@ -7,20 +7,11 @@
         </div>
     @endif
 
-    @if(session('error'))
-        <div class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 sm:text-sm">
-            {{ session('error') }}
-        </div>
-    @endif
-
     @if($step === 1)
         <div wire:key="wizard-step-1">
             @include('vendor.orders.partials.wizard-step-one-inner')
         </div>
     @elseif($step === 2)
-        @error('lines')
-            <div class="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 sm:text-sm">{{ $message }}</div>
-        @enderror
         <div wire:key="wizard-step-2">
             @include('vendor.orders.partials.wizard-items-inner', ['livewireWizard' => true])
         </div>
@@ -38,3 +29,11 @@
         </div>
     @endif
 </div>
+
+@if($errors->any())
+    <script>
+        document.addEventListener('livewire:initialized', () => {
+            window.showWizardErrors?.(@json($errors->all()));
+        }, { once: true });
+    </script>
+@endif

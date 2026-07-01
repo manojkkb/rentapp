@@ -7,11 +7,13 @@ use App\Http\Controllers\Vendor\Concerns\ListsVendorLogistics;
 use App\Http\Controllers\Vendor\Concerns\ManagesOrderLive;
 use App\Http\Controllers\Vendor\Concerns\RedirectsIfNumericRouteKey;
 use App\Models\Category;
+use App\Models\Coupon;
 use App\Models\CreateOrder;
 use App\Models\Items;
 use App\Models\ItemVariant;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Vendor;
 use App\Models\VendorCustomer;
 use App\Services\RentalStockAvailability;
 use App\Support\OrderActivityLogger;
@@ -334,6 +336,17 @@ class VendorOrderController extends Controller
             throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_complete_step1_first')]]);
         }
 
+        $lines = $this->validateWizardLines($rawLines, $wizard, $vendor);
+        $this->orderCreateWizardPut(['lines' => $lines]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $wizard
+     * @param  array<int|string, array<string, mixed>>  $rawLines
+     * @return list<array<string, mixed>>
+     */
+    private function validateWizardLines(array $rawLines, array $wizard, Vendor $vendor): array
+    {
         $request = Request::create('/', 'POST', ['lines' => $rawLines]);
         $lines = $this->orderCreateWizardNormalizeLinesFromRequest($request, $vendor);
 
@@ -362,10 +375,11 @@ class VendorOrderController extends Controller
             throw ValidationException::withMessages($validator->errors()->toArray());
         }
 
+        $lines = $this->enrichWizardLinesWithDefaultBillingUnits($lines, $wizard);
         $stockAvailability = RentalStockAvailability::forWizard($vendor->id, $wizard);
         $wizardWithLines = array_merge($wizard, ['lines' => $lines]);
 
-        foreach ($lines as $row) {
+        foreach ($lines as $index => $row) {
             $item = Items::where('id', $row['item_id'])
                 ->where('vendor_id', $vendor->id)
                 ->where('is_active', true)
@@ -423,9 +437,34 @@ class VendorOrderController extends Controller
             if (Items::rentalPeriodUsesBillingUnits($type) && empty($row['billing_units'])) {
                 throw ValidationException::withMessages(['lines' => [__('vendor.order_wizard_billing_units_required')]]);
             }
+
+            $lines[$index] = $row;
         }
 
-        $this->orderCreateWizardPut(['lines' => $lines]);
+        return array_values($lines);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $lines
+     * @param  array<string, mixed>  $wizard
+     * @return list<array<string, mixed>>
+     */
+    private function enrichWizardLinesWithDefaultBillingUnits(array $lines, array $wizard): array
+    {
+        $defaults = $this->orderCreateWizardDefaultBillingUnitsByPriceType($wizard);
+
+        foreach ($lines as $index => $row) {
+            $type = $row['rental_period'] ?? 'per_day';
+            if (! Items::rentalPeriodUsesBillingUnits($type)) {
+                continue;
+            }
+            if (($row['billing_units'] ?? null) === null && isset($defaults[$type])) {
+                $row['billing_units'] = $defaults[$type];
+            }
+            $lines[$index] = $row;
+        }
+
+        return $lines;
     }
 
     public function storeWizardStep2(Request $request)
@@ -656,6 +695,15 @@ class VendorOrderController extends Controller
             throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_session_expired')]]);
         }
 
+        $this->orderCreateWizardPut($this->validateFulfillmentWizardFields($data));
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function validateFulfillmentWizardFields(array $data): array
+    {
         $request = Request::create('/', 'POST', array_merge($data, [
             'pickup_at' => ! empty($data['pickup_at']) ? $data['pickup_at'] : null,
             'delivery_at' => ! empty($data['delivery_at']) ? $data['delivery_at'] : null,
@@ -700,7 +748,7 @@ class VendorOrderController extends Controller
             $payload['delivery_at'] = null;
         }
 
-        $this->orderCreateWizardPut($payload);
+        return $payload;
     }
 
     /**
@@ -759,6 +807,101 @@ class VendorOrderController extends Controller
             throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_complete_fulfillment_first')]]);
         }
 
+        return $this->placeOrderFromWizardState($wizard, $payment, $vendor, true);
+    }
+
+    public function placeOrderFromApiRequest(Request $request, Vendor $vendor): Order
+    {
+        $request->validate([
+            'customer_id' => ['required', 'integer', 'min:1'],
+            'event_name' => ['nullable', 'string', 'max:255'],
+            'cart_name' => ['nullable', 'string', 'max:255'],
+            'start_time' => ['nullable', 'date'],
+            'end_time' => ['nullable', 'date'],
+            'start_at' => ['nullable', 'date'],
+            'end_at' => ['nullable', 'date'],
+            'lines' => ['required', 'array', 'min:1'],
+            'lines.*.item_id' => ['required', 'integer', 'min:1'],
+            'lines.*.quantity' => ['required', 'integer', 'min:1'],
+            'lines.*.item_variant_id' => ['nullable', 'integer', 'min:1'],
+            'lines.*.rental_period' => ['nullable', 'string', Rule::in(Items::rentalPeriodKeys())],
+            'lines.*.billing_units' => ['nullable', 'numeric', 'min:0.01', 'max:999999'],
+            'lines.*.price' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
+            'fulfillment_type' => ['required', Rule::in(['pickup', 'delivery'])],
+            'delivery_address' => [
+                Rule::requiredIf($request->input('fulfillment_type') === 'delivery'),
+                'nullable',
+                'string',
+                'max:5000',
+            ],
+            'pickup_at' => [
+                Rule::requiredIf($request->input('fulfillment_type') === 'pickup'),
+                'nullable',
+                'date',
+            ],
+            'delivery_at' => ['nullable', 'date'],
+            'delivery_charge' => ['nullable', 'numeric', 'min:0', 'max:999999'],
+            'discount_type' => ['nullable', Rule::in(['fixed', 'percent'])],
+            'discount_value' => ['nullable', 'numeric', 'min:0'],
+            'coupon_code' => ['nullable', 'string', 'max:50'],
+            'extra_charges' => ['nullable', 'array'],
+            'extra_charges.*.label' => ['required', 'string', 'max:200'],
+            'extra_charges.*.amount' => ['required', 'numeric', 'min:0.01', 'max:999999'],
+            'internal_notes' => ['nullable', 'string', 'max:5000'],
+            'token_amount' => ['nullable', 'numeric', 'min:0'],
+            'security_deposit_type' => ['nullable', Rule::in(['none', 'order_amount', 'product_security_deposit', 'fixed_amount'])],
+            'security_deposit_value' => ['nullable', 'numeric', 'min:0'],
+            'initial_payment_amount' => ['nullable', 'numeric', 'min:0.01'],
+            'initial_payment_method' => ['nullable', 'string', 'max:50'],
+            'security_deposit_payment_amount' => ['nullable', 'numeric', 'min:0.01'],
+            'security_deposit_payment_method' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $startTime = $request->input('start_time', $request->input('start_at'));
+        $endTime = $request->input('end_time', $request->input('end_at'));
+
+        CreateOrder::validateForDirectOrder(Request::create('/', 'POST', [
+            'customer_id' => $request->input('customer_id'),
+            'event_name' => $request->input('event_name'),
+            'cart_name' => $request->input('cart_name'),
+            'start_time' => $startTime,
+            'end_time' => $endTime,
+        ]), $vendor->id);
+
+        $wizardBase = [
+            'customer_id' => (int) $request->input('customer_id'),
+            'event_name' => trim((string) ($request->input('event_name') ?: $request->input('cart_name'))),
+            'start_time' => $startTime,
+            'end_time' => $endTime,
+        ];
+
+        $lines = $this->validateWizardLines($request->input('lines', []), $wizardBase, $vendor);
+
+        $wizard = array_merge(
+            $wizardBase,
+            ['lines' => $lines],
+            $this->validateFulfillmentWizardFields($request->all()),
+        );
+
+        return $this->placeOrderFromWizardState($wizard, array_merge([
+            'security_deposit_type' => 'none',
+        ], $request->all()), $vendor, false);
+    }
+
+    /**
+     * @param  array<string, mixed>  $wizard
+     * @param  array<string, mixed>  $payment
+     */
+    public function placeOrderFromWizardState(array $wizard, array $payment, Vendor $vendor, bool $clearWizardSession = false): Order
+    {
+        if (! $this->orderCreateWizardHasStep1($wizard) || empty($wizard['lines'])) {
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_session_expired')]]);
+        }
+
+        if (! $this->orderCreateWizardHasFulfillment($wizard)) {
+            throw ValidationException::withMessages(['error' => [__('vendor.order_wizard_complete_fulfillment_first')]]);
+        }
+
         $fake = Request::create('/', 'POST', [
             'customer_id' => $wizard['customer_id'],
             'event_name' => $wizard['event_name'],
@@ -769,7 +912,9 @@ class VendorOrderController extends Controller
         try {
             $payload = CreateOrder::validateForDirectOrder($fake, $vendor->id);
         } catch (ValidationException $e) {
-            $this->orderCreateWizardClear();
+            if ($clearWizardSession) {
+                $this->orderCreateWizardClear();
+            }
             throw $e;
         }
 
@@ -781,7 +926,24 @@ class VendorOrderController extends Controller
             'security_deposit_payment_method' => ['nullable', 'string', 'max:50'],
             'security_deposit_type' => ['required', Rule::in(['none', 'order_amount', 'product_security_deposit', 'fixed_amount'])],
             'security_deposit_value' => ['nullable', 'numeric', 'min:0'],
+            'discount_type' => ['nullable', Rule::in(['fixed', 'percent'])],
+            'discount_value' => ['nullable', 'numeric', 'min:0'],
+            'coupon_code' => ['nullable', 'string', 'max:50'],
+            'extra_charges' => ['nullable', 'array'],
+            'extra_charges.*.label' => ['required', 'string', 'max:200'],
+            'extra_charges.*.amount' => ['required', 'numeric', 'min:0.01', 'max:999999'],
+            'internal_notes' => ['nullable', 'string', 'max:5000'],
+            'token_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
+
+        if (
+            (! empty($validated['discount_type']) && ($validated['discount_value'] ?? '') === '')
+            || (empty($validated['discount_type']) && ($validated['discount_value'] ?? '') !== '' && $validated['discount_value'] !== null)
+        ) {
+            throw ValidationException::withMessages([
+                'discount_type' => ['Both discount_type and discount_value are required when applying a discount.'],
+            ]);
+        }
 
         if (! empty($validated['initial_payment_amount']) && trim((string) ($validated['initial_payment_method'] ?? '')) === '') {
             throw ValidationException::withMessages(['initial_payment_method' => [__('vendor.order_wizard_payment_method_required')]]);
@@ -837,6 +999,7 @@ class VendorOrderController extends Controller
 
             $this->persistWizardLinesOnOrder($vendor, $created, $wizard['lines']);
             $this->recalculateOrderFinancials($created);
+            $this->applyCreateOrderPricingAdjustments($created, $validated, $vendor);
             $created->refresh();
 
             $detail = is_array($created->payment_detail) ? $created->payment_detail : [];
@@ -890,7 +1053,9 @@ class VendorOrderController extends Controller
             return $created;
         });
 
-        $this->orderCreateWizardClear();
+        if ($clearWizardSession) {
+            $this->orderCreateWizardClear();
+        }
 
         OrderActivityLogger::logCreated($order);
         if ($order->pickup_at) {
@@ -906,6 +1071,121 @@ class VendorOrderController extends Controller
         }
 
         return $order;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function applyCreateOrderPricingAdjustments(Order $order, array $payload, Vendor $vendor): void
+    {
+        $order->refresh();
+        $subTotal = (float) $order->sub_total;
+        $updates = [];
+
+        if (array_key_exists('internal_notes', $payload)) {
+            $notes = trim((string) ($payload['internal_notes'] ?? ''));
+            $updates['internal_notes'] = $notes !== '' ? $notes : null;
+        }
+
+        if (array_key_exists('token_amount', $payload)) {
+            $updates['token_amount'] = round((float) ($payload['token_amount'] ?? 0), 2);
+        }
+
+        if (! empty($payload['discount_type'])) {
+            $discountType = (string) $payload['discount_type'];
+            $discountValue = round((float) ($payload['discount_value'] ?? 0), 2);
+            if ($discountType === 'percent') {
+                if ($discountValue > 100) {
+                    throw ValidationException::withMessages(['discount_value' => ['Percentage cannot exceed 100%.']]);
+                }
+                $discountAmount = round($subTotal * ($discountValue / 100), 2);
+            } else {
+                $discountAmount = $discountValue;
+                if ($discountAmount > $subTotal) {
+                    throw ValidationException::withMessages(['discount_value' => ['Discount cannot exceed subtotal.']]);
+                }
+            }
+            $updates['discount_type'] = $discountType;
+            $updates['discount_value'] = $discountValue;
+            $updates['discount_amount'] = $discountAmount;
+        }
+
+        $couponCode = trim((string) ($payload['coupon_code'] ?? ''));
+        if ($couponCode !== '') {
+            $coupon = Coupon::where('vendor_id', $vendor->id)
+                ->where('code', strtoupper($couponCode))
+                ->first();
+            if (! $coupon) {
+                throw ValidationException::withMessages(['coupon_code' => ['Invalid coupon code.']]);
+            }
+            if (! $coupon->isValid($subTotal)) {
+                $message = 'This coupon is not valid';
+                if ($coupon->end_date && now()->gt($coupon->end_date)) {
+                    $message = 'This coupon has expired';
+                } elseif ($coupon->usage_limit && $coupon->used_count >= $coupon->usage_limit) {
+                    $message = 'This coupon has reached its usage limit';
+                } elseif ($subTotal < (float) $coupon->min_order_amount) {
+                    $message = 'Minimum order amount is ₹'.number_format((float) $coupon->min_order_amount, 2);
+                }
+                throw ValidationException::withMessages(['coupon_code' => [$message]]);
+            }
+            $updates['coupon_id'] = $coupon->id;
+            $updates['coupon_code'] = $coupon->code;
+            $updates['coupon_discount'] = $coupon->calculateDiscount($subTotal);
+        }
+
+        $extraCharges = $payload['extra_charges'] ?? null;
+        if (is_array($extraCharges) && $extraCharges !== []) {
+            $lines = [];
+            foreach ($extraCharges as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $label = trim((string) ($row['label'] ?? ''));
+                if ($label === '') {
+                    continue;
+                }
+                $lines[] = [
+                    'label' => $label,
+                    'amount' => round((float) ($row['amount'] ?? 0), 2),
+                    'recorded_at' => now()->toIso8601String(),
+                ];
+            }
+            if ($lines !== []) {
+                $updates['extra_charges_lines'] = array_values($lines);
+                $updates['extra_charges_total'] = round(array_sum(array_map(
+                    static fn (array $line): float => (float) ($line['amount'] ?? 0),
+                    $lines
+                )), 2);
+            }
+        }
+
+        if ($updates === []) {
+            return;
+        }
+
+        $order->update($updates);
+        $this->recalculateOrderFinancials($order);
+        $order->refresh();
+
+        if (isset($updates['discount_amount'])) {
+            OrderActivityLogger::logDiscountApplied($order, [
+                'discount_type' => null,
+                'discount_value' => null,
+                'discount_amount' => 0,
+            ]);
+        }
+        if (isset($updates['coupon_code'])) {
+            OrderActivityLogger::logCouponApplied($order, [
+                'coupon_code' => null,
+                'coupon_discount' => 0,
+            ]);
+        }
+        foreach ($updates['extra_charges_lines'] ?? [] as $chargeRow) {
+            if (is_array($chargeRow)) {
+                OrderActivityLogger::logExtraChargeAdded($order, $chargeRow);
+            }
+        }
     }
 
     /**

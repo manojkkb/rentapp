@@ -48,6 +48,8 @@
             'unit_year' => __('vendor.order_wizard_summary_unit_year'),
             'quick_item_required' => __('vendor.order_wizard_quick_item_required'),
             'item_create_failed' => __('vendor.order_wizard_item_create_failed'),
+            'insufficient_stock' => __('vendor.order_wizard_insufficient_stock', ['name' => ':name']),
+            'variant_insufficient_stock' => __('vendor.order_wizard_variant_insufficient_stock', ['label' => ':label']),
         ],
     ];
 @endphp
@@ -323,13 +325,6 @@
                     </template>
                 </div>
 
-                @error('lines')
-                    <p class="border-t border-red-100 bg-red-50/80 px-3 py-2 text-xs text-red-700 sm:px-4 sm:text-sm">{{ $message }}</p>
-                @enderror
-                @if($errors->has('items'))
-                    <p class="border-t border-red-100 bg-red-50/80 px-3 py-2 text-xs text-red-700 sm:px-4 sm:text-sm">{{ $errors->first('items') }}</p>
-                @endif
-
                 <x-order-wizard-actions class="border-t border-gray-200 p-3 sm:p-4">
                     @if($livewireWizard)
                         <button type="button" wire:click="goToStep(1)"
@@ -345,11 +340,6 @@
                         </a>
                     @endif
                     <div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
-                        <p x-show="itemsStepError"
-                           x-text="itemsStepError"
-                           x-cloak
-                           class="text-center text-xs font-medium text-red-600 sm:text-right sm:text-sm"
-                           role="alert"></p>
                         <button type="submit"
                                 wire:loading.attr="disabled"
                                 wire:target="saveItemsStep"
@@ -554,11 +544,6 @@
                             </p>
                         </div>
                     </div>
-                    <p x-show="lineEditError"
-                       x-text="lineEditError"
-                       x-cloak
-                       class="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
-                       role="alert"></p>
                     <div class="flex flex-col-reverse gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end sm:gap-3">
                         <button type="button"
                                 @click="closeLineEditModal()"

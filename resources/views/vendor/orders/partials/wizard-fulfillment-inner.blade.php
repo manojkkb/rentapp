@@ -63,9 +63,12 @@
                   window.dispatchEvent(new CustomEvent('sync-fulfillment-datetimes'));
                   this.pickupAt = document.getElementById('pickup_at')?.value || this.pickupAt || '';
                   if (!this.canContinue) {
-                      this.fulfillmentStepError = this.fulfillment === 'delivery'
+                      const message = this.fulfillment === 'delivery'
                           ? @js(__('vendor.delivery_address_required'))
                           : @js(__('vendor.pickup_datetime_required'));
+                      if (typeof window.showWizardError === 'function') {
+                          window.showWizardError(message);
+                      }
                       return;
                   }
                   this.fulfillmentStepError = '';
@@ -74,7 +77,9 @@
                       return;
                   }
                   if (!this.$wire?.saveFulfillment) {
-                      this.fulfillmentStepError = @js(__('vendor.order_wizard_session_expired'));
+                      if (typeof window.showWizardError === 'function') {
+                          window.showWizardError(@js(__('vendor.order_wizard_session_expired')));
+                      }
                       return;
                   }
                   this.$wire.saveFulfillment(this.collectPayload());
@@ -96,9 +101,6 @@
                     <span class="text-sm font-semibold text-gray-900 sm:text-base">{{ __('vendor.delivery') }}</span>
                 </label>
             </div>
-            @error('fulfillment_type')
-                <p class="mt-1.5 text-xs text-red-600 sm:text-sm">{{ $message }}</p>
-            @enderror
         </div>
 
         <div x-show="fulfillment === 'pickup'" x-cloak>
@@ -112,9 +114,6 @@
                 'help' => __('vendor.pickup_datetime_help'),
                 'required' => true,
             ])
-            @error('pickup_at')
-                <p class="mt-0.5 text-xs text-red-600 sm:text-sm">{{ $message }}</p>
-            @enderror
         </div>
 
         <div x-show="fulfillment === 'delivery'" x-cloak class="space-y-3">
@@ -125,9 +124,6 @@
                           x-model="deliveryAddress"
                           @input="fulfillmentStepError = ''"
                           class="min-h-[5.5rem] w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-900 shadow-inner focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 @error('delivery_address') border-red-500 @enderror sm:min-h-[6rem]"></textarea>
-                @error('delivery_address')
-                    <p class="mt-0.5 text-xs text-red-600 sm:text-sm">{{ $message }}</p>
-                @enderror
             </div>
 
             @include('vendor.orders.partials.order-fulfillment-datetime-fields', [
@@ -140,24 +136,13 @@
                 'help' => __('vendor.delivery_datetime_help'),
                 'required' => false,
             ])
-            @error('delivery_at')
-                <p class="mt-0.5 text-xs text-red-600 sm:text-sm">{{ $message }}</p>
-            @enderror
-
             <div>
                 <label class="mb-1 block text-xs font-semibold text-gray-800 sm:text-sm">{{ __('vendor.delivery_charge') }}</label>
                 <input type="number" name="delivery_charge" step="0.01" min="0" value="{{ $delCharge }}"
                        inputmode="decimal"
                        class="h-10 w-full max-w-none rounded-lg border border-gray-300 bg-white px-2.5 text-sm text-gray-900 shadow-inner focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25 @error('delivery_charge') border-red-500 @enderror sm:max-w-xs">
-                @error('delivery_charge')
-                    <p class="mt-0.5 text-xs text-red-600 sm:text-sm">{{ $message }}</p>
-                @enderror
             </div>
         </div>
-
-        @if($errors->has('error'))
-            <div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 sm:text-sm">{{ $errors->first('error') }}</div>
-        @endif
 
         <x-order-wizard-actions class="border-t border-gray-200 pt-3 sm:pt-3">
             @if($livewireWizard ?? false)
@@ -174,11 +159,6 @@
             </a>
             @endif
             <div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
-                <p x-show="fulfillmentStepError"
-                   x-text="fulfillmentStepError"
-                   x-cloak
-                   class="text-center text-xs font-medium text-red-600 sm:text-right sm:text-sm"
-                   role="alert"></p>
                 <button type="button"
                         @click="submitFulfillmentStep()"
                         wire:loading.attr="disabled"

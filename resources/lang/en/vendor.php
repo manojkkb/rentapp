@@ -435,6 +435,8 @@ return [
     'order_wizard_add_category_inline' => 'Add new category',
     'order_wizard_new_category_heading' => 'New category',
     'order_wizard_add_category_modal_hint' => 'Create a category and select it for this item.',
+    'order_wizard_error_subtitle' => 'Please review the details below.',
+    'order_wizard_error_ok' => 'OK',
     'order_wizard_save_and_select_category' => 'Save & select category',
     'order_wizard_category_created' => 'Category created.',
     'order_wizard_category_create_failed' => 'Could not create category. Try again.',

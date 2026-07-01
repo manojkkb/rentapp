@@ -8,6 +8,7 @@ import './order-wizard-datetime';
 import './order-booking-dates';
 import './order-fulfillment-datetime';
 import './order-wizard-step-one';
+import './order-wizard-errors';
 import './order-wizard-items';
 import './order-wizard-summary';
 import './order-wizard-payment';

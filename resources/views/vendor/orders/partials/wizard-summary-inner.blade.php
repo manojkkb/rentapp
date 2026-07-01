@@ -50,15 +50,6 @@
                 {{ session('success') }}
             </div>
         @endif
-        @if($errors->any())
-            <div class="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 sm:text-sm">
-                <ul class="list-disc space-y-0.5 pl-4">
-                    @foreach($errors->all() as $err)
-                        <li>{{ $err }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
 
         <dl class="mt-2 space-y-3 text-[13px] text-gray-700 sm:text-sm">
             <div class="grid grid-cols-2 gap-2 border-b border-gray-100 pb-3 sm:gap-4 sm:pb-3">

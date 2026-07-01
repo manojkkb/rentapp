@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\BusinessCategory;
+use App\Models\Language;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Models\VendorUser;
@@ -99,16 +100,7 @@ class AuthController extends ApiController
 
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $memberships = ApiUserPresenter::memberships($user);
-
-        return $this->ok([
-            'user' => ApiUserPresenter::user($user),
-            'memberships' => $memberships,
-            'context' => ApiUserPresenter::vendorContext($user),
-            'requires_vendor_selection' => ! $user->vendor_id && count($memberships) > 1,
-            'requires_vendor_creation' => $memberships === [],
-        ]);
+        return $this->ok(ApiUserPresenter::sessionPayload($request->user()));
     }
 
     public function vendors(Request $request): JsonResponse
@@ -134,10 +126,10 @@ class AuthController extends ApiController
         VendorAccess::flush();
         app(VendorRoleProvisioner::class)->ensureDefaultRoles($vendor, $user->id);
 
-        return $this->ok([
-            'user' => ApiUserPresenter::user($user->fresh()),
-            'context' => ApiUserPresenter::vendorContext($user->fresh()),
-        ], 'Vendor selected.');
+        return $this->ok(
+            ApiUserPresenter::sessionPayload($user->fresh()),
+            'Vendor selected.'
+        );
     }
 
     public function createVendor(Request $request): JsonResponse
@@ -193,10 +185,11 @@ class AuthController extends ApiController
         $user->setCurrentVendorId($vendor->id);
         VendorAccess::flush();
 
-        return $this->ok([
-            'vendor' => ApiUserPresenter::vendor($vendor),
-            'context' => ApiUserPresenter::vendorContext($user->fresh()),
-        ], 'Vendor created successfully.', 201);
+        return $this->ok(
+            ApiUserPresenter::sessionPayload($user->fresh()),
+            'Vendor created successfully.',
+            201
+        );
     }
 
     public function businessCategories(): JsonResponse
@@ -208,6 +201,16 @@ class AuthController extends ApiController
             ->get(['id', 'name', 'slug']);
 
         return $this->ok($categories->values()->all());
+    }
+
+    public function languages(): JsonResponse
+    {
+        $languages = Language::query()
+            ->active()
+            ->orderBy('sort_order')
+            ->get(['code', 'name', 'native_name', 'is_default']);
+
+        return $this->ok($languages->values()->all());
     }
 
     public function logout(Request $request): JsonResponse
@@ -222,17 +225,10 @@ class AuthController extends ApiController
         $user->tokens()->where('name', $deviceName)->delete();
         $token = $user->createToken($deviceName)->plainTextToken;
 
-        $memberships = ApiUserPresenter::memberships($user);
-
-        return $this->ok([
+        return $this->ok(array_merge([
             'token' => $token,
             'token_type' => 'Bearer',
-            'user' => ApiUserPresenter::user($user),
-            'memberships' => $memberships,
-            'requires_vendor_selection' => ! $user->vendor_id && count($memberships) > 1,
-            'requires_vendor_creation' => $memberships === [],
-            'context' => ApiUserPresenter::vendorContext($user),
-        ], 'Authenticated.');
+        ], ApiUserPresenter::sessionPayload($user)), 'Authenticated.');
     }
 
     private function otpSentResponse(string $mobile, string $otp, string $message): JsonResponse

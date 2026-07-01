@@ -103,11 +103,6 @@
                 </template>
             </div>
 
-            <p x-show="variantModalError"
-               x-text="variantModalError"
-               x-cloak
-               class="mt-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700"
-               role="alert"></p>
         </div>
 
         <div class="border-t border-gray-200 bg-gray-50/80 px-3 py-3 sm:px-4 sm:py-4">

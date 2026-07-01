@@ -93,16 +93,12 @@ class CreateOrderWizard extends VendorComponent
 
         if ($step > 2 && empty(OrderCreateWizardSession::get()['lines'])) {
             $this->step = 2;
-            throw ValidationException::withMessages([
-                'lines' => [__('vendor.order_wizard_select_at_least_one_item')],
-            ]);
+            $this->throwWizardValidation('lines', __('vendor.order_wizard_select_at_least_one_item'));
         }
 
         if ($step > 4 && ! OrderCreateWizardSession::hasFulfillment(OrderCreateWizardSession::get())) {
             $this->step = 4;
-            throw ValidationException::withMessages([
-                'fulfillment' => [__('vendor.order_wizard_complete_fulfillment_first')],
-            ]);
+            $this->throwWizardValidation('fulfillment', __('vendor.order_wizard_complete_fulfillment_first'));
         }
 
         $this->step = $step;
@@ -150,15 +146,20 @@ class CreateOrderWizard extends VendorComponent
             return;
         }
 
-        $this->validate([
-            'newCustomerName' => ['required', 'string', 'max:255'],
-            'newCustomerMobile' => ['required', 'digits:10', 'unique:vendor_customers,mobile,NULL,id,vendor_id,'.$vendor->id],
-            'newCustomerAddress' => ['nullable', 'string', 'max:500'],
-        ], [], [
-            'newCustomerName' => __('vendor.customer_name'),
-            'newCustomerMobile' => __('vendor.mobile'),
-            'newCustomerAddress' => __('vendor.address'),
-        ]);
+        try {
+            $this->validate([
+                'newCustomerName' => ['required', 'string', 'max:255'],
+                'newCustomerMobile' => ['required', 'digits:10', 'unique:vendor_customers,mobile,NULL,id,vendor_id,'.$vendor->id],
+                'newCustomerAddress' => ['nullable', 'string', 'max:500'],
+            ], [], [
+                'newCustomerName' => __('vendor.customer_name'),
+                'newCustomerMobile' => __('vendor.mobile'),
+                'newCustomerAddress' => __('vendor.address'),
+            ]);
+        } catch (ValidationException $e) {
+            $this->dispatchWizardValidationErrors($e);
+            throw $e;
+        }
 
         $user = User::where('mobile', $this->newCustomerMobile)->first();
 
@@ -204,9 +205,7 @@ class CreateOrderWizard extends VendorComponent
         }
 
         if ($this->customerId === null) {
-            throw ValidationException::withMessages([
-                'customer_id' => [__('vendor.order_wizard_select_customer_required')],
-            ]);
+            $this->throwWizardValidation('customer_id', __('vendor.order_wizard_select_customer_required'));
         }
 
         $request = Request::create('/', 'POST', [
@@ -216,7 +215,12 @@ class CreateOrderWizard extends VendorComponent
             'end_time' => $this->endTime,
         ]);
 
-        $payload = CreateOrder::validateForDirectOrder($request, $vendor->id);
+        try {
+            $payload = CreateOrder::validateForDirectOrder($request, $vendor->id);
+        } catch (ValidationException $e) {
+            $this->dispatchWizardValidationErrors($e);
+            throw $e;
+        }
 
         OrderCreateWizardSession::put(array_merge(
             OrderCreateWizardSession::get(),
@@ -240,7 +244,12 @@ class CreateOrderWizard extends VendorComponent
      */
     public function saveItemsStep(array $lines): void
     {
-        app(VendorOrderController::class)->wizardSaveLines($lines);
+        try {
+            app(VendorOrderController::class)->wizardSaveLines($lines);
+        } catch (ValidationException $e) {
+            $this->dispatchWizardValidationErrors($e);
+            throw $e;
+        }
         $this->step = 3;
         $this->flashMessage = __('vendor.order_wizard_step2_saved');
         $this->resetErrorBag();
@@ -266,9 +275,7 @@ class CreateOrderWizard extends VendorComponent
 
         if (empty(OrderCreateWizardSession::get()['lines'])) {
             $this->step = 2;
-            throw ValidationException::withMessages([
-                'error' => [__('vendor.order_wizard_select_at_least_one_item')],
-            ]);
+            $this->throwWizardValidation('error', __('vendor.order_wizard_select_at_least_one_item'));
         }
 
         $this->flashMessage = __('vendor.order_wizard_summary_line_removed');
@@ -365,5 +372,28 @@ class CreateOrderWizard extends VendorComponent
             'start_time' => $this->startTime,
             'end_time' => $this->endTime,
         ]);
+    }
+
+    /**
+     * @param  string|list<string>  $messages
+     */
+    private function throwWizardValidation(string $field, string|array $messages): never
+    {
+        $list = collect(is_array($messages) ? $messages : [$messages])
+            ->flatten()
+            ->filter()
+            ->values()
+            ->all();
+
+        $this->dispatch('wizard-show-error', messages: $list);
+        throw ValidationException::withMessages([$field => $list]);
+    }
+
+    private function dispatchWizardValidationErrors(ValidationException $e): void
+    {
+        $messages = collect($e->errors())->flatten()->filter()->values()->all();
+        if ($messages !== []) {
+            $this->dispatch('wizard-show-error', messages: $messages);
+        }
     }
 }

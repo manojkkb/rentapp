@@ -65,6 +65,9 @@
 @endsection
 
 @section('content')
+    @push('modals')
+        @include('vendor.orders.partials.wizard-error-modal')
+    @endpush
     <livewire:vendor.orders.create-order-wizard />
 @endsection
 
@@ -130,6 +133,10 @@ document.addEventListener('livewire:initialized', () => {
             });
         });
     });
+
+    @if(session('error'))
+    window.showWizardError?.(@json(session('error')));
+    @endif
 });
 </script>
 @endsection

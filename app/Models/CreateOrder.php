@@ -31,7 +31,7 @@ final class CreateOrder
             $data = $v->getData();
             $title = self::resolveEventTitle($data);
             if ($title === '') {
-                $v->errors()->add('event_name', trans('validation.required', ['attribute' => 'event name']));
+                $v->errors()->add('event_name', trans('validation.required', ['attribute' => __('vendor.event_name')]));
             }
         });
         $validator->validate();

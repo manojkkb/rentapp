@@ -2,6 +2,13 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.data('orderWizardItems', (raw) => {
         const p = raw || {};
         p.i18n = p.i18n || {};
+
+        const wizardShowError = (message) => {
+            if (typeof window.showWizardError === 'function') {
+                window.showWizardError(message);
+            }
+        };
+
         return {
         livewireWizard: !!p.livewireWizard,
         items: p.items ?? [],
@@ -13,9 +20,11 @@ document.addEventListener('alpine:init', () => {
                 categories: p.categories,
                 searchQuery: '',
                 selectedCategory: '',
-                showAddCategoryInline: false,
+                showAddCategoryModal: false,
+                quickCategoryQuery: '',
+                quickCategoryDropdownOpen: false,
                 newCategoryName: '',
-                categoryInlineError: '',
+                categoryModalError: '',
                 categoryCreateSaving: false,
                 lineQty: {},
                 lineUnits: {},
@@ -135,10 +144,50 @@ document.addEventListener('alpine:init', () => {
                     }
                     return text;
                 },
-                variantSelectable(variant) {
-                    if (!variant.is_available) return false;
-                    if (variant.manage_stock && this.variantAvailableStock(this.variantModalItem, variant) < 1) return false;
+                variantSelectable(variant, item = null) {
+                    const parentItem = item || this.variantModalItem;
+                    if (!variant?.is_available) {
+                        return false;
+                    }
+                    if (variant.manage_stock && this.variantAvailableStock(parentItem, variant) < 1) {
+                        return false;
+                    }
+
                     return true;
+                },
+                simpleItemCanAdd(item) {
+                    if (!item?.manage_stock) {
+                        return true;
+                    }
+
+                    return this.itemAvailableStock(item) >= 1;
+                },
+                maxQtyForLine(lineKey, item) {
+                    const meta = this.lineMeta[lineKey] || {};
+                    if (meta.item_variant_id) {
+                        const variant = this.findVariant(item, meta.item_variant_id);
+                        if (!variant?.manage_stock) {
+                            return Number.POSITIVE_INFINITY;
+                        }
+
+                        return this.variantAvailableStock(item, variant);
+                    }
+                    if (!item?.manage_stock) {
+                        return Number.POSITIVE_INFINITY;
+                    }
+
+                    return this.itemAvailableStock(item);
+                },
+                stockUnavailableMessage(item, variant = null) {
+                    if (variant) {
+                        const label = variant.label || variant.variant_code || '';
+                        const tpl = p.i18n.variant_insufficient_stock || 'Not enough stock for :label.';
+
+                        return tpl.replace(':label', label);
+                    }
+                    const tpl = p.i18n.insufficient_stock || 'Not enough stock for :name.';
+
+                    return tpl.replace(':name', item?.name || '');
                 },
                 itemPriceLabel(item) {
                     if (!item.has_variants) {
@@ -174,10 +223,7 @@ document.addEventListener('alpine:init', () => {
                 },
                 submitItemsStep(ev) {
                     if (!this.hasSelectedItems) {
-                        this.itemsStepError = p.i18n.select_at_least_one_item;
-                        if (typeof showToast === 'function') {
-                            showToast(this.itemsStepError, 'error');
-                        }
+                        wizardShowError(p.i18n.select_at_least_one_item);
                         return;
                     }
                     this.itemsStepError = '';
@@ -392,12 +438,21 @@ document.addEventListener('alpine:init', () => {
                     }
                     const qty = parseInt(String(this.lineEditQty), 10);
                     if (!Number.isFinite(qty) || qty < 1) {
-                        this.lineEditError = p.i18n.enter_quantity;
+                        wizardShowError(p.i18n.enter_quantity);
+                        return;
+                    }
+                    const metaBefore = this.lineMeta[key] || {};
+                    const variant = metaBefore.item_variant_id
+                        ? this.findVariant(item, metaBefore.item_variant_id)
+                        : null;
+                    const max = this.maxQtyForLine(key, item);
+                    if (Number.isFinite(max) && qty > max) {
+                        wizardShowError(this.stockUnavailableMessage(item, variant));
                         return;
                     }
                     const price = parseFloat(String(this.lineEditPrice));
                     if (!Number.isFinite(price) || price < 0) {
-                        this.lineEditError = p.i18n.quick_item_price_invalid;
+                        wizardShowError(p.i18n.quick_item_price_invalid);
                         return;
                     }
                     const rentalPeriod = String(this.lineEditRentalPeriod || item.rental_period || 'per_day');
@@ -406,7 +461,7 @@ document.addEventListener('alpine:init', () => {
                     if (usesBilling) {
                         billing = parseFloat(String(this.lineEditBilling));
                         if (!Number.isFinite(billing) || billing < 0.01) {
-                            this.lineEditError = p.i18n.billing_units_required;
+                            wizardShowError(p.i18n.billing_units_required);
                             return;
                         }
                     }
@@ -482,7 +537,9 @@ document.addEventListener('alpine:init', () => {
                     return this.isVariantModalChecked(id);
                 },
                 handleVariantRowClick(variant) {
-                    if (!this.variantSelectable(variant)) {
+                    const item = this.variantModalItem;
+                    if (!this.variantSelectable(variant, item)) {
+                        wizardShowError(this.stockUnavailableMessage(item, variant));
                         return;
                     }
                     const id = String(variant.id);
@@ -504,13 +561,26 @@ document.addEventListener('alpine:init', () => {
                 variantModalSelectionCount() {
                     return this.variantModalSelections.length;
                 },
-                addVariantToOrder(item, variantId, incrementIfExists = true) {
+                addVariantToOrder(item, variantId, incrementIfExists = true, showError = true) {
                     const variant = this.findVariant(item, variantId);
-                    if (!variant || !this.variantSelectable(variant)) {
+                    if (!variant || !this.variantSelectable(variant, item)) {
+                        if (showError && variant) {
+                            wizardShowError(this.stockUnavailableMessage(item, variant));
+                        }
+
                         return false;
                     }
                     const key = this.lineKey(item.id, variantId);
                     if (incrementIfExists && this.getQtyForKey(key) >= 1) {
+                        const next = this.getQtyForKey(key) + 1;
+                        const max = this.maxQtyForLine(key, item);
+                        if (Number.isFinite(max) && next > max) {
+                            if (showError) {
+                                wizardShowError(this.stockUnavailableMessage(item, variant));
+                            }
+
+                            return false;
+                        }
                         this.incrementQtyForKey(key, item);
                         return true;
                     }
@@ -560,12 +630,14 @@ document.addEventListener('alpine:init', () => {
                     if (editKey) {
                         const variantId = parseInt(String(this.variantModalPick || ''), 10);
                         if (!variantId) {
-                            this.variantModalError = p.i18n.select_variant;
+                            wizardShowError(p.i18n.select_variant);
                             return;
                         }
                         const variant = this.findVariant(item, variantId);
-                        if (!variant || !this.variantSelectable(variant)) {
-                            this.variantModalError = p.i18n.variant_invalid;
+                        if (!variant || !this.variantSelectable(variant, item)) {
+                            wizardShowError(variant
+                                ? this.stockUnavailableMessage(item, variant)
+                                : p.i18n.variant_invalid);
                             return;
                         }
                         const newKey = this.lineKey(item.id, variantId);
@@ -611,7 +683,7 @@ document.addEventListener('alpine:init', () => {
                         : (this.variantModalPick ? [String(this.variantModalPick)] : []);
 
                     if (!selectedIds.length) {
-                        this.variantModalError = p.i18n.select_variant;
+                        wizardShowError(p.i18n.select_variant);
                         return;
                     }
 
@@ -629,13 +701,17 @@ document.addEventListener('alpine:init', () => {
                     const incrementIfExists = this.variantModalMode === 'add';
                     selectedIds.forEach((idStr) => {
                         const variantId = parseInt(String(idStr), 10);
-                        if (variantId && this.addVariantToOrder(item, variantId, incrementIfExists)) {
+                        if (variantId && this.addVariantToOrder(item, variantId, incrementIfExists, false)) {
                             added++;
                         }
                     });
 
                     if (added === 0 && this.variantModalMode !== 'modify') {
-                        this.variantModalError = p.i18n.variant_invalid;
+                        const firstId = parseInt(String(selectedIds[0] || ''), 10);
+                        const firstVariant = firstId ? this.findVariant(item, firstId) : null;
+                        wizardShowError(firstVariant
+                            ? this.stockUnavailableMessage(item, firstVariant)
+                            : p.i18n.variant_invalid);
                         return;
                     }
 
@@ -665,23 +741,59 @@ document.addEventListener('alpine:init', () => {
                     get filteredItems() {
                         return this.items.filter((item) => this.matchesFilter(item));
                     },
-                    openAddCategoryInline() {
-                        this.showAddCategoryInline = true;
-                        this.categoryInlineError = '';
-                        this.$nextTick(() => document.getElementById('orderWizardNewCategoryName')?.focus());
+                    get filteredQuickCategories() {
+                        const q = (this.quickCategoryQuery || '').trim().toLowerCase();
+                        if (!q) {
+                            return this.categories;
+                        }
+                        return this.categories.filter((c) => c.name.toLowerCase().includes(q));
                     },
-                    closeAddCategoryInline() {
-                        this.showAddCategoryInline = false;
-                        this.categoryInlineError = '';
+                    openQuickCategoryDropdown() {
+                        this.quickCategoryDropdownOpen = true;
+                    },
+                    closeQuickCategoryDropdown() {
+                        this.quickCategoryDropdownOpen = false;
+                    },
+                    onQuickCategoryQueryInput() {
+                        this.quickCategoryDropdownOpen = true;
+                        const sel = this.categories.find((c) => String(c.id) === String(this.quickItem.category_id));
+                        if (sel && (this.quickCategoryQuery || '').trim() !== sel.name) {
+                            this.quickItem.category_id = '';
+                        }
+                    },
+                    selectQuickCategory(cat) {
+                        this.quickItem.category_id = String(cat.id);
+                        this.quickCategoryQuery = cat.name;
+                        this.closeQuickCategoryDropdown();
+                    },
+                    clearQuickCategory() {
+                        this.quickItem.category_id = '';
+                        this.quickCategoryQuery = '';
+                        this.closeQuickCategoryDropdown();
+                    },
+                    openAddCategoryModal() {
+                        this.showAddCategoryModal = true;
+                        this.categoryModalError = '';
+                        const q = (this.quickCategoryQuery || '').trim();
+                        if (q && !this.categories.some((c) => c.name.toLowerCase() === q.toLowerCase())) {
+                            this.newCategoryName = q;
+                        } else {
+                            this.newCategoryName = '';
+                        }
+                        this.$nextTick(() => document.getElementById('orderWizardQuickCategoryName')?.focus());
+                    },
+                    closeAddCategoryModal() {
+                        this.showAddCategoryModal = false;
+                        this.categoryModalError = '';
                     },
                     async saveQuickCategory() {
                         const name = (this.newCategoryName || '').trim();
                         if (!name) {
-                            this.categoryInlineError = p.i18n.category_name_required;
+                            wizardShowError(p.i18n.category_name_required);
                             return;
                         }
                         if (this.categoryCreateSaving) return;
-                        this.categoryInlineError = '';
+                        this.categoryModalError = '';
                         this.categoryCreateSaving = true;
                         const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
                         try {
@@ -699,17 +811,17 @@ document.addEventListener('alpine:init', () => {
                             const data = await res.json().catch(() => ({}));
                             if (!res.ok || !data.success || !data.category) {
                                 const errs = data.errors ? Object.values(data.errors).flat() : [];
-                                this.categoryInlineError = data.message || errs[0] || p.i18n.category_create_failed;
+                                wizardShowError(data.message || errs[0] || p.i18n.category_create_failed);
                                 return;
                             }
                             const cat = { id: data.category.id, name: data.category.name };
                             const rest = this.categories.filter((c) => String(c.id) !== String(cat.id));
-                            this.categories = [cat, ...rest];
-                            this.quickItem.category_id = String(cat.id);
-                            this.showAddCategoryInline = false;
+                            this.categories = [cat, ...rest].sort((a, b) => a.name.localeCompare(b.name));
+                            this.selectQuickCategory(cat);
+                            this.closeAddCategoryModal();
                             this.newCategoryName = '';
                         } catch (e) {
-                            this.categoryInlineError = p.i18n.category_create_failed;
+                            wizardShowError(p.i18n.category_create_failed);
                         } finally {
                             this.categoryCreateSaving = false;
                         }
@@ -793,6 +905,10 @@ document.addEventListener('alpine:init', () => {
                     },
                     addLine(item) {
                         this.itemsStepError = '';
+                        if (!this.simpleItemCanAdd(item)) {
+                            wizardShowError(this.stockUnavailableMessage(item));
+                            return;
+                        }
                         const key = this.lineKey(item.id);
                         this.lineMeta = {
                             ...this.lineMeta,
@@ -812,6 +928,15 @@ document.addEventListener('alpine:init', () => {
                     },
                     incrementQtyForKey(lineKey, item) {
                         const next = this.getQtyForKey(lineKey) + 1;
+                        const max = this.maxQtyForLine(lineKey, item);
+                        if (Number.isFinite(max) && next > max) {
+                            const meta = this.lineMeta[lineKey] || {};
+                            const variant = meta.item_variant_id
+                                ? this.findVariant(item, meta.item_variant_id)
+                                : null;
+                            wizardShowError(this.stockUnavailableMessage(item, variant));
+                            return;
+                        }
                         if (next >= 1) this.itemsStepError = '';
                         this.lineQty = { ...this.lineQty, [lineKey]: next };
                         if (this.lineUsesBillingForKey(lineKey, item)) {
@@ -894,9 +1019,11 @@ document.addEventListener('alpine:init', () => {
                     },
                     openAddItemModal() {
                         this.quickItemError = '';
-                        this.showAddCategoryInline = false;
+                        this.showAddCategoryModal = false;
+                        this.quickCategoryQuery = '';
+                        this.quickCategoryDropdownOpen = false;
                         this.newCategoryName = '';
-                        this.categoryInlineError = '';
+                        this.categoryModalError = '';
                         this.quickItem = { name: '', category_id: '', price: '', rental_period: 'per_day' };
                         this.showAddItemModal = true;
                         document.documentElement.classList.add('overflow-hidden');
@@ -914,11 +1041,11 @@ document.addEventListener('alpine:init', () => {
                         const categoryId = this.quickItem.category_id;
                         const price = parseFloat(String(this.quickItem.price));
                         if (!name || !categoryId) {
-                            this.quickItemError = p.i18n.quick_item_required;
+                            wizardShowError(p.i18n.quick_item_required);
                             return;
                         }
                         if (!Number.isFinite(price) || price < 0) {
-                            this.quickItemError = p.i18n.quick_item_price_invalid;
+                            wizardShowError(p.i18n.quick_item_price_invalid);
                             return;
                         }
                         this.quickItemSaving = true;
@@ -943,7 +1070,7 @@ document.addEventListener('alpine:init', () => {
                             const data = await res.json().catch(() => ({}));
                             if (!res.ok || !data.success) {
                                 const errs = data.errors ? Object.values(data.errors).flat() : [];
-                                this.quickItemError = data.message || errs[0] || p.i18n.item_create_failed;
+                                wizardShowError(data.message || errs[0] || p.i18n.item_create_failed);
                                 return;
                             }
                             const item = data.item;
@@ -966,7 +1093,7 @@ document.addEventListener('alpine:init', () => {
                             this.showAddItemModal = false;
                             document.documentElement.classList.remove('overflow-hidden');
                         } catch (e) {
-                            this.quickItemError = p.i18n.item_create_failed;
+                            wizardShowError(p.i18n.item_create_failed);
                         } finally {
                             this.quickItemSaving = false;
                         }
